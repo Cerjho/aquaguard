@@ -1,0 +1,9 @@
+# Global owners — Orchestrator reviews all PRs
+* @Cerjho
+
+# Scope-specific ownership
+/detection_engine/    @Cerjho
+/backend/             @Cerjho
+/frontend/            @Cerjho
+/esp32/               @Cerjho
+/docs/                @Cerjho

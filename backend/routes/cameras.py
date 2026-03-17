@@ -105,7 +105,7 @@ def _generate_frames(rtsp_url):
 
 
 @cameras_bp.route('/cameras/<zone_id>/stream', methods=['GET'])
-@jwt_required()
+@jwt_required(optional=True)
 def stream_camera(zone_id):
     camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
     rtsp_url = camera.rtsp_url

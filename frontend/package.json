@@ -3,21 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "axios": "1.7.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.26.2",
     "react-scripts": "5.0.1",
-    "axios": "1.7.7",
-    "socket.io-client": "4.7.5",
-    "recharts": "2.12.7"
+    "recharts": "2.12.7",
+    "socket.io-client": "4.7.5"
   },
   "devDependencies": {
-    "@testing-library/react": "16.0.0",
     "@testing-library/jest-dom": "6.5.0",
+    "@testing-library/react": "16.0.0",
     "@testing-library/user-event": "14.5.2",
-    "tailwindcss": "3.4.13",
+    "autoprefixer": "10.4.20",
+    "axios-mock-adapter": "^2.1.0",
     "postcss": "8.4.47",
-    "autoprefixer": "10.4.20"
+    "tailwindcss": "3.4.13"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -29,6 +30,11 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ]
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/(?!axios/)"
     ]
   },
   "browserslist": {

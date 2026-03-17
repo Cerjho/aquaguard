@@ -41,3 +41,6 @@ Thumbs.db
 
 # conda env (do not commit)
 aquaguard_env/
+
+.coverage
+backend/.coverage

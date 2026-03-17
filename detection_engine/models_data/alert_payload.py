@@ -1,0 +1,14 @@
+"""AlertPayload dataclass — structured payload sent to MQTT and backend API."""
+from dataclasses import dataclass
+
+
+@dataclass
+class AlertPayload:
+    """Alert event dispatched when drowning is confirmed."""
+    event_id: str
+    zone_id: str
+    track_id: str
+    score: float
+    snapshot_path: str
+    snapshot_b64: str     # JPEG frame encoded as base64 string
+    timestamp: str        # ISO-8601 UTC timestamp

@@ -1,0 +1,78 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.6.0 -- C:\Users\Jhocer Barcela\Desktop\AquaGuard\aquaguard_env\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Jhocer Barcela\Desktop\AquaGuard
+plugins: anyio-4.12.1, cov-5.0.0, mock-3.14.0
+collecting ... collected 36 items
+
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerScore::test_score_in_range PASSED [  2%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerScore::test_drowning_class_boosts_score PASSED [  5%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerScore::test_temporal_consistency_increases_score PASSED [  8%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerScore::test_separate_track_ids_are_independent PASSED [ 11%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_vertical_orientation_detected PASSED [ 13%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_horizontal_orientation_not_vertical PASSED [ 16%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_arms_elevated_when_wrists_above_shoulders PASSED [ 19%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_arms_not_elevated_when_wrists_below_shoulders PASSED [ 22%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_face_submerged_low_visibility PASSED [ 25%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_face_not_submerged_high_visibility PASSED [ 27%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_no_limb_motion_requires_history PASSED [ 30%]
+detection_engine/tests/test_behavior_analyzer.py::TestBehaviorAnalyzerIndicators::test_no_limb_motion_with_static_landmarks PASSED [ 33%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_returns_false_before_window_fills PASSED [ 36%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_triggers_when_window_full_and_conditions_met PASSED [ 38%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_no_trigger_with_low_scores PASSED [ 41%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_no_trigger_when_mean_below_threshold PASSED [ 44%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_buffer_resets_after_trigger PASSED [ 47%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_different_track_ids_are_independent PASSED [ 50%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_remove_track_clears_buffer PASSED [ 52%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterWindow::test_remove_nonexistent_track_does_not_raise PASSED [ 55%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterConditions::test_cond1_requires_mean_above_threshold PASSED [ 58%]
+detection_engine/tests/test_confidence_filter.py::TestConfidenceFilterConditions::test_cond2_requires_k_recent_hits PASSED [ 61%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorInit::test_uses_cpu_when_no_cuda PASSED [ 63%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorInit::test_uses_cuda_when_available PASSED [ 66%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorDetect::test_returns_empty_list_on_no_boxes PASSED [ 69%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorDetect::test_returns_empty_list_on_no_track_id PASSED [ 72%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorDetect::test_returns_detection_with_valid_boxes PASSED [ 75%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorDetect::test_returns_empty_on_runtime_error PASSED [ 77%]
+detection_engine/tests/test_detector.py::TestDrowningDetectorDetect::test_cuda_oom_falls_back_to_cpu PASSED [ 80%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_returns_33_landmarks_on_success PASSED [ 83%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_returns_none_when_no_pose_landmarks PASSED [ 86%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_returns_none_on_invalid_bbox PASSED [ 88%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_clamps_bbox_to_frame_boundaries PASSED [ 91%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_returns_none_when_mediapipe_raises PASSED [ 94%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_landmark_coordinates_are_normalized PASSED [ 97%]
+detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_landmark_visibility_preserved PASSED [100%]
+
+---------- coverage: platform win32, python 3.11.9-final-0 -----------
+Name                                               Stmts   Miss  Cover
+----------------------------------------------------------------------
+detection_engine\alert\__init__.py                     0      0   100%
+detection_engine\alert\alert_engine.py                45     45     0%
+detection_engine\alert\api_client.py                  24     24     0%
+detection_engine\alert\mqtt_client.py                 42     42     0%
+detection_engine\analysis\__init__.py                  0      0   100%
+detection_engine\analysis\behavior_analyzer.py        64      1    98%
+detection_engine\analysis\confidence_filter.py        30      0   100%
+detection_engine\benchmark.py                         53     53     0%
+detection_engine\camera\__init__.py                    0      0   100%
+detection_engine\camera\capture.py                    78     78     0%
+detection_engine\camera\registry.py                   27     27     0%
+detection_engine\main.py                              58     58     0%
+detection_engine\models_data\__init__.py               0      0   100%
+detection_engine\models_data\alert_payload.py         10     10     0%
+detection_engine\models_data\detection.py              9      0   100%
+detection_engine\models_data\landmark.py               7      0   100%
+detection_engine\tests\__init__.py                     0      0   100%
+detection_engine\tests\conftest.py                    19      0   100%
+detection_engine\tests\test_behavior_analyzer.py      63      0   100%
+detection_engine\tests\test_confidence_filter.py      60      0   100%
+detection_engine\tests\test_detector.py               96      0   100%
+detection_engine\tests\test_pose_estimator.py         74      0   100%
+detection_engine\vision\__init__.py                    0      0   100%
+detection_engine\vision\detector.py                   46      6    87%
+detection_engine\vision\pose_estimator.py             31      1    97%
+detection_engine\vision\preprocessor.py                7      7     0%
+----------------------------------------------------------------------
+TOTAL                                                843    352    58%
+
+
+============================= 36 passed in 18.46s =============================

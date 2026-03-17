@@ -47,3 +47,80 @@
 ## Next Agent Dependencies
 - Agent 2 (Backend) can proceed — config/settings.py and models_data are stable
 - Agent 5 (Testing) can add unit tests once model weights are placed at `detection_engine/models/aquaguard_yolov11s.pt`
+
+# Agent 1 — Completion Report
+
+**Status:** COMPLETE
+
+---
+
+## Files Created
+
+- `detection_engine/vision/detector.py` — DrowningDetector with YOLOv11s + ByteTrack, CUDA/CPU fallback
+- `detection_engine/vision/pose_estimator.py` — PoseEstimator with MediaPipe, ROI crop, normalized coords
+- `detection_engine/vision/preprocessor.py` — Frame resize, BGR→RGB, float32 normalisation
+- `detection_engine/analysis/behavior_analyzer.py` — BehaviorAnalyzer, 5-indicator scoring with temporal bonus
+- `detection_engine/analysis/confidence_filter.py` — ConfidenceFilter rolling window (N=15, T=0.75, K=10)
+- `detection_engine/camera/capture.py` — CameraCapture threaded reader with exponential backoff reconnect
+- `detection_engine/camera/registry.py` — CameraRegistry JSON loader, bulk start/stop
+- `detection_engine/alert/mqtt_client.py` — MQTTClient, paho-mqtt 2.x (CallbackAPIVersion.VERSION2)
+- `detection_engine/alert/api_client.py` — APIClient, HTTP POST to Flask /api/v1/events
+- `detection_engine/alert/alert_engine.py` — AlertEngine, snapshot save + base64 + concurrent MQTT/API dispatch
+- `detection_engine/models_data/detection.py` — Detection dataclass
+- `detection_engine/models_data/landmark.py` — Landmark dataclass (normalized coords)
+- `detection_engine/models_data/alert_payload.py` — AlertPayload dataclass
+- `detection_engine/main.py` — Main detection loop, one DrowningDetector per camera zone
+- `detection_engine/tests/conftest.py` — Shared pytest fixtures (blank_frame, dummy_landmarks)
+- `detection_engine/tests/test_behavior_analyzer.py` — 12 tests (scoring, temporal, 5 indicator methods)
+- `detection_engine/tests/test_confidence_filter.py` — 10 tests (window, conditions, reset, track isolation)
+- `detection_engine/tests/test_detector.py` — 7 tests (init, boxes, CUDA OOM fallback — YOLO mocked)
+- `detection_engine/tests/test_pose_estimator.py` — 7 tests (landmarks, clamping, error handling — MediaPipe mocked)
+- `config/settings.py` — Added `MQTT_TOPIC_ALERT`, `MQTT_TOPIC_DETECTION`, `CONSECUTIVE_FRAMES_REQUIRED`, `CONSECUTIVE_FRAME_LOW_THRESHOLD`
+
+---
+
+## Tests Run
+
+- `pytest detection_engine/tests/ -v` — **36 passed, 0 failed** (5.61s)
+
+---
+
+## Architecture
+
+```
+CameraCapture (threaded, per zone)
+    ↓
+DrowningDetector — YOLOv11s + ByteTrack (one instance per zone)
+    ↓
+PoseEstimator — MediaPipe 33-point landmarks (normalized [0,1])
+    ↓
+BehaviorAnalyzer — 5-indicator score [0.0–1.0] with temporal bonus
+    ↓
+ConfidenceFilter — rolling N=15 window, mean > T=0.75, K=10 hits
+    ↓
+AlertEngine — JPEG snapshot + base64 + concurrent MQTT / API dispatch
+```
+
+## Design Rules Satisfied
+
+- ✅ R6-A — One DrowningDetector per camera zone (ByteTrack state never shared)
+- ✅ R6-B — MediaPipe coords normalized [0.0–1.0]; `LIMB_MOTION_STD_THRESHOLD = 0.015`
+- ✅ R6-F — paho-mqtt 2.x: 5-arg `on_connect`, 5-arg `on_disconnect`
+- ✅ R6-G — `SNAPSHOT_DIR` resolved with `os.path.abspath(__file__)` in `main.py`
+- ✅ Rule 4 — No hardcoded thresholds; all values from `config/settings.py`
+- ✅ Rule 9 — Detection loop never crashes on bad frame, MQTT failure, or API failure
+
+---
+
+## Issues Encountered
+
+1. `alert_engine.py` and `main.py` were 0 bytes — implemented from §2.6 / §2.8 of IMPLEMENTATION_PLAN.md.
+2. `config/settings.py` was missing four constants imported by `confidence_filter.py` and `mqtt_client.py` (`CONSECUTIVE_FRAMES_REQUIRED`, `CONSECUTIVE_FRAME_LOW_THRESHOLD`, `MQTT_TOPIC_ALERT`, `MQTT_TOPIC_DETECTION`) — added as aliases.
+3. Two tests used `assert X is True/False` with numpy booleans — fixed to `assert X` / `assert not X`.
+
+---
+
+## Next Agent Dependencies
+
+- Agent 2 (Backend) can now receive alert payloads at `POST /api/v1/events` — `AlertPayload` schema is stable.
+- Agent 5 (Testing) can re-run `scripts/integration_test.py` — all stubs replaced by real implementations.

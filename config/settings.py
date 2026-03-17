@@ -1,0 +1,38 @@
+# AquaGuard system-wide constants and thresholds
+# All values come from this file — never hardcode in application code
+
+# ── Confidence Filter (Rolling Window) ────────────────────────────────────────
+CONFIDENCE_WINDOW_SIZE = 15         # N — rolling window size
+CONFIDENCE_THRESHOLD = 0.75         # T — mean ratio threshold to trigger alert
+CONFIDENCE_MIN_HITS = 10            # K — minimum positive frames in window
+
+# ── Behavior Analyzer Weights ─────────────────────────────────────────────────
+WEIGHT_VERTICAL_ORIENTATION = 0.30
+WEIGHT_ARMS_ELEVATED = 0.25
+WEIGHT_NO_LIMB_MOTION = 0.20
+WEIGHT_FACE_SUBMERGED = 0.15
+WEIGHT_YOLO_CLASS = 0.10
+
+# ── Behavior Analyzer Thresholds ─────────────────────────────────────────────
+VERTICAL_ANGLE_THRESHOLD_DEG = 30
+# CRITICAL: MediaPipe returns normalized coords [0.0, 1.0] — NOT pixels
+LIMB_MOTION_STD_THRESHOLD = 0.015   # normalized units (NOT pixels)
+FACE_VISIBILITY_THRESHOLD = 0.4
+YOLO_DROWNING_CONF_BOOST = 0.6
+
+# ── MQTT ──────────────────────────────────────────────────────────────────────
+MQTT_BROKER = "localhost"
+MQTT_PORT = 1883
+MQTT_ALERT_TOPIC = "aquaguard/alert"
+MQTT_RESET_TOPIC = "aquaguard/alert/reset"
+
+# ── Camera Reconnect ──────────────────────────────────────────────────────────
+RECONNECT_BACKOFF_SECONDS = [1, 2, 4, 8, 30]
+RECONNECT_MAX_CONSECUTIVE_FAILURES = 5
+
+# ── Alert ─────────────────────────────────────────────────────────────────────
+ALARM_DURATION_SECONDS = 30
+
+# ── Snapshot ──────────────────────────────────────────────────────────────────
+SNAPSHOT_FORMAT = "jpg"
+SNAPSHOT_QUALITY = 85

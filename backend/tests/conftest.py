@@ -1,0 +1,70 @@
+"""
+conftest.py — MUST be created before any test file.
+Provides pytest fixtures: app, client, db session, and JWT tokens.
+"""
+import os
+import tempfile
+import pytest
+from app import create_app
+from extensions import db as _db, bcrypt
+from models import User
+
+# Use a temp file for SQLite so all connections share the same data
+_db_fd, _db_path = tempfile.mkstemp(suffix='.db')
+os.close(_db_fd)
+
+
+@pytest.fixture(scope='session')
+def app():
+    app = create_app()
+    app.config.update({
+        'TESTING':                   True,
+        'SQLALCHEMY_DATABASE_URI':   f'sqlite:///{_db_path}',
+        'JWT_SECRET_KEY':            'test-jwt-secret-key-32-bytes-long!!',
+        'WTF_CSRF_ENABLED':          False,
+    })
+    with app.app_context():
+        _db.create_all()
+        _seed_users()
+        yield app
+        _db.drop_all()
+    os.unlink(_db_path)
+
+
+def _seed_users():
+    if not User.query.filter_by(username='admin').first():
+        pw = bcrypt.generate_password_hash('adminpass').decode('utf-8')
+        _db.session.add(User(username='admin', password_hash=pw, role='admin'))
+    if not User.query.filter_by(username='guard').first():
+        pw = bcrypt.generate_password_hash('guardpass').decode('utf-8')
+        _db.session.add(User(username='guard', password_hash=pw, role='lifeguard'))
+    _db.session.commit()
+
+
+@pytest.fixture()
+def client(app):
+    return app.test_client()
+
+
+@pytest.fixture()
+def db(app):
+    with app.app_context():
+        yield _db
+
+
+@pytest.fixture()
+def admin_token(client):
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'admin',
+        'password': 'adminpass',
+    })
+    return resp.get_json()['access_token']
+
+
+@pytest.fixture()
+def guard_token(client):
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'guard',
+        'password': 'guardpass',
+    })
+    return resp.get_json()['access_token']

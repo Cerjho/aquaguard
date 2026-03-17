@@ -7,6 +7,9 @@ CONFIDENCE_THRESHOLD = 0.75         # T — mean ratio threshold to trigger aler
 CONFIDENCE_MIN_HITS = 10            # K — minimum positive frames in window
 CONSECUTIVE_FRAMES_REQUIRED = 10    # K — alias used by confidence_filter.py
 CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.65  # low threshold for consecutive frame check
+# Aliases used by confidence_filter.py
+CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS          # 10
+CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.65                     # score threshold for K-hit check
 
 # ── Behavior Analyzer Weights ─────────────────────────────────────────────────
 WEIGHT_VERTICAL_ORIENTATION = 0.30
@@ -33,6 +36,10 @@ MQTT_RESET_TOPIC = "aquaguard/alert/reset"
 MQTT_TOPIC_RESET = "aquaguard/alert/reset"     # alias used by mqtt_client.py
 MQTT_TOPIC_DETECTION = "aquaguard/detection"
 MQTT_TOPIC_DEVICE_STATUS = "aquaguard/device/status"
+
+# Aliases used by mqtt_client.py
+MQTT_TOPIC_ALERT = MQTT_ALERT_TOPIC
+MQTT_TOPIC_DETECTION = "aquaguard/detection"
 
 # ── Camera Reconnect ──────────────────────────────────────────────────────────
 RECONNECT_BACKOFF_SECONDS = [1, 2, 4, 8, 30]

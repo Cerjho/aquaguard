@@ -11,7 +11,9 @@ from models import DetectionEvent, Alert
 
 events_bp = Blueprint('events', __name__, url_prefix='/api/v1')
 
-SNAPSHOTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'snapshots')
+SNAPSHOTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'snapshots'
+)
 
 
 @events_bp.route('/events', methods=['POST'])

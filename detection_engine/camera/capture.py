@@ -34,7 +34,9 @@ class CameraCapture:
         """Open the video capture and launch the background capture thread."""
         self._cap = cv2.VideoCapture(self.rtsp_url)
         if not self._cap.isOpened():
-            logger.warning("[%s] Failed to open camera at startup — will retry in loop", self.zone_id)
+            logger.warning(
+                "[%s] Failed to open camera at startup — will retry in loop", self.zone_id
+            )
         else:
             logger.info("[%s] Camera connected: %s", self.zone_id, self.rtsp_url)
 

@@ -12,8 +12,9 @@ import { API_BASE_URL } from '../../utils/constants';
 
 function CameraCard({ camera }) {
   const [imgError, setImgError] = useState(false);
+  const token = localStorage.getItem('token');
 
-  const streamUrl = `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream`;
+  const streamUrl = `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${token}`;
   const isActive = Boolean(camera.is_active);
 
   return (

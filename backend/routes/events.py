@@ -66,6 +66,12 @@ def create_event():
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
         return jsonify({'error': 'Database error'}), 500
+    socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
+    socketio.emit('system_status', {
+        'component': 'detection_engine',
+        'status': 'online',
+        'message': f'Event received from {event.zone_id}',
+    })
 
     alert_dict = None
     if event.alert_triggered:
@@ -128,5 +134,5 @@ def list_events():
         'total': pagination.total,
         'page':  page,
         'limit': limit,
-        'items': [e.to_dict() for e in pagination.items],
+        'events': [e.to_dict() for e in pagination.items],
     }), 200

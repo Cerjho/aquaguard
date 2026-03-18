@@ -47,7 +47,7 @@ def test_list_events(client, admin_token):
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
     data = resp.get_json()
-    assert 'items' in data
+    assert 'events' in data
     assert 'total' in data
 
 

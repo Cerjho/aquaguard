@@ -36,10 +36,10 @@ class APIClient:
             "event_id": payload.event_id,
             "zone_id": payload.zone_id,
             "track_id": payload.track_id,
-            "score": payload.score,
-            "snapshot_path": payload.snapshot_path,
-            "snapshot_b64": payload.snapshot_b64,
-            "timestamp": payload.timestamp,
+            "confidence_score": payload.score,
+            "behavior_flags": {},
+            "snapshot_base64": payload.snapshot_b64,
+            "detected_at": payload.timestamp,
             "alert_triggered": True,
         }
         try:

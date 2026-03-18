@@ -109,6 +109,8 @@ def main():
                     detector = detectors[zone_id]
                     detections = detector.detect(frame)
                     logger.debug("Zone %s: %d detections", zone_id, len(detections))
+                    if not detections:
+                        logger.info("Zone %s: no tracked detections on this frame", zone_id)
                     if detections:
                         logger.debug(
                             "Zone %s raw detections: %s",
@@ -126,14 +128,34 @@ def main():
                     for det in detections:
                         landmarks = pose_estimator.estimate(frame, det.bbox)
                         if landmarks is None:
+                            logger.info(
+                                "Zone %s track %s: pose estimation failed (no landmarks)",
+                                zone_id,
+                                det.track_id,
+                            )
                             continue
 
                         score = behavior_analyzer.analyze(
                             landmarks, det.class_label, det.confidence, det.track_id
                         )
 
-                        if confidence_filter.evaluate(det.track_id, score):
+                        should_alert = confidence_filter.evaluate(det.track_id, score)
+                        logger.info(
+                            "Zone %s track %s: class=%s yolo=%.3f score=%.3f alert=%s",
+                            zone_id,
+                            det.track_id,
+                            det.class_label,
+                            float(det.confidence),
+                            float(score),
+                            should_alert,
+                        )
+                        if should_alert:
                             alert_engine.dispatch(zone_id, det.track_id, score, frame)
+                            logger.info(
+                                "Zone %s track %s: alert dispatched",
+                                zone_id,
+                                det.track_id,
+                            )
                 except Exception as exc:
                     logger.exception("Processing error in zone %s: %s", zone_id, exc)
                     continue

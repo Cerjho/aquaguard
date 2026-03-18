@@ -3,7 +3,7 @@
     {
       "zone_id": "zone_01",
       "zone_name": "Main Pool - East",
-      "rtsp_url": "rtsp://192.168.1.10/stream1",
+      "rtsp_url": "0",
       "location_description": "East side, overhead angle, full pool coverage",
       "frame_rate": 30,
       "resolution": "1280x720"

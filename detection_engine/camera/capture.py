@@ -5,6 +5,7 @@ import time
 from typing import Optional, Tuple, Dict, Any
 
 import cv2
+import platform
 import numpy as np
 
 import sys
@@ -32,7 +33,11 @@ class CameraCapture:
 
     def start(self) -> None:
         """Open the video capture and launch the background capture thread."""
-        self._cap = cv2.VideoCapture(self.rtsp_url)
+        self._cap = (
+            cv2.VideoCapture(int(self.rtsp_url), cv2.CAP_DSHOW)
+            if platform.system() == 'Windows' and str(self.rtsp_url).isdigit()
+            else cv2.VideoCapture(self.rtsp_url)
+        )
         if not self._cap.isOpened():
             logger.warning(
                 "[%s] Failed to open camera at startup — will retry in loop", self.zone_id
@@ -112,7 +117,11 @@ class CameraCapture:
             logger.info("[%s] Reconnecting in %ds ...", self.zone_id, delay)
             time.sleep(delay)
 
-            self._cap = cv2.VideoCapture(self.rtsp_url)
+            self._cap = (
+            cv2.VideoCapture(int(self.rtsp_url), cv2.CAP_DSHOW)
+            if platform.system() == 'Windows' and str(self.rtsp_url).isdigit()
+            else cv2.VideoCapture(self.rtsp_url)
+        )
             if self._cap.isOpened():
                 self._consecutive_failures = 0
                 logger.info("[%s] Reconnected successfully", self.zone_id)
@@ -125,3 +134,4 @@ class CameraCapture:
             len(RECONNECT_BACKOFF_SECONDS),
         )
         self._consecutive_failures = 0  # reset so outer loop tries again
+

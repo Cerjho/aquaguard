@@ -1,0 +1,9 @@
+torch==2.2.2
+torchvision==0.17.2
+ultralytics==8.3.0
+mediapipe==0.10.14
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+paho-mqtt==2.1.0
+requests==2.32.3
+python-dotenv==1.0.1

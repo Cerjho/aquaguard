@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
@@ -7,6 +8,7 @@ from extensions import db
 from models import Alert
 
 alerts_bp = Blueprint('alerts', __name__, url_prefix='/api/v1')
+logger = logging.getLogger(__name__)
 
 
 @alerts_bp.route('/alerts', methods=['GET'])

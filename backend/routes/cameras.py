@@ -17,6 +17,7 @@ def list_cameras():
 
 
 @cameras_bp.route('/cameras', methods=['POST'])
+@jwt_required()
 @role_required('admin')
 def create_camera():
     data = request.get_json(silent=True) or {}
@@ -48,6 +49,7 @@ def create_camera():
 
 
 @cameras_bp.route('/cameras/<zone_id>', methods=['PUT'])
+@jwt_required()
 @role_required('admin')
 def update_camera(zone_id):
     camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
@@ -68,6 +70,7 @@ def update_camera(zone_id):
 
 
 @cameras_bp.route('/cameras/<zone_id>', methods=['DELETE'])
+@jwt_required()
 @role_required('admin')
 def delete_camera(zone_id):
     camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()

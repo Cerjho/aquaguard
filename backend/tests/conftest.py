@@ -16,6 +16,9 @@ os.close(_db_fd)
 
 @pytest.fixture(scope='session')
 def app():
+    os.environ['DATABASE_URL'] = f'sqlite:///{_db_path}'
+    os.environ['SECRET_KEY'] = 'test-secret-key-32-bytes-long!!'
+    os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-32-bytes-long!!'
     app = create_app()
     app.config.update({
         'TESTING':                   True,
@@ -28,6 +31,8 @@ def app():
         _seed_users()
         yield app
         _db.drop_all()
+        _db.session.remove()
+        _db.engine.dispose()
     os.unlink(_db_path)
 
 

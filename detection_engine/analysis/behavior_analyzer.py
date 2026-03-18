@@ -1,7 +1,7 @@
 """Behavior analyzer — 5-indicator drowning score with temporal consistency."""
 import logging
 from collections import deque
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
 
@@ -76,7 +76,10 @@ class BehaviorAnalyzer:
         if track_id not in self._score_history:
             self._score_history[track_id] = deque(maxlen=_SCORE_HISTORY_LEN)
         hist = self._score_history[track_id]
-        temporal_ratio = sum(1 for s in hist if s > 0.5) / _SCORE_HISTORY_LEN if len(hist) == _SCORE_HISTORY_LEN else 0.0
+        temporal_ratio = (
+            sum(1 for s in hist if s > 0.5) / _SCORE_HISTORY_LEN
+            if len(hist) == _SCORE_HISTORY_LEN else 0.0
+        )
         final_score = min(1.0, raw_score * (1.0 + 0.1 * temporal_ratio))
         hist.append(raw_score)
 

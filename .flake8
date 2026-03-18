@@ -1,0 +1,21 @@
+[flake8]
+max-line-length = 100
+exclude =
+    backend/migrations,
+    __pycache__,
+    .git,
+    node_modules
+ignore =
+    E221,
+    E241,
+    E251,
+    E261,
+    E401,
+    E402,
+    E128,
+    E122,
+    W291,
+    W503
+per-file-ignores =
+    detection_engine/tests/*:F401
+    backend/tests/*:F401

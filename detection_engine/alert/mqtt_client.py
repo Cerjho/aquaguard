@@ -59,7 +59,10 @@ class MQTTClient:
             logger.warning("MQTT connect returned reason_code=%s", reason_code)
 
     def _on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
-        logger.warning("MQTT disconnected (reason_code=%s) — retrying in %ds", reason_code, _RECONNECT_DELAY_SECONDS)
+        logger.warning(
+            "MQTT disconnected (reason_code=%s) — retrying in %ds",
+            reason_code, _RECONNECT_DELAY_SECONDS,
+        )
         time.sleep(_RECONNECT_DELAY_SECONDS)
         try:
             client.reconnect()

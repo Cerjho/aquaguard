@@ -1,0 +1,67 @@
+version: '3.9'
+
+services:
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: aquaguard-mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: aquaguard-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+    volumes:
+      - ./backend/snapshots:/app/snapshots
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: aquaguard-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+      - REACT_APP_WS_URL=http://localhost:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  detection_engine:
+    build:
+      context: ./detection_engine
+    container_name: aquaguard-detection
+    environment:
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - API_BASE_URL=http://backend:5000
+    volumes:
+      - ./detection_engine/models:/app/models:ro
+      - ./config:/app/config:ro
+      - ./backend/snapshots:/app/snapshots
+    depends_on:
+      - mosquitto
+      - backend
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped

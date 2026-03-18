@@ -1,6 +1,6 @@
 import cv2
 from flask import Blueprint, request, jsonify, current_app, Response
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, decode_token
 
 from extensions import db
 from models import CameraZone
@@ -108,8 +108,15 @@ def _generate_frames(rtsp_url):
 
 
 @cameras_bp.route('/cameras/<zone_id>/stream', methods=['GET'])
-@jwt_required(optional=True)
 def stream_camera(zone_id):
+    token = request.args.get('token')
+    if not token:
+        return jsonify({'error': 'Missing token'}), 401
+    try:
+        decode_token(token)
+    except Exception:
+        return jsonify({'error': 'Invalid token'}), 401
+
     camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
     rtsp_url = camera.rtsp_url
     # Allow integer source (webcam index) stored as string

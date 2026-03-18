@@ -1,4 +1,5 @@
-import cv2
+import os
+import time
 from flask import Blueprint, request, jsonify, current_app, Response
 from flask_jwt_extended import jwt_required, decode_token
 
@@ -87,31 +88,10 @@ def delete_camera(zone_id):
 
 # ── P3-10: MJPEG stream ──────────────────────────────────────────────────────
 
-def _encode_frame(frame):
-    ret, buffer = cv2.imencode('.jpg', frame)
-    if not ret:
-        return None
-    return (
-        b'--frame\r\n'
-        b'Content-Type: image/jpeg\r\n\r\n'
-        + buffer.tobytes()
-        + b'\r\n'
-    )
-
-
-def _generate_frames(cap, first_frame):
-    try:
-        frame = first_frame
-        while True:
-            chunk = _encode_frame(frame)
-            if chunk is not None:
-                yield chunk
-
-            success, frame = cap.read()
-            if not success or frame is None:
-                break
-    finally:
-        cap.release()
+LIVE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'snapshots', 'live'
+)
 
 
 @cameras_bp.route('/cameras/<zone_id>/stream', methods=['GET'])
@@ -124,25 +104,29 @@ def stream_camera(zone_id):
     except Exception:
         return jsonify({'error': 'Invalid token'}), 401
 
-    camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
-    rtsp_url = camera.rtsp_url
-    # Allow integer source (webcam index) stored as string
-    try:
-        rtsp_url = int(rtsp_url)
-    except (ValueError, TypeError):
-        pass
+    CameraZone.query.filter_by(
+        zone_id=zone_id, is_active=True
+    ).first_or_404()
 
-    cap = cv2.VideoCapture(rtsp_url)
-    if not cap.isOpened():
-        cap.release()
-        return jsonify({'error': 'Unable to open camera stream'}), 503
+    frame_path = os.path.join(LIVE_DIR, f'{zone_id}_latest.jpg')
 
-    success, first_frame = cap.read()
-    if not success or first_frame is None:
-        cap.release()
-        return jsonify({'error': 'Unable to read camera frames'}), 503
+    def generate():
+        while True:
+            if os.path.exists(frame_path):
+                try:
+                    with open(frame_path, 'rb') as f:
+                        frame_bytes = f.read()
+                    yield (
+                        b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n'
+                        + frame_bytes
+                        + b'\r\n'
+                    )
+                except Exception:
+                    pass
+            time.sleep(0.033)
 
     return Response(
-        _generate_frames(cap, first_frame),
-        mimetype='multipart/x-mixed-replace; boundary=frame',
+        generate(),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
     )

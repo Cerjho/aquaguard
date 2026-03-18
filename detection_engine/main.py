@@ -87,24 +87,28 @@ def main():
     try:
         while True:
             for zone_id, camera in registry.cameras.items():
-                frame, metadata = camera.read()
-                if frame is None:
-                    continue
-
-                detector = detectors[zone_id]
-                detections = detector.detect(frame)
-
-                for det in detections:
-                    landmarks = pose_estimator.estimate(frame, det.bbox)
-                    if landmarks is None:
+                try:
+                    frame, metadata = camera.read()
+                    if frame is None:
                         continue
 
-                    score = behavior_analyzer.analyze(
-                        landmarks, det.class_label, det.confidence, det.track_id
-                    )
+                    detector = detectors[zone_id]
+                    detections = detector.detect(frame)
 
-                    if confidence_filter.evaluate(det.track_id, score):
-                        alert_engine.dispatch(zone_id, det.track_id, score, frame)
+                    for det in detections:
+                        landmarks = pose_estimator.estimate(frame, det.bbox)
+                        if landmarks is None:
+                            continue
+
+                        score = behavior_analyzer.analyze(
+                            landmarks, det.class_label, det.confidence, det.track_id
+                        )
+
+                        if confidence_filter.evaluate(det.track_id, score):
+                            alert_engine.dispatch(zone_id, det.track_id, score, frame)
+                except Exception as exc:
+                    logger.exception("Processing error in zone %s: %s", zone_id, exc)
+                    continue
 
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt received — shutting down ...")

@@ -55,7 +55,7 @@ function AlertPanel() {
     : null;
 
   const handleAcknowledge = () => {
-    acknowledge(activeAlert.id);
+    acknowledge(activeAlert.alert_id || activeAlert.id);
   };
 
   return (

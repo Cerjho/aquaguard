@@ -10,6 +10,7 @@ Usage:
 """
 import logging
 import os
+import shutil
 import sys
 import cv2
 
@@ -99,10 +100,28 @@ def main():
                     _tmp = os.path.join(_LIVE_DIR, f"{zone_id}_tmp.jpg")
                     _out = os.path.join(_LIVE_DIR, f"{zone_id}_latest.jpg")
                     cv2.imwrite(_tmp, frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-                    os.replace(_tmp, _out)
+                    shutil.copy2(_tmp, _out)
+                    try:
+                        os.remove(_tmp)
+                    except Exception:
+                        pass
 
                     detector = detectors[zone_id]
                     detections = detector.detect(frame)
+                    logger.debug("Zone %s: %d detections", zone_id, len(detections))
+                    if detections:
+                        logger.debug(
+                            "Zone %s raw detections: %s",
+                            zone_id,
+                            [
+                                {
+                                    "track_id": det.track_id,
+                                    "class_label": det.class_label,
+                                    "confidence": round(float(det.confidence), 4),
+                                }
+                                for det in detections
+                            ],
+                        )
 
                     for det in detections:
                         landmarks = pose_estimator.estimate(frame, det.bbox)

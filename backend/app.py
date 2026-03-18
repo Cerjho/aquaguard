@@ -10,8 +10,15 @@ def create_app():
 
     app = Flask(__name__)
 
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret')
-    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-jwt-secret')
+    secret_key = os.environ.get('SECRET_KEY')
+    jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
+    if not secret_key:
+        raise RuntimeError('SECRET_KEY environment variable is required')
+    if not jwt_secret_key:
+        raise RuntimeError('JWT_SECRET_KEY environment variable is required')
+
+    app.config['SECRET_KEY'] = secret_key
+    app.config['JWT_SECRET_KEY'] = jwt_secret_key
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL', 'sqlite:///aquaguard.db'
     )

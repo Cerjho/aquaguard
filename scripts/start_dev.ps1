@@ -40,9 +40,7 @@ $backendScript = {
     param($root, $activate)
     & $activate
     Set-Location "$root\backend"
-    $env:FLASK_APP = "wsgi.py"
-    $env:FLASK_ENV = "development"
-    python -m flask run --port=5000
+    python wsgi.py
 }
 $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_ACTIVATE
 Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green

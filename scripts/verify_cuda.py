@@ -44,9 +44,9 @@ results.append(check("MediaPipe", lambda: __import__('mediapipe').__version__))
 
 results.append(check("OpenCV", lambda: __import__('cv2').__version__))
 
-results.append(check("Flask", lambda: __import__('flask').__version__))
+results.append(check("Flask", lambda: __import__('importlib.metadata').metadata.version('flask')))
 
-results.append(check("paho-mqtt", lambda: __import__('paho.mqtt').__version__))
+results.append(check("paho-mqtt", lambda: __import__('importlib.metadata').metadata.version('paho-mqtt')))
 
 results.append(
     check(

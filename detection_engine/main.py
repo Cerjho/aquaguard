@@ -11,6 +11,7 @@ Usage:
 import logging
 import os
 import sys
+import cv2
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -48,6 +49,9 @@ def main():
     from detection_engine.alert.mqtt_client import MQTTClient
     from detection_engine.alert.api_client import APIClient
     from detection_engine.alert.alert_engine import AlertEngine
+
+    _LIVE_DIR = os.path.join(_BASE_DIR, "backend", "snapshots", "live")
+    os.makedirs(_LIVE_DIR, exist_ok=True)
 
     # ── Camera registry ───────────────────────────────────────────────────────
     registry = CameraRegistry()
@@ -91,6 +95,11 @@ def main():
                     frame, metadata = camera.read()
                     if frame is None:
                         continue
+
+                    _tmp = os.path.join(_LIVE_DIR, f"{zone_id}_tmp.jpg")
+                    _out = os.path.join(_LIVE_DIR, f"{zone_id}_latest.jpg")
+                    cv2.imwrite(_tmp, frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                    os.replace(_tmp, _out)
 
                     detector = detectors[zone_id]
                     detections = detector.detect(frame)

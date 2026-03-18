@@ -46,7 +46,7 @@ Detection Engine (Python + YOLOv11s + MediaPipe)
 ### 1. Activate Python environment
 
 ```bash
-conda activate aquaguard_env
+aquaguard_env\Scripts\activate
 ```
 
 > **Note:** The `aquaguard_env` conda environment already has `ultralytics`, `PyTorch` (CUDA 12.1),
@@ -93,7 +93,7 @@ mosquitto -c mqtt/mosquitto.conf
 
 # Terminal 2 — Flask backend
 cd backend
-conda activate aquaguard_env
+aquaguard_env\Scripts\activate
 flask run --port=5000
 
 # Terminal 3 — React dashboard
@@ -101,7 +101,7 @@ cd frontend
 npm start
 
 # Terminal 4 — Detection engine
-conda activate aquaguard_env
+aquaguard_env\Scripts\activate
 python detection_engine/main.py
 ```
 

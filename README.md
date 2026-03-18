@@ -1,155 +1,180 @@
-# AquaGuard — IoT Drowning Detection and Real-Time Alert System
+# AquaGuard — IoT-Based Drowning Detection System
 
-AquaGuard is an AI-powered drowning detection system that uses a YOLOv11s computer vision pipeline
-combined with MediaPipe pose estimation to identify drowning events from swimming pool cameras and
-trigger real-time alerts through a web dashboard and physical ESP32-based alarm.
+Real-time drowning detection using YOLOv11 + MediaPipe Pose, ESP32 physical alarm, and React dashboard. Detects drowning events within 3 seconds.
 
 ---
 
 ## Team
 
 | Role | Member |
-|---|---|
-| CV / Detection Engine | Jhocer Barcela |
-| Backend API | Joshua |
-| Frontend Dashboard | Arabella |
-| ESP32 Firmware | Dranreb |
-| QA / Testing | Josiel |
+|------|--------|
+| Project Manager / Requirements Analyst | Jarvy Joy Longenos |
+| System Designer / Architect | Joshua Gutierrez |
+| AI/CV Developer (Python / YOLOv11) | Jhocer Barcela |
+| Hardware Developer (ESP32) | Dranreb Wen Balangbang |
+| Web Dashboard Developer | Arabella Jarapa |
+| QA Tester / Documentation | Josiel De Rosa |
 
 ---
 
-## System Architecture
+## System Overview
 
+AquaGuard processes live RTSP or webcam video on an edge server using YOLOv11s for person-state detection and MediaPipe Pose for landmark-based behavior scoring. A rolling confidence filter (N=15, T=0.75, K=10) suppresses false positives before dispatching alerts. Confirmed events are sent in parallel to MQTT (ESP32 physical alarm), Flask REST + Socket.IO (dashboard), and database logging. The production target is end-to-end drowning alerting in 3 seconds or less.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Detection | YOLOv11s + MediaPipe Pose |
+| Backend | Python Flask + Flask-SocketIO |
+| Frontend | React.js + Tailwind CSS |
+| Database | SQLite (dev) -> MySQL (prod) |
+| Messaging | Eclipse Mosquitto MQTT |
+| Hardware | ESP32-WROOM-32 |
+
+## Prerequisites
+
+### Software
+
+- Python 3.11
+- Node.js 20
+- Visual Studio Build Tools (C++ workload) - required for CUDA
+- NVIDIA GPU driver (for CUDA inference)
+- Eclipse Mosquitto MQTT broker
+- Git
+
+### Hardware
+
+- NVIDIA GPU (RTX 2050 or equivalent)
+- ESP32-WROOM-32
+- IP camera or webcam (USB for development)
+
+---
+
+## Quick Start (Windows)
+
+### 1. Clone and set up environment
+
+```powershell
+git clone https://github.com/Cerjho/aquaguard.git
+Set-Location aquaguard
+python -m venv aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 ```
-Camera Feeds (RTSP/Webcam)
-        │
-        ▼
-Detection Engine (Python + YOLOv11s + MediaPipe)
-        │
-        ├──► MQTT Broker (Mosquitto) ──► ESP32 Physical Alarm
-        │
-        └──► Flask REST API + WebSocket ──► React Dashboard
+
+### 2. Install Python dependencies
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r .\backend\requirements.txt
+python -m pip install -r .\detection_engine\requirements.txt
+```
+
+### 3. Install frontend dependencies
+
+```powershell
+Set-Location .\frontend
+npm install
+Set-Location ..
+```
+
+### 4. Configure environment variables
+
+```powershell
+Copy-Item .\.env.example .\backend\.env
+@"
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_WS_URL=http://localhost:5000
+"@ | Set-Content .\frontend\.env
+```
+
+Place the model weights file manually at `detection_engine/models/aquaguard_yolov11s.pt` before running the detection engine.
+
+### 5. Initialize the database
+
+```powershell
+Set-Location .\backend
+$env:FLASK_APP = "wsgi.py"
+python -m flask db upgrade
+python seed.py
+Set-Location ..
+```
+
+### 6. Start all services
+
+```powershell
+.\scripts\start_dev.ps1
+```
+
+### 7. Run the detection engine
+
+```powershell
+& ".\aquaguard_env\Scripts\python.exe" .\detection_engine\main.py
 ```
 
 ---
 
-## Quick Start
+## Running Tests
 
-### Prerequisites
+### Backend
 
-- Python 3.11.x
-- Node.js 20.x LTS
-- NVIDIA GPU with CUDA 12.1 (RTX 2050 or better)
-- Eclipse Mosquitto 2.0.x
-- Conda (Miniconda or Anaconda)
-
-### 1. Activate Python environment
-
-```bash
-aquaguard_env\Scripts\activate
+```powershell
+Set-Location .\backend
+& "..\aquaguard_env\Scripts\pytest.exe" tests/ -v --cov=. --cov-report=term-missing
+Set-Location ..
 ```
 
-> **Note:** The `aquaguard_env` conda environment already has `ultralytics`, `PyTorch` (CUDA 12.1),
-> and `opencv-python` pre-installed. Do NOT reinstall them.
+Result: 27/27 passing.
 
-### 2. Install remaining Python dependencies
+### Detection Engine
 
-```bash
-pip install mediapipe==0.10.14
-pip install flask==3.0.3 flask-socketio==5.3.6 flask-jwt-extended==4.6.0
-pip install flask-sqlalchemy==3.1.1 flask-migrate==4.0.7 flask-cors==4.0.1 flask-bcrypt==1.0.1
-pip install python-socketio==5.11.3 python-engineio==4.9.1
-pip install paho-mqtt==2.1.0
-pip install python-dotenv==1.0.1 pymysql==1.1.1 requests==2.32.3
-pip install pytest==8.3.3 pytest-cov==5.0.0 pytest-mock==3.14.0 httpx==0.27.2
+```powershell
+& ".\aquaguard_env\Scripts\pytest.exe" .\detection_engine\tests\ -v
 ```
 
-### 3. Configure environment variables
+Result: 36/36 passing.
 
-```bash
-cp .env.example backend/.env
-# Edit backend/.env with your real values
+### Frontend
+
+```powershell
+Set-Location .\frontend
+npm test -- --watchAll=false
+Set-Location ..
 ```
 
-### 4. Install frontend dependencies
+Result: 22/22 passing.
 
-```bash
-cd frontend && npm install
-```
-
-### 5. Verify CUDA
-
-```bash
-python -c "import torch; print('CUDA:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
-```
+Total verified result: 85/85 tests passing.
 
 ---
 
-## Running All Services Locally
+## API Reference
 
-```bash
-# Terminal 1 — MQTT broker
-mosquitto -c mqtt/mosquitto.conf
+See [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
-# Terminal 2 — Flask backend
-cd backend
-aquaguard_env\Scripts\activate
-flask run --port=5000
+## Architecture
 
-# Terminal 3 — React dashboard
-cd frontend
-npm start
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-# Terminal 4 — Detection engine
-aquaguard_env\Scripts\activate
-python detection_engine/main.py
-```
+## Setup Guide
 
-Open browser at http://localhost:3000.
+See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
 ---
 
-## Repository Structure
+## Performance
 
-See [`docs/REPO_STRUCTURE.md`](docs/REPO_STRUCTURE.md) for the complete file layout.
-
----
-
-## Development Workflow
-
-See [`docs/GIT_WORKFLOW.md`](docs/GIT_WORKFLOW.md) for the branching strategy and commit conventions.
-
-Each agent works on a dedicated feature branch:
-
-| Agent | Branch |
-|---|---|
-| CV Engine | `feature/agent1-cv-engine` |
-| Backend API | `feature/agent2-backend-api` |
-| Frontend | `feature/agent3-frontend-dashboard` |
-| ESP32 Firmware | `feature/agent4-esp32-firmware` |
-| Testing | `feature/agent5-testing` |
+| Metric | Value |
+|--------|-------|
+| Mean detection latency | 2623ms |
+| P95 latency | 1932ms |
+| Target | <= 3000ms |
+| Backend tests | 27/27 passing |
+| CV engine tests | 36/36 passing |
+| Frontend tests | 22/22 passing |
 
 ---
 
-## Key Technical Rules
+## License
 
-- **Never share** a `DrowningDetector` instance across cameras — one per camera zone.
-- **MediaPipe coordinates** are normalized 0.0–1.0 — never use pixel thresholds.
-- **Flask-SocketIO** must use `async_mode='threading'`.
-- **`socketio.emit()`** must always come after `db.session.commit()`.
-
-See [`docs/AGENT_RULES.md`](docs/AGENT_RULES.md) for the full rule set.
-
----
-
-## Documentation Index
-
-| Document | Purpose |
-|---|---|
-| `docs/AquaGuard_System_Design.md` | Full system design |
-| `docs/IMPLEMENTATION_PLAN.md` | Build instructions for each agent |
-| `docs/TASK_BREAKDOWN.md` | Granular task list per phase |
-| `docs/TECH_STACK_LOCK.md` | Exact dependency versions |
-| `docs/REPO_STRUCTURE.md` | Complete file tree |
-| `docs/GIT_WORKFLOW.md` | Branching, commits, and PRs |
-| `docs/AGENT_RULES.md` | Non-negotiable coding rules |
+Academic project - Mabini Colleges, Inc. 2025-2026

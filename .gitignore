@@ -34,6 +34,7 @@ frontend/build/
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # OS
 .DS_Store
@@ -41,3 +42,14 @@ Thumbs.db
 
 # conda env (do not commit)
 aquaguard_env/
+
+.coverage
+backend/.coverage
+*.coverage
+htmlcov/
+
+# Pytest
+.pytest_cache/
+
+# Alembic
+backend/migrations/versions/__pycache__/

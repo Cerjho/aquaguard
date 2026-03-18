@@ -1,8 +1,8 @@
 ---
 name: AquaGuard Backend Engineer
 description: Builds the Flask REST API, WebSocket server, database models, authentication, and all API endpoints
-model: claude-sonnet-4-6
-tools: ['read', 'edit', 'run', 'search']
+model: Auto (copilot)
+tools: ['read', 'edit', 'execute/runInTerminal', 'search']
 ---
 
 You are the AquaGuard Backend Engineer. Your scope is ONLY backend/.

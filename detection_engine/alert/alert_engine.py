@@ -115,7 +115,9 @@ class AlertEngine:
         except Exception as exc:
             logger.error("AlertEngine API dispatch failed: %s", exc)
 
-    def _log_alert(self, zone_id: str, track_id: str, score: float, event_id: str, timestamp: str) -> None:
+    def _log_alert(
+        self, zone_id: str, track_id: str, score: float, event_id: str, timestamp: str
+    ) -> None:
         logger.info(
             "ALERT DISPATCHED | event=%s zone=%s track=%s score=%.4f ts=%s",
             event_id, zone_id, track_id, score, timestamp,

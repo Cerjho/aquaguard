@@ -91,7 +91,9 @@ class Alert(db.Model):
 
     id              = db.Column(db.Integer, primary_key=True)
     alert_id        = db.Column(db.String(36), unique=True, nullable=False)
-    event_id        = db.Column(db.String(36), db.ForeignKey('detection_events.event_id'), nullable=False)
+    event_id        = db.Column(
+        db.String(36), db.ForeignKey('detection_events.event_id'), nullable=False
+    )
     zone_id         = db.Column(db.String(50), nullable=False, index=True)
     status          = db.Column(db.String(30), default='unacknowledged', index=True)
     triggered_at    = db.Column(db.DateTime, default=datetime.utcnow)

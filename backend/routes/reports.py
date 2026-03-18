@@ -2,9 +2,6 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from sqlalchemy import func
-
-from extensions import db
 from models import DetectionEvent, Alert, CameraZone
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/api/v1')

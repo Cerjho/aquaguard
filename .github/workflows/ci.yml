@@ -119,7 +119,7 @@ jobs:
         run: pip install flake8==7.1.1
 
       - name: Lint Python (backend)
-        run: flake8 backend/ --max-line-length=100 --exclude=migrations/
+        run: flake8 backend/ --exclude=backend/migrations/
 
       - name: Lint Python (detection engine)
-        run: flake8 detection_engine/ --max-line-length=100
+        run: flake8 detection_engine/

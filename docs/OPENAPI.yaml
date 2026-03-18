@@ -1,0 +1,838 @@
+openapi: 3.0.3
+info:
+  title: AquaGuard API
+  description: IoT-Based Drowning Detection and Real-Time Alert System
+  version: 1.0.0
+  contact:
+    name: AquaGuard Team - Mabini Colleges, Inc.
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+          example: adminpass
+    RefreshResponse:
+      type: object
+      required:
+        - access_token
+      properties:
+        access_token:
+          type: string
+          example: <new-jwt-access-token>
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+        - user
+      properties:
+        access_token:
+          type: string
+          example: <jwt-access-token>
+        refresh_token:
+          type: string
+          example: <jwt-refresh-token>
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - role
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: admin
+        role:
+          type: string
+          enum:
+            - admin
+            - lifeguard
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-03-17T06:40:12.881125'
+        is_active:
+          type: boolean
+          example: true
+    Camera:
+      type: object
+      required:
+        - id
+        - zone_id
+        - zone_name
+        - rtsp_url
+        - frame_rate
+        - resolution
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 1
+        zone_id:
+          type: string
+          example: zone_01
+        zone_name:
+          type: string
+          example: Main Pool - East
+        rtsp_url:
+          type: string
+          example: rtsp://192.168.1.10/stream1
+        location_description:
+          type: string
+          nullable: true
+          example: East side
+        frame_rate:
+          type: integer
+          example: 30
+        resolution:
+          type: string
+          example: 1280x720
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-03-17T06:40:12.881125'
+    CameraCreateRequest:
+      type: object
+      required:
+        - zone_id
+        - zone_name
+        - rtsp_url
+      properties:
+        zone_id:
+          type: string
+          example: zone_test
+        zone_name:
+          type: string
+          example: Test Zone
+        rtsp_url:
+          type: string
+          example: rtsp://localhost/test
+        location_description:
+          type: string
+          example: Development camera
+        frame_rate:
+          type: integer
+          default: 30
+          example: 30
+        resolution:
+          type: string
+          default: 1280x720
+          example: 1280x720
+    CameraUpdateRequest:
+      type: object
+      properties:
+        zone_name:
+          type: string
+        rtsp_url:
+          type: string
+        location_description:
+          type: string
+        frame_rate:
+          type: integer
+        resolution:
+          type: string
+      example:
+        zone_name: Main Pool - East Updated
+    DetectionEventCreateRequest:
+      type: object
+      required:
+        - zone_id
+        - track_id
+        - confidence_score
+        - behavior_flags
+        - alert_triggered
+        - detected_at
+      properties:
+        zone_id:
+          type: string
+          example: zone_01
+        track_id:
+          type: integer
+          example: 99
+        confidence_score:
+          type: number
+          format: float
+          example: 0.9
+        behavior_flags:
+          type: object
+          additionalProperties: true
+          example:
+            vertical: true
+            arms_elevated: true
+        alert_triggered:
+          type: boolean
+          example: true
+        detected_at:
+          type: string
+          format: date-time
+          example: '2026-03-17T10:42:33.512000'
+        snapshot_base64:
+          type: string
+          nullable: true
+          example: <base64-jpeg>
+    DetectionEvent:
+      type: object
+      required:
+        - id
+        - event_id
+        - zone_id
+        - alert_triggered
+      properties:
+        id:
+          type: integer
+          example: 12
+        event_id:
+          type: string
+          format: uuid
+          example: 6d4d4724-69b4-4a78-ad8f-5fe2e8eeeb5f
+        zone_id:
+          type: string
+          example: zone_01
+        track_id:
+          type: integer
+          nullable: true
+          example: 99
+        confidence_score:
+          type: number
+          format: float
+          nullable: true
+          example: 0.9
+        behavior_flags:
+          type: object
+          nullable: true
+          additionalProperties: true
+          example:
+            vertical: true
+            arms_elevated: true
+        alert_triggered:
+          type: boolean
+          example: true
+        snapshot_path:
+          type: string
+          nullable: true
+          example: C:/repo/backend/snapshots/6d4d4724-69b4-4a78-ad8f-5fe2e8eeeb5f.jpg
+        detected_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-03-17T10:42:33.512000'
+    Alert:
+      type: object
+      required:
+        - id
+        - alert_id
+        - event_id
+        - zone_id
+        - status
+      properties:
+        id:
+          type: integer
+          example: 7
+        alert_id:
+          type: string
+          format: uuid
+          example: d045af42-6f2d-4fef-a4d0-315bb3e5581a
+        event_id:
+          type: string
+          format: uuid
+          example: 6d4d4724-69b4-4a78-ad8f-5fe2e8eeeb5f
+        zone_id:
+          type: string
+          example: zone_01
+        status:
+          type: string
+          enum:
+            - unacknowledged
+            - acknowledged
+          example: unacknowledged
+        triggered_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-03-17T10:42:33.790414'
+        acknowledged_by:
+          type: integer
+          nullable: true
+          example: 1
+        acknowledged_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-03-17T10:43:02.121745'
+        notes:
+          type: string
+          nullable: true
+          example: handled
+    DetectionEventCreateResponse:
+      allOf:
+        - $ref: '#/components/schemas/DetectionEvent'
+        - type: object
+          properties:
+            alert:
+              $ref: '#/components/schemas/Alert'
+    EventListResponse:
+      type: object
+      required:
+        - total
+        - page
+        - limit
+        - items
+      properties:
+        total:
+          type: integer
+          example: 48
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectionEvent'
+    ReportZoneSummary:
+      type: object
+      required:
+        - zone_id
+        - zone_name
+        - detections
+        - alerts
+      properties:
+        zone_id:
+          type: string
+          example: zone_01
+        zone_name:
+          type: string
+          example: Main Pool - East
+        detections:
+          type: integer
+          example: 40
+        alerts:
+          type: integer
+          example: 4
+    ReportSummary:
+      type: object
+      required:
+        - total_detections
+        - confirmed_alerts
+        - false_positives_suppressed
+        - by_zone
+      properties:
+        total_detections:
+          type: integer
+          example: 74
+        confirmed_alerts:
+          type: integer
+          example: 6
+        false_positives_suppressed:
+          type: integer
+          example: 68
+        by_zone:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportZoneSummary'
+    AcknowledgeRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          example: handled
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Logged out successfully
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Database error
+    JwtErrorResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: Missing Authorization Header
+security:
+  - BearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user and issue access/refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Missing username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Issue a new access token from a refresh token
+      description: Requires refresh JWT in Authorization header.
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout endpoint (stateless)
+      security: []
+      responses:
+        '200':
+          description: Logout acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /cameras:
+    get:
+      tags:
+        - Cameras
+      summary: List active camera zones
+      responses:
+        '200':
+          description: Active cameras returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Camera'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+    post:
+      tags:
+        - Cameras
+      summary: Create a camera zone
+      description: Requires admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CameraCreateRequest'
+      responses:
+        '201':
+          description: Camera created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Camera'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+        '403':
+          description: Insufficient permissions (non-admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: zone_id already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /cameras/{zone_id}:
+    put:
+      tags:
+        - Cameras
+      summary: Update an active camera zone
+      description: Requires admin role.
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: zone_01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CameraUpdateRequest'
+      responses:
+        '200':
+          description: Camera updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Camera'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Camera zone not found
+        '500':
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Cameras
+      summary: Deactivate an active camera zone (soft delete)
+      description: Requires admin role.
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: zone_01
+      responses:
+        '200':
+          description: Camera deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Camera zone not found
+        '500':
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /cameras/{zone_id}/stream:
+    get:
+      tags:
+        - Cameras
+      summary: Stream MJPEG frames from camera zone
+      security: []
+      parameters:
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: zone_01
+      responses:
+        '200':
+          description: MJPEG stream
+          content:
+            multipart/x-mixed-replace:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Camera zone not found
+  /events:
+    post:
+      tags:
+        - Events
+      summary: Log detection event (internal engine endpoint)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionEventCreateRequest'
+      responses:
+        '201':
+          description: Detection event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionEventCreateResponse'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Events
+      summary: List detection events (paginated)
+      parameters:
+        - name: zone_id
+          in: query
+          required: false
+          schema:
+            type: string
+          example: zone_01
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: '2026-03-01T00:00:00'
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: '2026-03-31T23:59:59'
+        - name: alert_triggered
+          in: query
+          required: false
+          schema:
+            type: boolean
+          example: true
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          example: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          example: 20
+      responses:
+        '200':
+          description: Event list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+  /alerts:
+    get:
+      tags:
+        - Alerts
+      summary: List alerts
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            example: unacknowledged
+      responses:
+        '200':
+          description: Alert list returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+  /alerts/{alert_id}/acknowledge:
+    post:
+      tags:
+        - Alerts
+      summary: Acknowledge an alert
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: d045af42-6f2d-4fef-a4d0-315bb3e5581a
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcknowledgeRequest'
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'
+        '404':
+          description: Alert not found
+        '409':
+          description: Alert already acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /reports/summary:
+    get:
+      tags:
+        - Reports
+      summary: Return aggregated detection/alert summary
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: '2026-03-01T00:00:00'
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: '2026-03-31T23:59:59'
+        - name: group_by
+          in: query
+          required: false
+          schema:
+            type: string
+          example: zone
+      responses:
+        '200':
+          description: Summary returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSummary'
+        '401':
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtErrorResponse'

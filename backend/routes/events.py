@@ -1,6 +1,7 @@
 import os
 import base64
 import uuid
+import tempfile
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
@@ -65,8 +66,16 @@ def create_event():
             os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
             img_data = base64.b64decode(snapshot_b64)
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
-            with open(snapshot_path, 'wb') as f:
-                f.write(img_data)
+            with tempfile.NamedTemporaryFile(
+                mode='wb',
+                dir=SNAPSHOTS_DIR,
+                prefix=f'{event_id}_',
+                suffix='.tmp',
+                delete=False,
+            ) as temp_file:
+                temp_file.write(img_data)
+                temp_path = temp_file.name
+            os.replace(temp_path, snapshot_path)
         except Exception as exc:
             current_app.logger.warning(f'Failed to save snapshot: {exc}')
             snapshot_path = None

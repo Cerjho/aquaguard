@@ -114,3 +114,21 @@ class TestBehaviorAnalyzerIndicators:
         for _ in range(10):
             self.analyzer._no_limb_motion("track_static", lms)
         assert self.analyzer._no_limb_motion("track_static", lms) is True
+
+
+def test_same_track_id_is_isolated_when_analyzers_are_per_zone(dummy_landmarks):
+    """Same ByteTrack ID in different zones must not share temporal history."""
+    zone_a_analyzer = BehaviorAnalyzer()
+    zone_b_analyzer = BehaviorAnalyzer()
+
+    # Build temporal history in zone A for track "1".
+    for _ in range(6):
+        zone_a_analyzer.analyze(dummy_landmarks, "drowning", 0.95, "1")
+
+    # Zone B (same track id string) is a fresh analyzer instance.
+    score_b_first = zone_b_analyzer.analyze(dummy_landmarks, "drowning", 0.95, "1")
+
+    # Its first score should match a fresh analyzer baseline.
+    fresh = BehaviorAnalyzer()
+    baseline = fresh.analyze(dummy_landmarks, "drowning", 0.95, "1")
+    assert score_b_first == pytest.approx(baseline)

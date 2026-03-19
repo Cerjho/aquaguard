@@ -92,3 +92,18 @@ class TestConfidenceFilterConditions:
         for _ in range(CONFIDENCE_WINDOW_SIZE + 5):
             result = cf.evaluate("cond2_trk", below)
         assert result is False
+
+
+def test_same_track_id_is_isolated_when_filters_are_per_zone():
+    """Same ByteTrack ID in different zones must not share confidence buffers."""
+    zone_a_filter = ConfidenceFilter()
+    zone_b_filter = ConfidenceFilter()
+
+    # Fill zone A for track "1" until it triggers.
+    triggered_a = False
+    for _ in range(CONFIDENCE_WINDOW_SIZE):
+        triggered_a = zone_a_filter.evaluate("1", 1.0)
+    assert triggered_a is True
+
+    # Zone B uses the same track id "1" but starts with an empty buffer.
+    assert zone_b_filter.evaluate("1", 1.0) is False

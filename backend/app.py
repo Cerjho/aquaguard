@@ -38,12 +38,14 @@ def create_app():
     from routes.alerts import alerts_bp
     from routes.cameras import cameras_bp
     from routes.reports import reports_bp
+    from routes.system import system_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(events_bp)
     app.register_blueprint(alerts_bp)
     app.register_blueprint(cameras_bp)
     app.register_blueprint(reports_bp)
+    app.register_blueprint(system_bp)
 
     # Register SocketIO handlers
     import sockets  # noqa: F401

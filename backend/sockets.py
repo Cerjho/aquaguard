@@ -1,5 +1,7 @@
 import logging
 from extensions import socketio
+from runtime_status import get_runtime_status
+from flask import request
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,10 @@ def handle_connect(auth):
             return False  # reject connection
     else:
         logger.info('WebSocket connect: anonymous client')
+
+    status = get_runtime_status()
+    socketio.emit('system_status', status.get('detection_engine', {}), to=request.sid)
+    socketio.emit('camera_status', status.get('camera_status', []), to=request.sid)
 
 
 @socketio.on('disconnect')

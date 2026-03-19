@@ -12,6 +12,40 @@ import { formatDateTime } from '../../utils/dateFormat';
 const POLL_INTERVAL_MS = 5000;
 const MAX_DISPLAY = 20;
 
+function mapEventClassLabel(event = {}) {
+  return (
+    event.class_label
+    || event.class_name
+    || event.detected_class
+    || event.alert_class
+    || 'Person detected'
+  );
+}
+
+function mapEventConfidence(event = {}) {
+  const value = (
+    event.final_confidence
+    ?? event.confidence_score
+    ?? event.confidence
+    ?? event.yolo_confidence
+    ?? event.pose_confidence
+    ?? null
+  );
+  if (value == null || Number.isNaN(Number(value))) return null;
+  return Number(value);
+}
+
+function mapEventTimestamp(event = {}) {
+  return (
+    event.detected_at
+    || event.timestamp
+    || event.alerted_at
+    || event.created_at
+    || event.event_time
+    || null
+  );
+}
+
 function DetectionFeed() {
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null);
@@ -56,37 +90,39 @@ function DetectionFeed() {
             No detection events yet.
           </li>
         ) : (
-          events.map((ev) => (
-            <li
-              key={ev.id}
-              className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-sm"
-            >
-              {/* Alert indicator */}
-              <span
-                className={`mt-0.5 shrink-0 w-2.5 h-2.5 rounded-full ${
-                  ev.alert_triggered ? 'bg-red-500' : 'bg-sky-400'
-                }`}
-                title={ev.alert_triggered ? 'Alert triggered' : 'Detection only'}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-800 truncate">
-                  {ev.class_label || 'Person detected'}
-                  {ev.alert_triggered && (
-                    <span className="ml-2 text-xs text-red-600 font-semibold">⚠ ALERT</span>
-                  )}
-                </p>
-                <p className="text-xs text-slate-500 truncate">
-                  {ev.zone_name || ev.zone_id || '—'} &nbsp;·&nbsp;
-                  {ev.final_confidence != null
-                    ? `${(ev.final_confidence * 100).toFixed(0)}% confidence`
-                    : ''}
-                </p>
-              </div>
-              <time className="shrink-0 text-xs text-slate-400 whitespace-nowrap">
-                {formatDateTime(ev.detected_at)}
-              </time>
-            </li>
-          ))
+          events.map((ev) => {
+            const confidence = mapEventConfidence(ev);
+            const eventTime = mapEventTimestamp(ev);
+            return (
+              <li
+                key={ev.id}
+                className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-sm"
+              >
+                {/* Alert indicator */}
+                <span
+                  className={`mt-0.5 shrink-0 w-2.5 h-2.5 rounded-full ${
+                    ev.alert_triggered ? 'bg-red-500' : 'bg-sky-400'
+                  }`}
+                  title={ev.alert_triggered ? 'Alert triggered' : 'Detection only'}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-slate-800 truncate">
+                    {mapEventClassLabel(ev)}
+                    {ev.alert_triggered && (
+                      <span className="ml-2 text-xs text-red-600 font-semibold">⚠ ALERT</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {ev.zone_name || ev.zone_id || '—'} &nbsp;·&nbsp;
+                    {confidence != null ? `${(confidence * 100).toFixed(0)}% confidence` : ''}
+                  </p>
+                </div>
+                <time className="shrink-0 text-xs text-slate-400 whitespace-nowrap">
+                  {formatDateTime(eventTime)}
+                </time>
+              </li>
+            );
+          })
         )}
       </ul>
     </div>

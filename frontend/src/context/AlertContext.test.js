@@ -106,4 +106,19 @@ describe('AlertContext payload normalization and acknowledge contract', () => {
       expect(api.post).toHaveBeenCalledWith('/api/v1/alerts/canonical-777/acknowledge');
     });
   });
+
+  test('prefers snapshot_url over snapshot_path fields during normalization', () => {
+    renderWithProvider();
+
+    act(() => {
+      socketCallbacks.onAlert({
+        id: 'snap-priority-1',
+        snapshot_url: '/snapshots/url-first.jpg',
+        snapshot_path: '/snapshots/path-second.jpg',
+        frame_snapshot_path: '/snapshots/frame-third.jpg',
+      });
+    });
+
+    expect(screen.getByTestId('active-snapshot')).toHaveTextContent('/snapshots/url-first.jpg');
+  });
 });

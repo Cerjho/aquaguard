@@ -82,4 +82,59 @@ describe('SystemStatus', () => {
     expect(screen.getByText(/Snapshot age: 12s/)).toBeInTheDocument();
     expect(screen.getByText(/Last snapshot:/)).toBeInTheDocument();
   });
+
+  test('prefers esp32 block from system status payload and skips alerts fallback', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/system/status') {
+        return Promise.resolve({
+          data: {
+            detection_engine: { status: 'online', message: 'Engine online' },
+            esp32: {
+              status: 'online',
+              last_seen: '2026-03-01T00:00:00Z',
+              message: 'ESP heartbeat active',
+            },
+            camera_status: [],
+          },
+        });
+      }
+      if (url === '/api/v1/alerts') {
+        return Promise.resolve({ data: { alerts: [] } });
+      }
+      return Promise.reject(new Error('Unexpected URL'));
+    });
+
+    render(<SystemStatus />);
+
+    expect(await screen.findByText('ESP heartbeat active')).toBeInTheDocument();
+    expect(screen.getByText('ESP32 Alarm Device')).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith('/api/v1/system/status');
+    expect(api.get).not.toHaveBeenCalledWith('/api/v1/alerts', expect.anything());
+  });
+
+  test('falls back to alerts heartbeat when esp32 block is missing', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/system/status') {
+        return Promise.resolve({
+          data: {
+            detection_engine: { status: 'running', message: 'Runtime ok' },
+            camera_status: [],
+          },
+        });
+      }
+      if (url === '/api/v1/alerts') {
+        return Promise.resolve({
+          data: {
+            alerts: [{ alerted_at: new Date().toISOString() }],
+          },
+        });
+      }
+      return Promise.reject(new Error('Unexpected URL'));
+    });
+
+    render(<SystemStatus />);
+
+    expect(await screen.findByText(/Last heartbeat:/)).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith('/api/v1/alerts', { params: { limit: 1, page: 1 } });
+  });
 });

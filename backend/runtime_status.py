@@ -53,6 +53,70 @@ def _zone_ids_from_live_dir():
     return zone_ids
 
 
+_ESP32_HEARTBEAT = {
+    'device_id': None,
+    'status': 'offline',
+    'uptime_ms': None,
+    'last_heartbeat_at': None,
+}
+
+
+def update_esp32_heartbeat(device_id, status='online', uptime_ms=None, timestamp=None):
+    heartbeat_time = timestamp or datetime.now(timezone.utc)
+    if isinstance(heartbeat_time, str):
+        try:
+            heartbeat_time = datetime.fromisoformat(heartbeat_time)
+        except ValueError:
+            heartbeat_time = datetime.now(timezone.utc)
+    if heartbeat_time.tzinfo is None:
+        heartbeat_time = heartbeat_time.replace(tzinfo=timezone.utc)
+
+    _ESP32_HEARTBEAT.update({
+        'device_id': device_id,
+        'status': status or 'online',
+        'uptime_ms': uptime_ms,
+        'last_heartbeat_at': heartbeat_time.isoformat(),
+    })
+
+
+def get_esp32_status():
+    threshold_raw = os.getenv('ESP32_HEARTBEAT_STALE_THRESHOLD_SECONDS', '90')
+    try:
+        threshold = max(float(threshold_raw), 0.0)
+    except (TypeError, ValueError):
+        threshold = 90.0
+
+    last = _ESP32_HEARTBEAT.get('last_heartbeat_at')
+    if not last:
+        return {
+            'device_id': _ESP32_HEARTBEAT.get('device_id'),
+            'status': 'offline',
+            'uptime_ms': _ESP32_HEARTBEAT.get('uptime_ms'),
+            'last_heartbeat_at': None,
+            'heartbeat_age_seconds': None,
+            'stale_threshold_seconds': threshold,
+        }
+
+    try:
+        last_dt = datetime.fromisoformat(last)
+    except ValueError:
+        last_dt = datetime.now(timezone.utc)
+    if last_dt.tzinfo is None:
+        last_dt = last_dt.replace(tzinfo=timezone.utc)
+
+    age_seconds = max(datetime.now(timezone.utc).timestamp() - last_dt.timestamp(), 0.0)
+    resolved_status = 'online' if age_seconds <= threshold else 'offline'
+
+    return {
+        'device_id': _ESP32_HEARTBEAT.get('device_id'),
+        'status': resolved_status,
+        'uptime_ms': _ESP32_HEARTBEAT.get('uptime_ms'),
+        'last_heartbeat_at': last_dt.isoformat(),
+        'heartbeat_age_seconds': round(age_seconds, 3),
+        'stale_threshold_seconds': threshold,
+    }
+
+
 def get_runtime_status():
     threshold = _stale_threshold_seconds()
     camera_map = {}
@@ -94,5 +158,6 @@ def get_runtime_status():
             'message': 'Live snapshots are fresh' if any_online else 'No fresh live snapshots',
             'stale_threshold_seconds': threshold,
         },
+        'esp32': get_esp32_status(),
         'camera_status': camera_status,
     }

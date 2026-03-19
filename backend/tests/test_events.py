@@ -77,6 +77,32 @@ def test_alert_event_emit_payload_contract(client, db, monkeypatch):
     assert persisted is not None
 
 
+def test_detection_event_emit_payload_contract(client, monkeypatch):
+    captured = {}
+
+    def fake_emit(event_name, payload):
+        if event_name == 'detection_event':
+            captured['event_name'] = event_name
+            captured['payload'] = payload
+
+    monkeypatch.setattr(events_routes.socketio, 'emit', fake_emit)
+
+    resp = client.post('/api/v1/events', json=_event_payload(
+        confidence_score=0.77,
+    ))
+    assert resp.status_code == 201
+
+    assert captured.get('event_name') == 'detection_event'
+    payload = captured.get('payload') or {}
+    assert payload.get('event_type') == 'detection_event'
+    assert payload.get('event_id')
+    assert payload.get('zone_id') == 'zone_01'
+    assert payload.get('confidence_score') == 0.77
+    assert payload.get('timestamp')
+    assert payload.get('ingested_at')
+    assert 'snapshot_url' in payload
+
+
 def test_list_events_requires_auth(client):
     resp = client.get('/api/v1/events')
     assert resp.status_code == 401
@@ -95,6 +121,35 @@ def test_list_events_filter_zone(client, admin_token):
     resp = client.get('/api/v1/events?zone_id=zone_01',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
+
+
+def test_list_events_filters_status_and_confidence(client, admin_token):
+    client.post('/api/v1/events', json=_event_payload(
+        zone_id='zone_01',
+        confidence_score=0.95,
+        alert_triggered=True,
+    ))
+    client.post('/api/v1/events', json=_event_payload(
+        zone_id='zone_02',
+        confidence_score=0.40,
+        alert_triggered=False,
+    ))
+
+    alerted = client.get(
+        '/api/v1/events?status=alerted',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert alerted.status_code == 200
+    alerted_events = alerted.get_json()['events']
+    assert all(event['alert_triggered'] is True for event in alerted_events)
+
+    confident = client.get(
+        '/api/v1/events?min_confidence=0.9',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert confident.status_code == 200
+    confident_events = confident.get_json()['events']
+    assert all((event.get('confidence_score') or 0) >= 0.9 for event in confident_events)
 
 
 def test_snapshot_write_uses_atomic_replace(client, monkeypatch):

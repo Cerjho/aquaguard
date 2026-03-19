@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, current_app, Response
 from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -136,9 +137,12 @@ def _validate_stream_token(token, zone_id):
 def create_stream_token(zone_id):
     CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
     ttl_seconds = _stream_token_ttl_seconds()
+    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
     return jsonify({
         'zone_id': zone_id,
         'stream_token': _generate_stream_token(zone_id),
+        'ttl_seconds': ttl_seconds,
+        'expires_at': expires_at,
         'expires_in_seconds': ttl_seconds,
     }), 200
 

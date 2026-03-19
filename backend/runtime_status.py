@@ -120,6 +120,7 @@ def get_esp32_status():
 def get_runtime_status():
     threshold = _stale_threshold_seconds()
     camera_map = {}
+    now_utc = datetime.now(timezone.utc)
 
     try:
         cameras = CameraZone.query.filter_by(is_active=True).all()
@@ -150,14 +151,56 @@ def get_runtime_status():
 
     camera_status = list(camera_map.values())
     any_online = any(c['status'] == 'online' for c in camera_status)
+    online_count = sum(1 for c in camera_status if c['status'] == 'online')
+    offline_count = len(camera_status) - online_count
+    freshest_snapshot_age = None
+    valid_ages = [
+        c['snapshot_age_seconds']
+        for c in camera_status
+        if c.get('snapshot_age_seconds') is not None
+    ]
+    if valid_ages:
+        freshest_snapshot_age = min(valid_ages)
+
+    esp32_status = get_esp32_status()
+
+    subsystems = {
+        'detection_engine': {
+            'health': 'healthy' if any_online else 'degraded',
+            'status': 'online' if any_online else 'offline',
+            'freshness_seconds': freshest_snapshot_age,
+            'stale_threshold_seconds': threshold,
+            'last_event_at': None,
+        },
+        'cameras': {
+            'health': (
+                'healthy'
+                if len(camera_status) > 0 and online_count == len(camera_status)
+                else ('degraded' if online_count > 0 else 'offline')
+            ),
+            'total': len(camera_status),
+            'online': online_count,
+            'offline': offline_count,
+            'stale_threshold_seconds': threshold,
+        },
+        'esp32': {
+            'health': 'healthy' if esp32_status.get('status') == 'online' else 'offline',
+            'status': esp32_status.get('status'),
+            'freshness_seconds': esp32_status.get('heartbeat_age_seconds'),
+            'stale_threshold_seconds': esp32_status.get('stale_threshold_seconds'),
+            'last_heartbeat_at': esp32_status.get('last_heartbeat_at'),
+        },
+    }
 
     return {
+        'generated_at': now_utc.isoformat(),
         'detection_engine': {
             'component': 'detection_engine',
             'status': 'online' if any_online else 'offline',
             'message': 'Live snapshots are fresh' if any_online else 'No fresh live snapshots',
             'stale_threshold_seconds': threshold,
         },
-        'esp32': get_esp32_status(),
+        'esp32': esp32_status,
         'camera_status': camera_status,
+        'subsystems': subsystems,
     }

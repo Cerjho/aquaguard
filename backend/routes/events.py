@@ -2,7 +2,7 @@ import os
 import base64
 import uuid
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
@@ -43,6 +43,32 @@ def _serialize_alert_event_payload(alert, event):
         payload['snapshot_url'] = f'/snapshots/{snapshot_name}'
 
     return payload
+
+
+def _serialize_detection_event_payload(event):
+    """Normalized payload contract for `detection_event` websocket emits."""
+    payload = event.to_dict()
+    payload.update({
+        'event_type': 'detection_event',
+        'timestamp': event.detected_at.isoformat() if event.detected_at else None,
+        'ingested_at': datetime.now(timezone.utc).isoformat(),
+        'snapshot_url': None,
+    })
+
+    if event.snapshot_path:
+        snapshot_name = os.path.basename(event.snapshot_path)
+        payload['snapshot_url'] = f'/snapshots/{snapshot_name}'
+
+    return payload
+
+
+def _parse_iso_datetime(raw_value):
+    if not raw_value:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+    except (TypeError, ValueError):
+        return None
 
 
 @events_bp.route('/events', methods=['POST'])
@@ -105,6 +131,7 @@ def create_event():
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
         return jsonify({'error': 'Database error'}), 500
+    socketio.emit('detection_event', _serialize_detection_event_payload(event))
     socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
     socketio.emit('system_status', {
         'component': 'detection_engine',
@@ -147,6 +174,9 @@ def list_events():
     from_dt         = request.args.get('from')
     to_dt           = request.args.get('to')
     alert_triggered = request.args.get('alert_triggered')
+    status          = request.args.get('status')
+    min_confidence  = request.args.get('min_confidence')
+    max_confidence  = request.args.get('max_confidence')
     page            = int(request.args.get('page', 1))
     limit           = min(int(request.args.get('limit', 20)), 100)
 
@@ -154,19 +184,35 @@ def list_events():
 
     if zone_id:
         query = query.filter_by(zone_id=zone_id)
-    if from_dt:
-        try:
-            query = query.filter(DetectionEvent.detected_at >= datetime.fromisoformat(from_dt))
-        except ValueError:
-            pass
-    if to_dt:
-        try:
-            query = query.filter(DetectionEvent.detected_at <= datetime.fromisoformat(to_dt))
-        except ValueError:
-            pass
+    parsed_from = _parse_iso_datetime(from_dt)
+    if parsed_from:
+        query = query.filter(DetectionEvent.detected_at >= parsed_from)
+    parsed_to = _parse_iso_datetime(to_dt)
+    if parsed_to:
+        query = query.filter(DetectionEvent.detected_at <= parsed_to)
     if alert_triggered is not None:
         flag = alert_triggered.lower() == 'true'
         query = query.filter_by(alert_triggered=flag)
+    if min_confidence is not None:
+        try:
+            query = query.filter(DetectionEvent.confidence_score >= float(min_confidence))
+        except (TypeError, ValueError):
+            pass
+    if max_confidence is not None:
+        try:
+            query = query.filter(DetectionEvent.confidence_score <= float(max_confidence))
+        except (TypeError, ValueError):
+            pass
+    if status:
+        normalized_status = status.strip().lower()
+        if normalized_status == 'alerted':
+            query = query.filter_by(alert_triggered=True)
+        elif normalized_status in {'normal', 'clear'}:
+            query = query.filter_by(alert_triggered=False)
+        elif normalized_status in {'unacknowledged', 'acknowledged'}:
+            query = query.join(Alert, Alert.event_id == DetectionEvent.event_id).filter(
+                Alert.status == normalized_status
+            )
 
     query = query.order_by(DetectionEvent.detected_at.desc())
     pagination = query.paginate(page=page, per_page=limit, error_out=False)

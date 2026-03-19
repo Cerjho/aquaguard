@@ -57,3 +57,7 @@ htmlcov/
 
 # Alembic
 backend/migrations/versions/__pycache__/
+
+backend/snapshots/live/*
+
+agents/runtime_logs/*

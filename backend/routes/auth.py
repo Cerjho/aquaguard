@@ -5,7 +5,7 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
 )
-from extensions import bcrypt
+from extensions import bcrypt, db
 from models import User
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
@@ -39,7 +39,7 @@ def login():
 @jwt_required(refresh=True)
 def refresh():
     identity = get_jwt_identity()
-    user = User.query.get(int(identity))
+    user = db.session.get(User, int(identity))
     if not user:
         return jsonify({'error': 'User not found'}), 404
 

@@ -85,7 +85,11 @@ def _annotate_live_frame(frame, detections, zone_id: str, frame_timestamp: str):
 def _atomic_write_jpeg(path: str, frame) -> None:
     """Safely write JPEG via temp file then atomic replace."""
     tmp_path = f"{path}.tmp"
-    ok, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, LIVE_SNAPSHOT_JPEG_QUALITY])
+    ok, encoded = cv2.imencode(
+        ".jpg",
+        frame,
+        [cv2.IMWRITE_JPEG_QUALITY, LIVE_SNAPSHOT_JPEG_QUALITY],
+    )
     if not ok:
         raise OSError(f"Failed to encode JPEG for {path}")
     with open(tmp_path, "wb") as fh:
@@ -100,7 +104,12 @@ def _atomic_write_json(path: str, payload: dict) -> None:
     os.replace(tmp_path, path)
 
 
-def _write_live_zone_artifacts(live_dir: str, zone_id: str, annotated_frame, status_payload: dict) -> None:
+def _write_live_zone_artifacts(
+    live_dir: str,
+    zone_id: str,
+    annotated_frame,
+    status_payload: dict,
+) -> None:
     """Update both zone latest annotated JPEG and status metadata JSON."""
     latest_jpg_path = os.path.join(live_dir, f"{zone_id}_latest.jpg")
     latest_status_path = os.path.join(live_dir, f"{zone_id}_status.json")
@@ -243,7 +252,12 @@ def main():
                         "updated_at": _utc_now_iso(),
                     }
                     try:
-                        annotated = _annotate_live_frame(frame, detections, zone_id, frame_timestamp)
+                        annotated = _annotate_live_frame(
+                            frame,
+                            detections,
+                            zone_id,
+                            frame_timestamp,
+                        )
                         _write_live_zone_artifacts(_LIVE_DIR, zone_id, annotated, status_payload)
                     except Exception as artifact_exc:
                         logger.warning(

@@ -34,6 +34,10 @@ afterEach(() => {
   mockAcknowledge.mockReset();
 });
 
+beforeEach(() => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
 const sampleAlert = {
   id: 1,
   zone_name: 'Pool A',

@@ -51,3 +51,7 @@ ALARM_DURATION_SECONDS = 30
 # ── Snapshot ──────────────────────────────────────────────────────────────────
 SNAPSHOT_FORMAT = "jpg"
 SNAPSHOT_QUALITY = 85
+
+# ── Live feed + heartbeat ──────────────────────────────────────────────────────
+LIVE_SNAPSHOT_JPEG_QUALITY = 75
+DETECTION_ENGINE_HEARTBEAT_INTERVAL_SECONDS = 5

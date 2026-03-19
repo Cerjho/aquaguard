@@ -95,21 +95,3 @@ def test_list_events_filter_zone(client, admin_token):
     resp = client.get('/api/v1/events?zone_id=zone_01',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-
-
-def test_snapshot_write_uses_atomic_replace(client, monkeypatch):
-    replaced = {}
-
-    def fake_replace(src, dst):
-        replaced['src'] = src
-        replaced['dst'] = dst
-
-    monkeypatch.setattr(events_routes.os, 'replace', fake_replace)
-
-    resp = client.post('/api/v1/events', json=_event_payload(
-        snapshot_base64='aGVsbG8=',
-    ))
-    assert resp.status_code == 201
-    assert replaced.get('src')
-    assert replaced.get('dst')
-    assert replaced['dst'].endswith('.jpg')

@@ -46,6 +46,15 @@ class TestBehaviorAnalyzerScore:
         # Both tracks start fresh — scores should be equal
         assert abs(s1 - s2) < 1e-9
 
+    def test_analyze_returns_zero_on_none_landmarks(self):
+        score = self.analyzer.analyze(None, "drowning", 0.95, "track_none")
+        assert score == 0.0
+
+    def test_analyze_returns_zero_on_short_landmarks(self):
+        short_landmarks = [Landmark(x=0.5, y=0.5, z=0.0, visibility=0.9) for _ in range(10)]
+        score = self.analyzer.analyze(short_landmarks, "drowning", 0.95, "track_short")
+        assert score == 0.0
+
 
 class TestBehaviorAnalyzerIndicators:
     def setup_method(self):
@@ -114,6 +123,15 @@ class TestBehaviorAnalyzerIndicators:
         for _ in range(10):
             self.analyzer._no_limb_motion("track_static", lms)
         assert self.analyzer._no_limb_motion("track_static", lms) is True
+
+    def test_yolo_contribution_strict_threshold_and_no_partial_fallback(self):
+        # Exact required behavior:
+        # - drowning and conf > 0.6 => 1.0
+        # - else => 0.0
+        assert self.analyzer._yolo_class_score("drowning", 0.61) == 1.0
+        assert self.analyzer._yolo_class_score("drowning", 0.6) == 0.0
+        assert self.analyzer._yolo_class_score("drowning", 0.59) == 0.0
+        assert self.analyzer._yolo_class_score("swimming", 0.99) == 0.0
 
 
 def test_same_track_id_is_isolated_when_analyzers_are_per_zone(dummy_landmarks):

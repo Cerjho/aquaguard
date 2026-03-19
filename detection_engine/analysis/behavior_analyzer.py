@@ -57,6 +57,11 @@ class BehaviorAnalyzer:
         Returns:
             Final drowning score in [0.0, 1.0].
         """
+        # Defensive guard: invalid landmark output from pose stage should not crash loop.
+        # Required indices used by indicators: 0, 11, 12, 15, 16, 23, 24, 27, 28.
+        if landmarks is None or len(landmarks) <= 28:
+            return 0.0
+
         # ── Indicator evaluation ──────────────────────────────────────────────
         vertical = self._is_vertical_orientation(landmarks)
         arms_up = self._are_arms_elevated(landmarks)
@@ -138,8 +143,6 @@ class BehaviorAnalyzer:
 
     def _yolo_class_score(self, yolo_class: str, yolo_conf: float) -> float:
         """Return weighted YOLO class contribution."""
-        if yolo_class == "drowning" and yolo_conf >= YOLO_DROWNING_CONF_BOOST:
+        if yolo_class == "drowning" and yolo_conf > YOLO_DROWNING_CONF_BOOST:
             return 1.0
-        elif yolo_class == "drowning":
-            return yolo_conf
         return 0.0

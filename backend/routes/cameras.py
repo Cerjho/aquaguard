@@ -1,7 +1,8 @@
 import os
 import time
 from flask import Blueprint, request, jsonify, current_app, Response
-from flask_jwt_extended import jwt_required, decode_token
+from flask_jwt_extended import jwt_required
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from extensions import db
 from models import CameraZone
@@ -94,15 +95,63 @@ LIVE_DIR = os.path.join(
 )
 
 
+def _stream_token_serializer():
+    return URLSafeTimedSerializer(
+        secret_key=current_app.config['SECRET_KEY'],
+        salt='camera-stream-token-v1',
+    )
+
+
+def _stream_token_ttl_seconds():
+    raw = os.getenv('STREAM_TOKEN_TTL_SECONDS', '30')
+    try:
+        return max(int(raw), 1)
+    except (TypeError, ValueError):
+        return 30
+
+
+def _generate_stream_token(zone_id):
+    payload = {'zone_id': zone_id}
+    return _stream_token_serializer().dumps(payload)
+
+
+def _validate_stream_token(token, zone_id):
+    try:
+        payload = _stream_token_serializer().loads(
+            token,
+            max_age=_stream_token_ttl_seconds(),
+        )
+    except SignatureExpired:
+        return False, 'Stream token expired'
+    except BadSignature:
+        return False, 'Invalid stream token'
+
+    if payload.get('zone_id') != zone_id:
+        return False, 'Stream token zone mismatch'
+    return True, None
+
+
+@cameras_bp.route('/cameras/<zone_id>/stream-token', methods=['POST'])
+@jwt_required()
+def create_stream_token(zone_id):
+    CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
+    ttl_seconds = _stream_token_ttl_seconds()
+    return jsonify({
+        'zone_id': zone_id,
+        'stream_token': _generate_stream_token(zone_id),
+        'expires_in_seconds': ttl_seconds,
+    }), 200
+
+
 @cameras_bp.route('/cameras/<zone_id>/stream', methods=['GET'])
 def stream_camera(zone_id):
-    token = request.args.get('token')
+    token = request.args.get('token', '').strip()
     if not token:
-        return jsonify({'error': 'Missing token'}), 401
-    try:
-        decode_token(token)
-    except Exception:
-        return jsonify({'error': 'Invalid token'}), 401
+        return jsonify({'error': 'stream token is required'}), 401
+
+    is_valid, reason = _validate_stream_token(token, zone_id)
+    if not is_valid:
+        return jsonify({'error': reason}), 401
 
     CameraZone.query.filter_by(
         zone_id=zone_id, is_active=True

@@ -21,9 +21,16 @@ def seed():
         db.create_all()
 
         # ── Default users ───────────────────────────────────────────────────
+        admin_username = os.getenv('SEED_ADMIN_USERNAME', 'admin')
+        admin_password = os.getenv('SEED_ADMIN_PASSWORD', 'change-me-admin-password')
+        admin_role = os.getenv('SEED_ADMIN_ROLE', 'admin')
+        guard_username = os.getenv('SEED_GUARD_USERNAME', 'lifeguard')
+        guard_password = os.getenv('SEED_GUARD_PASSWORD', 'change-me-lifeguard-password')
+        guard_role = os.getenv('SEED_GUARD_ROLE', 'lifeguard')
+
         users = [
-            {'username': 'admin',     'password': 'aquaguard2026', 'role': 'admin'},
-            {'username': 'lifeguard', 'password': 'lifeguard123',  'role': 'lifeguard'},
+            {'username': admin_username, 'password': admin_password, 'role': admin_role},
+            {'username': guard_username, 'password': guard_password, 'role': guard_role},
         ]
         for u in users:
             if not User.query.filter_by(username=u['username']).first():

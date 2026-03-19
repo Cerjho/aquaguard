@@ -173,10 +173,16 @@ def main():
     }
     logger.info("Initialized %d DrowningDetector(s)", len(detectors))
 
-    # ── Shared inference components (stateless per-frame; safe to share) ─────
+    # ── Per-zone stateful analyzers/filters (prevents cross-zone track collisions)
     pose_estimator = PoseEstimator()
-    behavior_analyzer = BehaviorAnalyzer()
-    confidence_filter = ConfidenceFilter()
+    behavior_analyzers = {
+        zone_id: BehaviorAnalyzer()
+        for zone_id in registry.cameras.keys()
+    }
+    confidence_filters = {
+        zone_id: ConfidenceFilter()
+        for zone_id in registry.cameras.keys()
+    }
 
     # ── Alert dispatch ────────────────────────────────────────────────────────
     mqtt_client = MQTTClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
@@ -266,11 +272,11 @@ def main():
                             )
                             continue
 
-                        score = behavior_analyzer.analyze(
+                        score = behavior_analyzers[zone_id].analyze(
                             landmarks, det.class_label, det.confidence, det.track_id
                         )
 
-                        should_alert = confidence_filter.evaluate(det.track_id, score)
+                        should_alert = confidence_filters[zone_id].evaluate(det.track_id, score)
                         logger.info(
                             "Zone %s track %s: class=%s yolo=%.3f score=%.3f alert=%s",
                             zone_id,

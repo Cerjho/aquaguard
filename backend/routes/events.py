@@ -16,6 +16,34 @@ SNAPSHOTS_DIR = os.path.join(
 )
 
 
+def _serialize_alert_event_payload(alert, event):
+    """
+    Standard payload contract for `alert_event` websocket emits.
+
+    Keeps legacy fields from Alert.to_dict() while adding explicit frontend
+    fields: alert_id, zone_id, status, triggered_at/timestamp,
+    confidence_score, snapshot_path and snapshot_url.
+    """
+    payload = alert.to_dict()
+    payload.update({
+        'alert_id': alert.alert_id,
+        'zone_id': alert.zone_id,
+        'status': alert.status,
+        'triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
+        # Alias used by some clients
+        'timestamp': alert.triggered_at.isoformat() if alert.triggered_at else None,
+        'confidence_score': event.confidence_score,
+        'snapshot_path': event.snapshot_path,
+        'snapshot_url': None,
+    })
+
+    if event.snapshot_path:
+        snapshot_name = os.path.basename(event.snapshot_path)
+        payload['snapshot_url'] = f'/snapshots/{snapshot_name}'
+
+    return payload
+
+
 @events_bp.route('/events', methods=['POST'])
 def create_event():
     """Internal endpoint called by the detection engine."""
@@ -92,12 +120,14 @@ def create_event():
             current_app.logger.error(f'DB error saving alert: {exc}')
         else:
             # emit AFTER commit so alert_id exists in DB
-            alert_dict = alert.to_dict()
+            alert_dict = _serialize_alert_event_payload(alert, event)
             socketio.emit('alert_event', alert_dict)
 
     result = event.to_dict()
     if alert_dict:
         result['alert'] = alert_dict
+        # Backward-compatible convenience field for clients expecting top-level alert_id
+        result['alert_id'] = alert_dict.get('alert_id')
     return jsonify(result), 201
 
 

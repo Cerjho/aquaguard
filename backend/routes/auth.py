@@ -4,11 +4,9 @@ from flask_jwt_extended import (
     create_refresh_token,
     jwt_required,
     get_jwt_identity,
-    get_jwt,
 )
 from extensions import bcrypt, db
 from models import User
-from token_blocklist import revoke_token
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
@@ -40,8 +38,6 @@ def login():
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    current = get_jwt()
-    revoke_token(current.get('jti'))
     identity = get_jwt_identity()
     user = db.session.get(User, int(identity))
     if not user:
@@ -53,8 +49,5 @@ def refresh():
 
 
 @auth_bp.route('/logout', methods=['POST'])
-@jwt_required(verify_type=False)
 def logout():
-    current = get_jwt()
-    revoke_token(current.get('jti'))
     return jsonify({'message': 'Logged out successfully'}), 200

@@ -72,12 +72,12 @@ function normalizeAlertPayload(payload = {}) {
   );
 
   const snapshotPath = (
-    payload.frame_snapshot_path
+    payload.snapshot_url
+    ?? payload.alert?.snapshot_url
+    ?? payload.frame_snapshot_path
     ?? payload.snapshot_path
-    ?? payload.snapshot_url
     ?? payload.alert?.frame_snapshot_path
     ?? payload.alert?.snapshot_path
-    ?? payload.alert?.snapshot_url
     ?? null
   );
 

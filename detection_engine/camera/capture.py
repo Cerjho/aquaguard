@@ -134,4 +134,3 @@ class CameraCapture:
             len(RECONNECT_BACKOFF_SECONDS),
         )
         self._consecutive_failures = 0  # reset so outer loop tries again
-

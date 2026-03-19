@@ -58,6 +58,11 @@ htmlcov/
 # Alembic
 backend/migrations/versions/__pycache__/
 
+# Runtime artifacts (never commit)
 backend/snapshots/live/*
-
+backend/snapshots/live/*.json
+backend/snapshots/live/*.tmp
 agents/runtime_logs/*
+agents/runtime_logs/**
+agents/logs/*
+agents/logs/**

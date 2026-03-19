@@ -8,10 +8,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
+import { useAlerts } from '../../context/AlertContext';
 
 const PAGE_SIZE = 10;
 
 function AlertHistory() {
+  const { triageFilters, setTriageFilters, resetTriageFilters } = useAlerts();
   const [alerts, setAlerts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -22,8 +24,17 @@ function AlertHistory() {
     setLoading(true);
     setError(null);
     try {
+      const filterState = triageFilters || {};
       const res = await api.get('/api/v1/alerts', {
-        params: { page: pageNum, limit: PAGE_SIZE },
+        params: {
+          page: pageNum,
+          limit: PAGE_SIZE,
+          ...(filterState.zone_id ? { zone_id: filterState.zone_id } : {}),
+          ...(filterState.status ? { status: filterState.status } : {}),
+          ...(filterState.min_confidence ? { min_confidence: filterState.min_confidence } : {}),
+          ...(filterState.from ? { from: filterState.from } : {}),
+          ...(filterState.to ? { to: filterState.to } : {}),
+        },
       });
       const data = res.data;
       // Backend may return { alerts: [...], total: N } or directly an array
@@ -39,11 +50,15 @@ function AlertHistory() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [triageFilters]);
 
   useEffect(() => {
     fetchAlerts(page);
-  }, [fetchAlerts, page]);
+  }, [fetchAlerts, page, triageFilters]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [triageFilters]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -82,6 +97,56 @@ function AlertHistory() {
 
   return (
     <div>
+      <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+          <input
+            value={triageFilters?.zone_id || ''}
+            onChange={(e) => setTriageFilters({ zone_id: e.target.value })}
+            placeholder="Zone ID"
+            className="px-3 py-2 text-sm rounded border border-slate-300"
+          />
+          <select
+            value={triageFilters?.status || ''}
+            onChange={(e) => setTriageFilters({ status: e.target.value })}
+            className="px-3 py-2 text-sm rounded border border-slate-300"
+          >
+            <option value="">All statuses</option>
+            <option value="unacknowledged">Unacknowledged</option>
+            <option value="acknowledged">Acknowledged</option>
+          </select>
+          <input
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            value={triageFilters?.min_confidence || ''}
+            onChange={(e) => setTriageFilters({ min_confidence: e.target.value })}
+            placeholder="Min confidence"
+            className="px-3 py-2 text-sm rounded border border-slate-300"
+          />
+          <input
+            type="datetime-local"
+            value={triageFilters?.from || ''}
+            onChange={(e) => setTriageFilters({ from: e.target.value })}
+            className="px-3 py-2 text-sm rounded border border-slate-300"
+          />
+          <input
+            type="datetime-local"
+            value={triageFilters?.to || ''}
+            onChange={(e) => setTriageFilters({ to: e.target.value })}
+            className="px-3 py-2 text-sm rounded border border-slate-300"
+          />
+        </div>
+        <div className="mt-2 text-right">
+          <button
+            onClick={resetTriageFilters}
+            className="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-50"
+          >
+            Reset filters
+          </button>
+        </div>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">

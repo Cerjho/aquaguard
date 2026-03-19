@@ -9,10 +9,9 @@
  * Uses useAlertSocket directly to receive camera_status and system_status events.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import useAlertSocket from '../../hooks/useAlertSocket';
-import api from '../../hooks/useApi';
+import React, { useMemo } from 'react';
 import { timeAgo } from '../../utils/dateFormat';
+import { useAlerts } from '../../context/AlertContext';
 
 const ESP32_ONLINE_THRESHOLD_SECONDS = 90;
 
@@ -58,34 +57,6 @@ function normalizeDetectionEnginePayload(payload) {
     '';
 
   return { status, detail };
-}
-
-function normalizeCameraPayload(camera) {
-  if (!camera || typeof camera !== 'object' || !camera.zone_id) return null;
-
-  const normalizedStatus = normalizeServiceStatus(
-    camera.status !== undefined ? camera.status : camera.is_active
-  );
-
-  return {
-    zone_id: camera.zone_id,
-    zone_name: camera.zone_name || camera.zone_id,
-    status: normalizedStatus,
-    last_snapshot_at: camera.last_snapshot_at || camera.last_snapshot || null,
-    snapshot_age_seconds:
-      typeof camera.snapshot_age_seconds === 'number' ? camera.snapshot_age_seconds : null,
-  };
-}
-
-function normalizeCameraCollection(payload) {
-  if (!payload) return [];
-  if (Array.isArray(payload)) return payload.map(normalizeCameraPayload).filter(Boolean);
-
-  if (typeof payload === 'object') {
-    return Object.values(payload).map(normalizeCameraPayload).filter(Boolean);
-  }
-
-  return [];
 }
 
 function normalizeEsp32Payload(payload) {
@@ -147,144 +118,83 @@ function StatusIndicator({ label, status, detail }) {
 }
 
 function SystemStatus() {
-  const [cameraStatuses, setCameraStatuses] = useState({});
-  const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
-  const [detectionEngineDetail, setDetectionEngineDetail] = useState('');
-  const [esp32Online, setEsp32Online] = useState(false);
-  const [esp32LastSeen, setEsp32LastSeen] = useState(null);
-  const [esp32Detail, setEsp32Detail] = useState('');
-  const [esp32Error, setEsp32Error] = useState(null);
+  const {
+    cameraStatuses,
+    systemStatus,
+    socketConnected,
+  } = useAlerts();
 
-  // WebSocket handlers
-  const onCameraStatus = useCallback((payload) => {
-    const cameras = normalizeCameraCollection(payload);
-    if (cameras.length > 0) {
-      setCameraStatuses((prev) => {
-        const next = { ...prev };
-        cameras.forEach((cam) => {
-          next[cam.zone_id] = cam;
-        });
-        return next;
-      });
-    }
-  }, []);
-
-  const onSystemStatus = useCallback((payload) => {
-    const normalized = normalizeDetectionEnginePayload(payload);
-    setDetectionEngineStatus(normalized.status);
-    setDetectionEngineDetail(normalized.detail);
-  }, []);
-
-  useAlertSocket({ onCameraStatus, onSystemStatus });
-
-  // Fetch initial runtime status so dashboard doesn't stay "unknown/offline"
-  // when socket events are delayed.
-  const fetchInitialRuntimeStatus = useCallback(async () => {
-    try {
-      const res = await api.get('/api/v1/system/status');
-      const data = res?.data || {};
-
-      const detection = normalizeDetectionEnginePayload(data);
-      setDetectionEngineStatus(detection.status);
-      setDetectionEngineDetail(detection.detail);
-
-      const cameraPayload =
-        data.camera_status || data.camera_statuses || data.cameras || data.zones || [];
-      const normalizedCameras = normalizeCameraCollection(cameraPayload);
-      if (normalizedCameras.length > 0) {
-        setCameraStatuses((prev) => {
-          const next = { ...prev };
-          normalizedCameras.forEach((cam) => {
-            next[cam.zone_id] = cam;
-          });
-          return next;
-        });
-      }
-
-      const esp32 = normalizeEsp32Payload(data);
-      if (esp32) {
-        setEsp32Online(esp32.status === 'online');
-        setEsp32LastSeen(esp32.lastSeen);
-        setEsp32Detail(esp32.detail || '');
-        setEsp32Error(null);
-      }
-    } catch {
-      // Keep socket listeners active; component can still recover on next event.
-    }
-  }, []);
-
-  // Poll status endpoint for ESP32 heartbeat data.
-  // Fallback to alerts endpoint only when esp32 block is unavailable.
-  const checkEsp32 = useCallback(async () => {
-    try {
-      const statusRes = await api.get('/api/v1/system/status');
-      const statusPayload = statusRes?.data || {};
-      const esp32 = normalizeEsp32Payload(statusPayload);
-
-      if (esp32) {
-        setEsp32Online(esp32.status === 'online');
-        setEsp32LastSeen(esp32.lastSeen);
-        setEsp32Detail(esp32.detail || '');
-        setEsp32Error(null);
-      } else {
-        const alertsRes = await api.get('/api/v1/alerts', {
-          params: { limit: 1, page: 1 },
-        });
-        const alerts = Array.isArray(alertsRes.data) ? alertsRes.data : alertsRes.data.alerts || [];
-        if (alerts.length > 0) {
-          const latest = alerts[0];
-          const ts = latest.alerted_at || latest.timestamp;
-          if (ts) {
-            const ageSeconds = (Date.now() - new Date(ts).getTime()) / 1000;
-            setEsp32Online(ageSeconds <= ESP32_ONLINE_THRESHOLD_SECONDS);
-            setEsp32LastSeen(ts);
-          }
-        }
-        setEsp32Error(null);
-        setEsp32Detail('');
-      }
-    } catch {
-      setEsp32Error('Could not reach backend.');
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchInitialRuntimeStatus();
-  }, [fetchInitialRuntimeStatus]);
-
-  useEffect(() => {
-    checkEsp32();
-    const id = setInterval(checkEsp32, 30000);
-    return () => clearInterval(id);
-  }, [checkEsp32]);
-
-  const cameraEntries = Object.values(cameraStatuses);
+  const detection = useMemo(
+    () => normalizeDetectionEnginePayload(systemStatus || {}),
+    [systemStatus]
+  );
+  const cameraEntries = Object.values(cameraStatuses || {});
+  const esp = useMemo(
+    () => normalizeEsp32Payload(systemStatus || {}),
+    [systemStatus]
+  );
+  const subsystems = systemStatus?.subsystems || {};
+  const detectionFreshness = subsystems?.detection_engine?.freshness_seconds;
+  const detectionStaleThreshold = subsystems?.detection_engine?.stale_threshold_seconds;
+  const espFreshness = subsystems?.esp32?.freshness_seconds;
+  const espStaleThreshold = subsystems?.esp32?.stale_threshold_seconds ?? ESP32_ONLINE_THRESHOLD_SECONDS;
+  const isDetectionStale = (
+    typeof detectionFreshness === 'number'
+    && typeof detectionStaleThreshold === 'number'
+    && detectionFreshness > detectionStaleThreshold
+  );
+  const isEspStale = (
+    typeof espFreshness === 'number'
+    && typeof espStaleThreshold === 'number'
+    && espFreshness > espStaleThreshold
+  );
+  const espOnline = esp?.status === 'online' && !isEspStale;
+  const staleCameraCount = cameraEntries.filter((cam) => cam.status !== 'online').length;
 
   return (
     <div className="space-y-3">
+      <div className="text-xs flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+        <span className="text-slate-600">Socket:</span>
+        <span className={socketConnected ? 'text-green-700 font-semibold' : 'text-amber-700 font-semibold'}>
+          {socketConnected ? 'Connected' : 'Disconnected (status polling only)'}
+        </span>
+      </div>
+
       {/* Detection Engine */}
       <StatusIndicator
         label="Detection Engine"
-        status={detectionEngineStatus}
-        detail={detectionEngineDetail || 'Waiting for status event…'}
+        status={isDetectionStale ? 'warning' : detection.status}
+        detail={
+          detection.message
+          || detection.detail
+          || (
+            typeof detectionFreshness === 'number'
+              ? `Freshness: ${detectionFreshness}s (threshold: ${detectionStaleThreshold}s)`
+              : 'Waiting for status event…'
+          )
+        }
       />
 
       {/* ESP32 Device */}
       <StatusIndicator
         label="ESP32 Alarm Device"
-        status={esp32Online ? 'online' : 'offline'}
+        status={isEspStale ? 'warning' : (espOnline ? 'online' : 'offline')}
         detail={
-          esp32Error
-            ? esp32Error
-            : esp32Detail
-            ? esp32Detail
-            : esp32LastSeen
-            ? `Last heartbeat: ${timeAgo(esp32LastSeen)}`
-            : 'No heartbeat received yet'
+          esp?.detail
+            ? esp.detail
+            : esp?.lastSeen
+            ? `Last heartbeat: ${timeAgo(esp.lastSeen)}`
+            : (typeof espFreshness === 'number'
+              ? `Heartbeat freshness: ${espFreshness}s (threshold: ${espStaleThreshold}s)`
+              : 'No heartbeat received yet')
         }
       />
 
-      {/* Camera statuses — from WebSocket */}
+      <div className="text-xs text-slate-500 px-1">
+        Cameras online: {cameraEntries.length - staleCameraCount}/{cameraEntries.length}
+      </div>
+
+      {/* Camera statuses */}
       {cameraEntries.length === 0 ? (
         <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm text-sm text-slate-400">
           Waiting for camera status events…
@@ -294,7 +204,7 @@ function SystemStatus() {
           <StatusIndicator
             key={cam.zone_id}
             label={cam.zone_name || cam.zone_id}
-            status={cam.status}
+            status={cam.status === 'online' ? 'online' : 'warning'}
             detail={`Zone: ${cam.zone_id}${
               cam.snapshot_age_seconds !== null ? ` • Snapshot age: ${cam.snapshot_age_seconds}s` : ''
             }${cam.last_snapshot_at ? ` • Last snapshot: ${timeAgo(cam.last_snapshot_at)}` : ''}`}

@@ -7,21 +7,28 @@
  * "Acknowledge" button calls AlertContext.acknowledge().
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useAlerts } from '../../context/AlertContext';
 import { API_BASE_URL } from '../../utils/constants';
 import { formatDateTime } from '../../utils/dateFormat';
 
 function AlertPanel() {
-  const { activeAlert, acknowledge } = useAlerts();
+  const {
+    activeAlert,
+    acknowledge,
+    acknowledgingAlertId,
+    acknowledgeError,
+    dismissActive,
+  } = useAlerts();
   const audioRef = useRef(null);
+  const [nowMs, setNowMs] = useState(Date.now());
 
   // Play alert audio whenever a new alert appears
   useEffect(() => {
     if (activeAlert) {
       try {
         const audio = new Audio('/alert.mp3');
-        audio.loop = false;
+        audio.loop = true;
         audio.volume = 0.8;
         const playPromise = audio.play();
         if (playPromise !== undefined) {
@@ -44,19 +51,64 @@ function AlertPanel() {
     };
   }, [activeAlert]);
 
-  if (!activeAlert) return null;
+  useEffect(() => {
+    if (!activeAlert) return undefined;
+    const intervalId = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(intervalId);
+  }, [activeAlert]);
 
-  const confidence = activeAlert.confidence ?? activeAlert.final_confidence ?? null;
+  const confidence = activeAlert?.confidence ?? activeAlert?.final_confidence ?? null;
   const confidencePercent =
     confidence !== null ? `${(Number(confidence) * 100).toFixed(1)}%` : '—';
 
-  const snapshotUrl = activeAlert.frame_snapshot_path
-    ? `${API_BASE_URL}/${activeAlert.frame_snapshot_path}`
+  const snapshotUrl = activeAlert?.frame_snapshot_path
+    ? `${API_BASE_URL}/${activeAlert?.frame_snapshot_path}`
     : null;
 
-  const handleAcknowledge = () => {
-    acknowledge(activeAlert.alert_id || activeAlert.id);
-  };
+  const activeAlertId = activeAlert?.alert_id || activeAlert?.id;
+  const isAcknowledging = activeAlertId && acknowledgingAlertId === String(activeAlertId);
+
+  const elapsedSeconds = useMemo(() => {
+    const sourceTs = activeAlert?.alerted_at || activeAlert?.timestamp;
+    if (!sourceTs) return null;
+    const parsed = new Date(sourceTs).getTime();
+    if (Number.isNaN(parsed)) return null;
+    return Math.max(0, Math.floor((nowMs - parsed) / 1000));
+  }, [activeAlert, nowMs]);
+
+  const elapsedLabel = useMemo(() => {
+    if (elapsedSeconds == null) return '—';
+    const mins = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+    const secs = (elapsedSeconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  }, [elapsedSeconds]);
+
+  const handleAcknowledge = useCallback(() => {
+    if (isAcknowledging) return;
+    acknowledge(activeAlertId);
+  }, [isAcknowledging, acknowledge, activeAlertId]);
+
+  const handleDismiss = useCallback(() => {
+    dismissActive();
+  }, [dismissActive]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (!activeAlert) return;
+      if ((event.key === 'a' || event.key === 'A') && !isAcknowledging) {
+        event.preventDefault();
+        handleAcknowledge();
+      }
+      if (event.key === 'Escape' && !isAcknowledging) {
+        event.preventDefault();
+        handleDismiss();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeAlert, isAcknowledging, handleDismiss, handleAcknowledge]);
+
+  if (!activeAlert) return null;
 
   return (
     /* Full-screen overlay */
@@ -125,14 +177,34 @@ function AlertPanel() {
                 {confidencePercent}
               </dd>
             </div>
+
+            <div className="bg-red-50 rounded-xl p-4 text-center sm:col-span-3">
+              <dt className="text-xs font-medium text-red-400 uppercase tracking-wider mb-1">Elapsed</dt>
+              <dd className="text-xl font-extrabold text-red-700">{elapsedLabel}</dd>
+            </div>
           </dl>
+
+          {acknowledgeError && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+              {acknowledgeError}
+            </div>
+          )}
 
           {/* Acknowledge button */}
           <button
             onClick={handleAcknowledge}
-            className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-lg font-bold uppercase tracking-widest transition-colors duration-200 shadow-lg"
+            disabled={isAcknowledging}
+            className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:bg-red-300 disabled:cursor-not-allowed text-white text-lg font-bold uppercase tracking-widest transition-colors duration-200 shadow-lg"
           >
-            ✓ Acknowledge Alert
+            {isAcknowledging ? 'Acknowledging…' : '✓ Acknowledge Alert (A)'}
+          </button>
+
+          <button
+            onClick={handleDismiss}
+            disabled={isAcknowledging}
+            className="mt-2 w-full py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed text-slate-700 text-sm font-semibold uppercase tracking-wider transition-colors duration-200"
+          >
+            Dismiss Overlay (Esc)
           </button>
 
           <p className="text-center text-slate-400 text-xs mt-3">

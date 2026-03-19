@@ -10,7 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../../utils/constants';
 
-function CameraCard({ camera }) {
+function CameraCard({ camera, onStreamAuthFailure }) {
   const [imgError, setImgError] = useState(false);
   const streamToken = camera.stream_token || null;
   const streamUrl = streamToken
@@ -53,7 +53,12 @@ function CameraCard({ camera }) {
             src={streamUrl}
             alt={`Live feed — ${camera.zone_name}`}
             className="w-full h-full object-cover"
-            onError={() => setImgError(true)}
+            onError={() => {
+              setImgError(true);
+              if (typeof onStreamAuthFailure === 'function') {
+                onStreamAuthFailure(camera.zone_id);
+              }
+            }}
           />
         ) : (
           /* Fallback when stream is unavailable */

@@ -13,7 +13,13 @@ jest.mock('../hooks/useAlertSocket', () => jest.fn());
 let socketCallbacks = {};
 
 function TestConsumer() {
-  const { activeAlert, alertHistory, acknowledge } = useAlerts();
+  const {
+    activeAlert,
+    alertHistory,
+    acknowledge,
+    detectionEvents,
+    socketConnected,
+  } = useAlerts();
 
   return (
     <div>
@@ -22,6 +28,8 @@ function TestConsumer() {
       <span data-testid="active-alerted-at">{activeAlert?.alerted_at || ''}</span>
       <span data-testid="active-snapshot">{activeAlert?.frame_snapshot_path || ''}</span>
       <span data-testid="history-size">{String(alertHistory.length)}</span>
+      <span data-testid="detection-history-size">{String(detectionEvents.length)}</span>
+      <span data-testid="socket-connected">{String(socketConnected)}</span>
       <button onClick={() => acknowledge('legacy-param-id')}>Ack</button>
     </div>
   );
@@ -120,5 +128,33 @@ describe('AlertContext payload normalization and acknowledge contract', () => {
     });
 
     expect(screen.getByTestId('active-snapshot')).toHaveTextContent('/snapshots/url-first.jpg');
+  });
+
+  test('stores detection_event payload from shared socket hook', () => {
+    renderWithProvider();
+
+    act(() => {
+      socketCallbacks.onDetectionEvent({
+        event_id: 'det-1',
+        zone_id: 'zone_01',
+        confidence_score: 0.82,
+      });
+    });
+
+    expect(screen.getByTestId('detection-history-size')).toHaveTextContent('1');
+  });
+
+  test('tracks socket connection state transitions', () => {
+    renderWithProvider();
+
+    act(() => {
+      socketCallbacks.onConnectionChange(true, { reason: 'connected' });
+    });
+    expect(screen.getByTestId('socket-connected')).toHaveTextContent('true');
+
+    act(() => {
+      socketCallbacks.onConnectionChange(false, { reason: 'disconnect' });
+    });
+    expect(screen.getByTestId('socket-connected')).toHaveTextContent('false');
   });
 });

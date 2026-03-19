@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import IncidentHistory from './IncidentHistory';
 import api from '../../hooks/useApi';
+import { useAlerts } from '../../context/AlertContext';
 
 jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
@@ -10,9 +11,24 @@ jest.mock('../../hooks/useApi', () => ({
   },
 }));
 
+jest.mock('../../context/AlertContext', () => ({
+  useAlerts: jest.fn(),
+}));
+
 describe('IncidentHistory mapping resilience', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAlerts.mockReturnValue({
+      triageFilters: {
+        zone_id: '',
+        status: '',
+        min_confidence: '',
+        from: '',
+        to: '',
+      },
+      setTriageFilters: jest.fn(),
+      resetTriageFilters: jest.fn(),
+    });
   });
 
   test('maps class_name, confidence_score, and timestamp keys from backend payload', async () => {

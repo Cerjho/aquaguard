@@ -1,140 +1,80 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import SystemStatus from './SystemStatus';
-import api from '../../hooks/useApi';
+import { useAlerts } from '../../context/AlertContext';
 
-jest.mock('../../hooks/useApi', () => ({
-  __esModule: true,
-  default: {
-    get: jest.fn(),
-  },
+jest.mock('../../context/AlertContext', () => ({
+  useAlerts: jest.fn(),
 }));
-
-jest.mock('../../hooks/useAlertSocket', () => jest.fn());
 
 describe('SystemStatus', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAlerts.mockReturnValue({
+      socketConnected: true,
+      cameraStatuses: {
+        zone_01: {
+          zone_id: 'zone_01',
+          zone_name: 'Main Pool',
+          status: 'online',
+          snapshot_age_seconds: 2,
+          last_snapshot_at: new Date().toISOString(),
+        },
+      },
+      systemStatus: {
+        detection_engine: {
+          status: 'online',
+          message: 'Runtime ok',
+        },
+        esp32: {
+          status: 'online',
+          last_seen: new Date().toISOString(),
+          message: 'ESP heartbeat active',
+        },
+        subsystems: {
+          detection_engine: {
+            freshness_seconds: 2,
+            stale_threshold_seconds: 10,
+          },
+          esp32: {
+            freshness_seconds: 5,
+            stale_threshold_seconds: 90,
+          },
+        },
+      },
+    });
   });
 
-  test('fetches initial runtime status on mount and shows detection engine online', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/api/v1/system/status') {
-        return Promise.resolve({
-          data: {
-            detection_engine: {
-              status: 'running',
-              message: 'Runtime ok',
-            },
-            camera_status: [],
-          },
-        });
-      }
-
-      if (url === '/api/v1/alerts') {
-        return Promise.resolve({ data: { alerts: [] } });
-      }
-
-      return Promise.reject(new Error('Unexpected URL'));
-    });
-
+  test('shows connectivity and subsystem status from shared context', async () => {
     render(<SystemStatus />);
-
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith('/api/v1/system/status');
-    });
 
     expect(await screen.findByText('Runtime ok')).toBeInTheDocument();
+    expect(screen.getByText('Connected')).toBeInTheDocument();
     expect(screen.getByText('Detection Engine')).toBeInTheDocument();
-    expect(screen.getAllByText('Online').length).toBeGreaterThan(0);
+    expect(screen.getByText('ESP heartbeat active')).toBeInTheDocument();
   });
 
-  test('normalizes initial camera payload fields from runtime status response', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/api/v1/system/status') {
-        return Promise.resolve({
-          data: {
-            system_status: { status: 'online', message: 'Engine connected' },
-            camera_status: [
-              {
-                zone_id: 'zone_01',
-                zone_name: 'Main Pool',
-                status: 'online',
-                last_snapshot_at: new Date().toISOString(),
-                snapshot_age_seconds: 12,
-              },
-            ],
+  test('marks stale detection freshness as warning', async () => {
+    useAlerts.mockReturnValue({
+      socketConnected: false,
+      cameraStatuses: {},
+      systemStatus: {
+        detection_engine: {
+          status: 'online',
+          message: '',
+        },
+        subsystems: {
+          detection_engine: {
+            freshness_seconds: 15,
+            stale_threshold_seconds: 10,
           },
-        });
-      }
-
-      if (url === '/api/v1/alerts') {
-        return Promise.resolve({ data: [] });
-      }
-
-      return Promise.reject(new Error('Unexpected URL'));
+        },
+      },
     });
 
     render(<SystemStatus />);
-
-    expect(await screen.findByText('Main Pool')).toBeInTheDocument();
-    expect(screen.getByText(/Zone: zone_01/)).toBeInTheDocument();
-    expect(screen.getByText(/Snapshot age: 12s/)).toBeInTheDocument();
-    expect(screen.getByText(/Last snapshot:/)).toBeInTheDocument();
-  });
-
-  test('prefers esp32 block from system status payload and skips alerts fallback', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/api/v1/system/status') {
-        return Promise.resolve({
-          data: {
-            detection_engine: { status: 'online', message: 'Engine online' },
-            esp32: {
-              status: 'online',
-              last_seen: '2026-03-01T00:00:00Z',
-              message: 'ESP heartbeat active',
-            },
-            camera_status: [],
-          },
-        });
-      }
-      if (url === '/api/v1/alerts') {
-        return Promise.resolve({ data: { alerts: [] } });
-      }
-      return Promise.reject(new Error('Unexpected URL'));
-    });
-
-    render(<SystemStatus />);
-
-    expect(await screen.findByText('ESP heartbeat active')).toBeInTheDocument();
-    expect(screen.getByText('ESP32 Alarm Device')).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledWith('/api/v1/system/status');
-    expect(api.get).not.toHaveBeenCalledWith('/api/v1/alerts', expect.anything());
-  });
-
-  test('falls back to alerts heartbeat when esp32 block is missing', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/api/v1/system/status') {
-        return Promise.resolve({
-          data: {
-            detection_engine: { status: 'running', message: 'Runtime ok' },
-            camera_status: [],
-          },
-        });
-      }
-      if (url === '/api/v1/alerts') {
-        return Promise.resolve({
-          data: {
-            alerts: [{ alerted_at: new Date().toISOString() }],
-          },
-        });
-      }
-      return Promise.reject(new Error('Unexpected URL'));
-    });
-
-    render(<SystemStatus />);
-
-    expect(await screen.findByText(/Last heartbeat:/)).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledWith('/api/v1/alerts', { params: { limit: 1, page: 1 } });
+    expect(await screen.findByText('Disconnected (status polling only)')).toBeInTheDocument();
+    expect(screen.getByText(/Freshness: 15s/)).toBeInTheDocument();
+    expect(screen.getByText('Warning')).toBeInTheDocument();
   });
 });

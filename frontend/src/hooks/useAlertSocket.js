@@ -8,8 +8,10 @@
  * Usage:
  *   useAlertSocket({
  *     onAlert: (payload) => ...,
+ *     onDetectionEvent: (payload) => ...,
  *     onCameraStatus: (payload) => ...,
  *     onSystemStatus: (payload) => ...,
+ *     onConnectionChange: (connected, meta) => ...,
  *   });
  */
 
@@ -20,42 +22,72 @@ import { WS_URL } from '../utils/constants';
 /**
  * @param {Object} options
  * @param {Function} [options.onAlert]        - Called when alert_event is received
+ * @param {Function} [options.onDetectionEvent] - Called when detection_event is received
  * @param {Function} [options.onCameraStatus] - Called when camera_status is received
  * @param {Function} [options.onSystemStatus] - Called when system_status is received
+ * @param {Function} [options.onConnectionChange] - Called on socket connect/disconnect/error
  */
-function useAlertSocket({ onAlert, onCameraStatus, onSystemStatus } = {}) {
+function useAlertSocket({
+  onAlert,
+  onDetectionEvent,
+  onCameraStatus,
+  onSystemStatus,
+  onConnectionChange,
+} = {}) {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-
     // Establish Socket.IO connection with JWT auth
     const socket = io(WS_URL, {
-      auth: { token },
+      auth: { token: localStorage.getItem('token') },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
       console.info('[AquaGuard WS] Connected — socket id:', socket.id);
+      if (typeof onConnectionChange === 'function') {
+        onConnectionChange(true, { at: new Date().toISOString(), socketId: socket.id });
+      }
     });
 
     socket.on('connect_error', (err) => {
       console.warn('[AquaGuard WS] Connection error:', err.message);
+      if (typeof onConnectionChange === 'function') {
+        onConnectionChange(false, {
+          at: new Date().toISOString(),
+          reason: err.message,
+          type: 'connect_error',
+        });
+      }
     });
 
     socket.on('disconnect', (reason) => {
       console.info('[AquaGuard WS] Disconnected:', reason);
+      if (typeof onConnectionChange === 'function') {
+        onConnectionChange(false, {
+          at: new Date().toISOString(),
+          reason,
+          type: 'disconnect',
+        });
+      }
     });
 
     if (typeof onAlert === 'function') {
       socket.on('alert_event', (payload) => {
         console.info('[AquaGuard WS] alert_event received:', payload);
         onAlert(payload);
+      });
+    }
+
+    if (typeof onDetectionEvent === 'function') {
+      socket.on('detection_event', (payload) => {
+        onDetectionEvent(payload);
       });
     }
 

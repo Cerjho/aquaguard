@@ -100,7 +100,13 @@ def test_stream_token_mint_and_use(client, admin_token):
     mint = client.post('/api/v1/cameras/zone_01/stream-token',
                        headers={'Authorization': f'Bearer {admin_token}'})
     assert mint.status_code == 200
-    token = mint.get_json()['stream_token']
+    token_payload = mint.get_json()
+    token = token_payload['stream_token']
+    assert 'expires_at' in token_payload
+    assert 'ttl_seconds' in token_payload
+    assert token_payload['ttl_seconds'] >= 1
+    # Backward compatibility
+    assert token_payload['expires_in_seconds'] == token_payload['ttl_seconds']
 
     os.makedirs(cameras_routes.LIVE_DIR, exist_ok=True)
     frame_path = os.path.join(cameras_routes.LIVE_DIR, 'zone_01_latest.jpg')

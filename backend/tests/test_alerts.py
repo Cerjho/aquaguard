@@ -32,6 +32,38 @@ def test_list_alerts_filter_unacknowledged(client, admin_token):
     assert resp.status_code == 200
 
 
+def test_list_alerts_filters_by_zone_time_and_confidence(client, admin_token):
+    first = client.post('/api/v1/events', json={
+        'zone_id': 'zone_filter_a',
+        'track_id': 1,
+        'confidence_score': 0.91,
+        'behavior_flags': {'vertical': True},
+        'alert_triggered': True,
+        'detected_at': '2025-01-10T10:00:00',
+    })
+    assert first.status_code == 201
+
+    second = client.post('/api/v1/events', json={
+        'zone_id': 'zone_filter_b',
+        'track_id': 2,
+        'confidence_score': 0.35,
+        'behavior_flags': {'vertical': False},
+        'alert_triggered': True,
+        'detected_at': '2025-01-11T10:00:00',
+    })
+    assert second.status_code == 201
+
+    resp = client.get(
+        '/api/v1/alerts?zone_id=zone_filter_a&min_confidence=0.8'
+        '&from=2000-01-01T00:00:00&to=2100-01-01T00:00:00',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert resp.status_code == 200
+    items = resp.get_json()
+    assert len(items) >= 1
+    assert all(item['zone_id'] == 'zone_filter_a' for item in items)
+
+
 def test_acknowledge_alert(client, admin_token):
     alert_id = _make_alert_event(client)
     assert alert_id, 'No alert was created'

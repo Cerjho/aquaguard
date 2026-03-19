@@ -24,3 +24,29 @@ def test_heartbeat_updates_esp32_status(client, admin_token):
     assert payload['esp32']['status'] == 'online'
     assert payload['esp32']['uptime_ms'] == 123456
     assert payload['esp32']['last_heartbeat_at'] is not None
+
+
+def test_system_status_contains_subsystem_freshness_and_health(client, admin_token):
+    status = client.get('/api/v1/system/status',
+                        headers={'Authorization': f'Bearer {admin_token}'})
+    assert status.status_code == 200
+    payload = status.get_json()
+
+    assert payload.get('generated_at')
+    assert 'subsystems' in payload
+    subsystems = payload['subsystems']
+    assert 'detection_engine' in subsystems
+    assert 'cameras' in subsystems
+    assert 'esp32' in subsystems
+
+    detection_engine = subsystems['detection_engine']
+    assert 'health' in detection_engine
+    assert 'freshness_seconds' in detection_engine
+    assert 'stale_threshold_seconds' in detection_engine
+
+    cameras = subsystems['cameras']
+    assert {'total', 'online', 'offline'} <= set(cameras.keys())
+
+    esp32 = subsystems['esp32']
+    assert 'freshness_seconds' in esp32
+    assert 'last_heartbeat_at' in esp32

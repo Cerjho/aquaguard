@@ -1,3 +1,8 @@
+import os
+
+import routes.cameras as cameras_routes
+
+
 def test_list_cameras_requires_auth(client):
     resp = client.get('/api/v1/cameras')
     assert resp.status_code == 401
@@ -65,3 +70,64 @@ def test_delete_camera(client, admin_token):
                            headers={'Authorization': f'Bearer {admin_token}'})
     zone_ids = [c['zone_id'] for c in list_resp.get_json()]
     assert 'zone_del' not in zone_ids
+
+
+def test_stream_requires_bearer_auth(client):
+    resp = client.get('/api/v1/cameras/zone_missing/stream')
+    assert resp.status_code == 401
+
+
+def test_stream_rejects_raw_jwt_query_token(client, admin_token):
+    resp = client.get('/api/v1/cameras/zone_missing/stream?token=fake-token')
+    assert resp.status_code == 401
+
+    raw_jwt = client.get(f'/api/v1/cameras/zone_01/stream?token={admin_token}')
+    assert raw_jwt.status_code == 401
+
+
+def test_stream_token_requires_jwt(client):
+    resp = client.post('/api/v1/cameras/zone_01/stream-token')
+    assert resp.status_code == 401
+
+
+def test_stream_token_mint_and_use(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_01',
+        'zone_name': 'Zone 1',
+        'rtsp_url':  'rtsp://localhost/zone1',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    mint = client.post('/api/v1/cameras/zone_01/stream-token',
+                       headers={'Authorization': f'Bearer {admin_token}'})
+    assert mint.status_code == 200
+    token = mint.get_json()['stream_token']
+
+    os.makedirs(cameras_routes.LIVE_DIR, exist_ok=True)
+    frame_path = os.path.join(cameras_routes.LIVE_DIR, 'zone_01_latest.jpg')
+    with open(frame_path, 'wb') as f:
+        f.write(b'\xff\xd8\xff\xd9')
+
+    stream = client.get(f'/api/v1/cameras/zone_01/stream?token={token}')
+    assert stream.status_code == 200
+    assert 'multipart/x-mixed-replace' in stream.content_type
+
+
+def test_stream_token_zone_mismatch_is_rejected(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_01',
+        'zone_name': 'Zone 1',
+        'rtsp_url':  'rtsp://localhost/zone1',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_02',
+        'zone_name': 'Zone 2',
+        'rtsp_url':  'rtsp://localhost/zone2',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    mint = client.post('/api/v1/cameras/zone_01/stream-token',
+                       headers={'Authorization': f'Bearer {admin_token}'})
+    token = mint.get_json()['stream_token']
+
+    mismatch = client.get(f'/api/v1/cameras/zone_02/stream?token={token}')
+    assert mismatch.status_code == 401

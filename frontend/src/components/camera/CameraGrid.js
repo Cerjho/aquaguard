@@ -16,6 +16,7 @@ function CameraGrid() {
   const [error, setError] = useState(null);
   const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
   const [cameraRuntimeMap, setCameraRuntimeMap] = useState({});
+  const [streamTokens, setStreamTokens] = useState({});
 
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -43,6 +44,45 @@ function CameraGrid() {
       setLoading(false);
     }
   }, []);
+
+  const mintStreamToken = useCallback(async (zoneId) => {
+    if (!zoneId) return null;
+    try {
+      const res = await api.post(`/api/v1/cameras/${zoneId}/stream-token`);
+      return (
+        res?.data?.stream_token
+        || res?.data?.token
+        || res?.data?.access_token
+        || null
+      );
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const mintStreamTokensForCameras = useCallback(async (cameraList) => {
+    if (!Array.isArray(cameraList) || cameraList.length === 0) {
+      setStreamTokens({});
+      return;
+    }
+
+    const pairs = await Promise.all(
+      cameraList.map(async (camera) => {
+        const zoneId = camera?.zone_id;
+        if (!zoneId) return null;
+        const token = await mintStreamToken(zoneId);
+        return [zoneId, token];
+      })
+    );
+
+    const next = {};
+    pairs.forEach((pair) => {
+      if (!pair) return;
+      const [zoneId, token] = pair;
+      if (zoneId && token) next[zoneId] = token;
+    });
+    setStreamTokens(next);
+  }, [mintStreamToken]);
 
   const fetchRuntimeStatus = useCallback(async () => {
     try {
@@ -101,6 +141,10 @@ function CameraGrid() {
     fetchCameras();
     fetchRuntimeStatus();
   }, [fetchCameras, fetchRuntimeStatus]);
+
+  useEffect(() => {
+    mintStreamTokensForCameras(cameras);
+  }, [cameras, mintStreamTokensForCameras]);
 
   if (loading) {
     return (
@@ -173,6 +217,7 @@ function CameraGrid() {
               ...camera,
               runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
               detection_engine_status: detectionEngineStatus,
+              stream_token: streamTokens[camera.zone_id] || null,
             }}
           />
         ))}

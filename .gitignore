@@ -25,6 +25,10 @@ frontend/.env
 # Snapshots (generated at runtime)
 backend/snapshots/*.jpg
 backend/snapshots/*.jpeg
+backend/snapshots/live/*.jpg
+backend/snapshots/live/*.jpeg
+
+
 
 # Node
 frontend/node_modules/

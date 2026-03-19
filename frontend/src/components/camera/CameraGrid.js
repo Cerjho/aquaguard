@@ -8,11 +8,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../hooks/useApi';
 import CameraCard from './CameraCard';
+import useAlertSocket from '../../hooks/useAlertSocket';
 
 function CameraGrid() {
   const [cameras, setCameras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
+  const [cameraRuntimeMap, setCameraRuntimeMap] = useState({});
+
+  const normalizeStatus = (value) => {
+    if (typeof value === 'boolean') return value ? 'online' : 'offline';
+    if (!value) return 'unknown';
+    const lowered = String(value).toLowerCase();
+    if (['online', 'active', 'running', 'healthy'].includes(lowered)) return 'online';
+    if (['offline', 'inactive', 'stopped', 'down'].includes(lowered)) return 'offline';
+    return lowered;
+  };
 
   const fetchCameras = useCallback(async () => {
     setLoading(true);
@@ -32,9 +44,63 @@ function CameraGrid() {
     }
   }, []);
 
+  const fetchRuntimeStatus = useCallback(async () => {
+    try {
+      const res = await api.get('/api/v1/system/status');
+      const payload = res.data || {};
+      const engine = payload.detection_engine || {};
+      setDetectionEngineStatus(normalizeStatus(engine.status));
+
+      const runtimeCameras = payload.camera_status || payload.cameras || [];
+      const runtimeMap = {};
+      if (Array.isArray(runtimeCameras)) {
+        runtimeCameras.forEach((camera) => {
+          if (camera?.zone_id) {
+            runtimeMap[camera.zone_id] = normalizeStatus(camera.status);
+          }
+        });
+      }
+      setCameraRuntimeMap(runtimeMap);
+    } catch {
+      setDetectionEngineStatus('unknown');
+      setCameraRuntimeMap({});
+    }
+  }, []);
+
+  const onCameraStatus = useCallback((payload) => {
+    if (Array.isArray(payload)) {
+      setCameraRuntimeMap((prev) => {
+        const next = { ...prev };
+        payload.forEach((camera) => {
+          if (camera?.zone_id) {
+            next[camera.zone_id] = normalizeStatus(camera.status);
+          }
+        });
+        return next;
+      });
+      return;
+    }
+
+    if (payload?.zone_id) {
+      setCameraRuntimeMap((prev) => ({
+        ...prev,
+        [payload.zone_id]: normalizeStatus(payload.status),
+      }));
+    }
+  }, []);
+
+  const onSystemStatus = useCallback((payload) => {
+    if (payload?.status) {
+      setDetectionEngineStatus(normalizeStatus(payload.status));
+    }
+  }, []);
+
+  useAlertSocket({ onCameraStatus, onSystemStatus });
+
   useEffect(() => {
     fetchCameras();
-  }, [fetchCameras]);
+    fetchRuntimeStatus();
+  }, [fetchCameras, fetchRuntimeStatus]);
 
   if (loading) {
     return (
@@ -88,7 +154,10 @@ function CameraGrid() {
           </span>
         </h2>
         <button
-          onClick={fetchCameras}
+          onClick={() => {
+            fetchCameras();
+            fetchRuntimeStatus();
+          }}
           className="text-xs text-sky-600 hover:text-sky-800 transition-colors"
           title="Refresh cameras"
         >
@@ -98,7 +167,14 @@ function CameraGrid() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {cameras.map((camera) => (
-          <CameraCard key={camera.zone_id || camera.id} camera={camera} />
+          <CameraCard
+            key={camera.zone_id || camera.id}
+            camera={{
+              ...camera,
+              runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
+              detection_engine_status: detectionEngineStatus,
+            }}
+          />
         ))}
       </div>
     </div>

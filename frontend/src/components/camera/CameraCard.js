@@ -12,15 +12,35 @@ import { API_BASE_URL } from '../../utils/constants';
 
 function CameraCard({ camera }) {
   const [imgError, setImgError] = useState(false);
+  const token = localStorage.getItem('token');
 
-  const streamUrl = `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream`;
-  const isActive = Boolean(camera.is_active);
+  const streamUrl = `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${token}`;
+  const normalizeStatus = (value) => {
+    if (typeof value === 'boolean') return value ? 'online' : 'offline';
+    if (!value) return 'unknown';
+    const lowered = String(value).toLowerCase();
+    if (['online', 'active', 'running', 'healthy'].includes(lowered)) return 'online';
+    if (['offline', 'inactive', 'stopped', 'down'].includes(lowered)) return 'offline';
+    return lowered;
+  };
+
+  const detectionOnline = normalizeStatus(camera.detection_engine_status) === 'online';
+  const cameraOnline =
+    normalizeStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
+  const isActive = detectionOnline && cameraOnline;
+  const showStream = isActive && !imgError;
+
+  const offlineReason = !detectionOnline
+    ? 'Detection engine offline'
+    : !cameraOnline
+    ? 'Camera offline'
+    : 'Stream unavailable';
 
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col">
       {/* Stream area */}
       <div className="relative w-full bg-slate-900 aspect-video overflow-hidden">
-        {!imgError ? (
+        {showStream ? (
           <img
             src={streamUrl}
             alt={`Live feed — ${camera.zone_name}`}
@@ -42,8 +62,8 @@ function CameraCard({ camera }) {
                 strokeLinejoin="round"
                 d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
               />
-            </svg>
-            <span className="text-xs font-medium opacity-60">Stream unavailable</span>
+             </svg>
+            <span className="text-xs font-medium opacity-60">{offlineReason}</span>
           </div>
         )}
 

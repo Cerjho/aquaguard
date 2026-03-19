@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import DetectionFeed from './DetectionFeed';
 import api from '../../hooks/useApi';
+import { useAlerts } from '../../context/AlertContext';
 
 jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
@@ -10,9 +11,17 @@ jest.mock('../../hooks/useApi', () => ({
   },
 }));
 
+jest.mock('../../context/AlertContext', () => ({
+  useAlerts: jest.fn(),
+}));
+
 describe('DetectionFeed mapping resilience', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAlerts.mockReturnValue({
+      detectionEvents: [],
+      socketConnected: false,
+    });
   });
 
   test('maps confidence_score, class_name, and timestamp fallback keys', async () => {
@@ -36,6 +45,34 @@ describe('DetectionFeed mapping resilience', () => {
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/88% confidence/)).toBeInTheDocument();
     expect(screen.getByText(/⚠ ALERT/)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/api/v1/events', {
+        params: { limit: 20, page: 1 },
+      });
+    });
+  });
+
+  test('prefers realtime detection events from socket context', async () => {
+    useAlerts.mockReturnValue({
+      detectionEvents: [
+        {
+          event_id: 'ws-1',
+          class_label: 'drowning',
+          confidence_score: 0.91,
+          timestamp: '2026-03-01T12:01:00Z',
+          zone_name: 'Realtime Pool',
+          alert_triggered: true,
+        },
+      ],
+      socketConnected: true,
+    });
+    api.get.mockResolvedValue({ data: { events: [] } });
+
+    render(<DetectionFeed />);
+
+    expect(await screen.findByText('drowning')).toBeInTheDocument();
+    expect(screen.getByText(/Live \(socket\)/)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/events', {

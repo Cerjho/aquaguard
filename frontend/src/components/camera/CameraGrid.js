@@ -8,7 +8,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../hooks/useApi';
 import CameraCard from './CameraCard';
-import useAlertSocket from '../../hooks/useAlertSocket';
+import { useAlerts } from '../../context/AlertContext';
+
+const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
+const STREAM_REFRESH_CHECK_MS = 5000;
 
 function CameraGrid() {
   const [cameras, setCameras] = useState([]);
@@ -17,6 +20,7 @@ function CameraGrid() {
   const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
   const [cameraRuntimeMap, setCameraRuntimeMap] = useState({});
   const [streamTokens, setStreamTokens] = useState({});
+  const { cameraStatuses, systemStatus } = useAlerts();
 
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -49,12 +53,27 @@ function CameraGrid() {
     if (!zoneId) return null;
     try {
       const res = await api.post(`/api/v1/cameras/${zoneId}/stream-token`);
-      return (
+      const token = (
         res?.data?.stream_token
         || res?.data?.token
         || res?.data?.access_token
         || null
       );
+      if (!token) return null;
+
+      const ttlSeconds = Number(
+        res?.data?.ttl_seconds
+        ?? res?.data?.expires_in_seconds
+        ?? 30
+      );
+      const expiresAt = res?.data?.expires_at
+        ? new Date(res.data.expires_at).getTime()
+        : Date.now() + (ttlSeconds * 1000);
+
+      return {
+        token,
+        expiresAt,
+      };
     } catch {
       return null;
     }
@@ -78,8 +97,8 @@ function CameraGrid() {
     const next = {};
     pairs.forEach((pair) => {
       if (!pair) return;
-      const [zoneId, token] = pair;
-      if (zoneId && token) next[zoneId] = token;
+      const [zoneId, tokenMeta] = pair;
+      if (zoneId && tokenMeta?.token) next[zoneId] = tokenMeta;
     });
     setStreamTokens(next);
   }, [mintStreamToken]);
@@ -107,35 +126,14 @@ function CameraGrid() {
     }
   }, []);
 
-  const onCameraStatus = useCallback((payload) => {
-    if (Array.isArray(payload)) {
-      setCameraRuntimeMap((prev) => {
-        const next = { ...prev };
-        payload.forEach((camera) => {
-          if (camera?.zone_id) {
-            next[camera.zone_id] = normalizeStatus(camera.status);
-          }
-        });
-        return next;
-      });
-      return;
-    }
-
-    if (payload?.zone_id) {
-      setCameraRuntimeMap((prev) => ({
-        ...prev,
-        [payload.zone_id]: normalizeStatus(payload.status),
-      }));
-    }
-  }, []);
-
-  const onSystemStatus = useCallback((payload) => {
-    if (payload?.status) {
-      setDetectionEngineStatus(normalizeStatus(payload.status));
-    }
-  }, []);
-
-  useAlertSocket({ onCameraStatus, onSystemStatus });
+  const refreshSingleToken = useCallback(async (zoneId) => {
+    const tokenMeta = await mintStreamToken(zoneId);
+    if (!tokenMeta?.token) return;
+    setStreamTokens((prev) => ({
+      ...prev,
+      [zoneId]: tokenMeta,
+    }));
+  }, [mintStreamToken]);
 
   useEffect(() => {
     fetchCameras();
@@ -145,6 +143,47 @@ function CameraGrid() {
   useEffect(() => {
     mintStreamTokensForCameras(cameras);
   }, [cameras, mintStreamTokensForCameras]);
+
+  useEffect(() => {
+    if (!Array.isArray(cameras) || cameras.length === 0) return undefined;
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      cameras.forEach((camera) => {
+        const zoneId = camera?.zone_id;
+        if (!zoneId) return;
+        const meta = streamTokens[zoneId];
+        if (!meta?.expiresAt) return;
+        const expiresInMs = meta.expiresAt - now;
+        if (expiresInMs <= STREAM_TOKEN_REFRESH_BUFFER_SECONDS * 1000) {
+          refreshSingleToken(zoneId);
+        }
+      });
+    }, STREAM_REFRESH_CHECK_MS);
+    return () => clearInterval(intervalId);
+  }, [cameras, streamTokens, refreshSingleToken]);
+
+  useEffect(() => {
+    if (systemStatus?.detection_engine?.status) {
+      setDetectionEngineStatus(normalizeStatus(systemStatus.detection_engine.status));
+    }
+  }, [systemStatus]);
+
+  useEffect(() => {
+    const runtimeMap = {};
+    Object.values(cameraStatuses || {}).forEach((camera) => {
+      if (camera?.zone_id) {
+        runtimeMap[camera.zone_id] = normalizeStatus(camera.status);
+      }
+    });
+    if (Object.keys(runtimeMap).length > 0) {
+      setCameraRuntimeMap(runtimeMap);
+    }
+  }, [cameraStatuses]);
+
+  const handleStreamAuthFailure = useCallback((zoneId) => {
+    if (!zoneId) return;
+    refreshSingleToken(zoneId);
+  }, [refreshSingleToken]);
 
   if (loading) {
     return (
@@ -217,8 +256,9 @@ function CameraGrid() {
               ...camera,
               runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
               detection_engine_status: detectionEngineStatus,
-              stream_token: streamTokens[camera.zone_id] || null,
+              stream_token: streamTokens[camera.zone_id]?.token || null,
             }}
+            onStreamAuthFailure={handleStreamAuthFailure}
           />
         ))}
       </div>

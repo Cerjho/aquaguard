@@ -24,6 +24,8 @@ import {
 import api from '../../hooks/useApi';
 
 function AnalyticsChart() {
+  const [rangeDays, setRangeDays] = useState('7');
+  const [groupBy, setGroupBy] = useState('zone');
   const [zoneData, setZoneData] = useState([]);
   const [timeData, setTimeData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,10 @@ function AnalyticsChart() {
     setError(null);
     try {
       const res = await api.get('/api/v1/reports/summary', {
-        params: { group_by: 'zone' },
+        params: {
+          group_by: groupBy,
+          ...(rangeDays ? { from: new Date(Date.now() - Number(rangeDays) * 86400000).toISOString() } : {}),
+        },
       });
       const data = res.data;
 
@@ -54,13 +59,23 @@ function AnalyticsChart() {
 
       // Time series: expects { daily: [{date, alert_count, event_count}] }
       const daily = data.daily || data.by_date || [];
-      setTimeData(
-        daily.map((d) => ({
-          date: d.date,
-          alerts: d.alert_count ?? d.alerts ?? 0,
-          detections: d.event_count ?? d.detections ?? 0,
-        }))
-      );
+      if (Array.isArray(daily) && daily.length > 0) {
+        setTimeData(
+          daily.map((d) => ({
+            date: d.date,
+            alerts: d.alert_count ?? d.alerts ?? 0,
+            detections: d.event_count ?? d.detections ?? 0,
+          }))
+        );
+      } else {
+        // Graceful fallback when backend omits daily in this response.
+        const fallbackSeries = zones.map((z, idx) => ({
+          date: z.zone_name || z.zone_id || `Zone ${idx + 1}`,
+          alerts: z.alert_count ?? z.alerts ?? 0,
+          detections: z.event_count ?? z.detections ?? 0,
+        }));
+        setTimeData(fallbackSeries);
+      }
     } catch (err) {
       setError(
         err.response?.data?.message || 'Failed to load analytics data.'
@@ -68,7 +83,7 @@ function AnalyticsChart() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [rangeDays, groupBy]);
 
   useEffect(() => {
     fetchSummary();
@@ -102,6 +117,34 @@ function AnalyticsChart() {
 
   return (
     <div className="space-y-8">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-sm text-slate-600">
+            Time Range
+            <select
+              className="mt-1 w-full px-3 py-2 rounded border border-slate-300"
+              value={rangeDays}
+              onChange={(e) => setRangeDays(e.target.value)}
+            >
+              <option value="1">Last 24 hours</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </label>
+          <label className="text-sm text-slate-600">
+            Grouping
+            <select
+              className="mt-1 w-full px-3 py-2 rounded border border-slate-300"
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value)}
+            >
+              <option value="zone">By zone</option>
+              <option value="day">By day</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
       {/* ── Bar Chart: Alerts per Zone ─────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <h3 className="text-base font-semibold text-slate-700 mb-4">

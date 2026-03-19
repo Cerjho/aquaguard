@@ -5,12 +5,14 @@
  * Polls GET /api/v1/events every 5 seconds for the latest entries.
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
+import { useAlerts } from '../../context/AlertContext';
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_DISPLAY = 20;
+const STALE_AFTER_MS = 15000;
 
 function mapEventClassLabel(event = {}) {
   return (
@@ -47,8 +49,10 @@ function mapEventTimestamp(event = {}) {
 }
 
 function DetectionFeed() {
-  const [events, setEvents] = useState([]);
+  const { detectionEvents, socketConnected } = useAlerts();
+  const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
+  const [lastPollAt, setLastPollAt] = useState(null);
   const intervalRef = useRef(null);
 
   const fetchLatest = useCallback(async () => {
@@ -57,7 +61,8 @@ function DetectionFeed() {
         params: { limit: MAX_DISPLAY, page: 1 },
       });
       const data = Array.isArray(res.data) ? res.data : res.data.events || [];
-      setEvents(data);
+      setPolledEvents(data);
+      setLastPollAt(Date.now());
       setError(null);
     } catch (err) {
       setError('Could not fetch detection events.');
@@ -70,13 +75,30 @@ function DetectionFeed() {
     return () => clearInterval(intervalRef.current);
   }, [fetchLatest]);
 
+  const hasRealtimeEvents = detectionEvents.length > 0;
+  const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;
+  const isStale = useMemo(() => {
+    if (!lastPollAt) return false;
+    return Date.now() - lastPollAt > STALE_AFTER_MS;
+  }, [lastPollAt]);
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">Live Detection Feed</h3>
-        <span className="flex items-center gap-1.5 text-xs text-green-600">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          Live
+        <span
+          className={`flex items-center gap-1.5 text-xs ${
+            socketConnected && !isStale ? 'text-green-600' : 'text-amber-600'
+          }`}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${
+              socketConnected && !isStale
+                ? 'bg-green-500 animate-pulse'
+                : 'bg-amber-500'
+            }`}
+          />
+          {socketConnected ? (isStale ? 'Live (stale)' : 'Live (socket)') : 'Polling fallback'}
         </span>
       </div>
 
@@ -90,12 +112,12 @@ function DetectionFeed() {
             No detection events yet.
           </li>
         ) : (
-          events.map((ev) => {
+          events.map((ev, idx) => {
             const confidence = mapEventConfidence(ev);
             const eventTime = mapEventTimestamp(ev);
             return (
               <li
-                key={ev.id}
+                key={ev.event_id || ev.id || `${eventTime}-${idx}`}
                 className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-sm"
               >
                 {/* Alert indicator */}

@@ -24,6 +24,9 @@ function renderAlertPanel(contextOverrides = {}) {
   jest.spyOn(AlertContext, 'useAlerts').mockReturnValue({
     activeAlert: null,
     acknowledge: mockAcknowledge,
+    acknowledgingAlertId: null,
+    acknowledgeError: null,
+    dismissActive: jest.fn(),
     ...contextOverrides,
   });
   return render(<AlertPanel />);
@@ -77,5 +80,21 @@ describe('AlertPanel', () => {
   test('shows dash for confidence when confidence is null', () => {
     renderAlertPanel({ activeAlert: { ...sampleAlert, confidence: null } });
     expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  test('shows loading state while acknowledge is in progress', () => {
+    renderAlertPanel({
+      activeAlert: sampleAlert,
+      acknowledgingAlertId: '1',
+    });
+    expect(screen.getByRole('button', { name: /acknowledging/i })).toBeDisabled();
+  });
+
+  test('shows acknowledge error banner when present', () => {
+    renderAlertPanel({
+      activeAlert: sampleAlert,
+      acknowledgeError: 'Acknowledge failed.',
+    });
+    expect(screen.getByText('Acknowledge failed.')).toBeInTheDocument();
   });
 });

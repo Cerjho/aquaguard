@@ -88,6 +88,25 @@ function normalizeCameraCollection(payload) {
   return [];
 }
 
+function normalizeEsp32Payload(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const nested =
+    payload.esp32
+    || payload.esp32_status
+    || payload.device_status?.esp32
+    || null;
+
+  if (!nested || typeof nested !== 'object') return null;
+
+  const status = normalizeServiceStatus(
+    nested.status ?? nested.state ?? nested.online
+  );
+  const lastSeen = nested.last_seen ?? nested.last_heartbeat ?? nested.timestamp ?? null;
+  const detail = nested.message ?? nested.detail ?? '';
+
+  return { status, lastSeen, detail };
+}
+
 function StatusIndicator({ label, status, detail }) {
   const isOnline =
     status === 'online' ||
@@ -133,6 +152,7 @@ function SystemStatus() {
   const [detectionEngineDetail, setDetectionEngineDetail] = useState('');
   const [esp32Online, setEsp32Online] = useState(false);
   const [esp32LastSeen, setEsp32LastSeen] = useState(null);
+  const [esp32Detail, setEsp32Detail] = useState('');
   const [esp32Error, setEsp32Error] = useState(null);
 
   // WebSocket handlers
@@ -180,28 +200,49 @@ function SystemStatus() {
           return next;
         });
       }
+
+      const esp32 = normalizeEsp32Payload(data);
+      if (esp32) {
+        setEsp32Online(esp32.status === 'online');
+        setEsp32LastSeen(esp32.lastSeen);
+        setEsp32Detail(esp32.detail || '');
+        setEsp32Error(null);
+      }
     } catch {
       // Keep socket listeners active; component can still recover on next event.
     }
   }, []);
 
-  // Poll alerts to determine ESP32 heartbeat freshness
+  // Poll status endpoint for ESP32 heartbeat data.
+  // Fallback to alerts endpoint only when esp32 block is unavailable.
   const checkEsp32 = useCallback(async () => {
     try {
-      const res = await api.get('/api/v1/alerts', {
-        params: { limit: 1, page: 1 },
-      });
-      const alerts = Array.isArray(res.data) ? res.data : res.data.alerts || [];
-      if (alerts.length > 0) {
-        const latest = alerts[0];
-        const ts = latest.alerted_at || latest.timestamp;
-        if (ts) {
-          const ageSeconds = (Date.now() - new Date(ts).getTime()) / 1000;
-          setEsp32Online(ageSeconds <= ESP32_ONLINE_THRESHOLD_SECONDS);
-          setEsp32LastSeen(ts);
+      const statusRes = await api.get('/api/v1/system/status');
+      const statusPayload = statusRes?.data || {};
+      const esp32 = normalizeEsp32Payload(statusPayload);
+
+      if (esp32) {
+        setEsp32Online(esp32.status === 'online');
+        setEsp32LastSeen(esp32.lastSeen);
+        setEsp32Detail(esp32.detail || '');
+        setEsp32Error(null);
+      } else {
+        const alertsRes = await api.get('/api/v1/alerts', {
+          params: { limit: 1, page: 1 },
+        });
+        const alerts = Array.isArray(alertsRes.data) ? alertsRes.data : alertsRes.data.alerts || [];
+        if (alerts.length > 0) {
+          const latest = alerts[0];
+          const ts = latest.alerted_at || latest.timestamp;
+          if (ts) {
+            const ageSeconds = (Date.now() - new Date(ts).getTime()) / 1000;
+            setEsp32Online(ageSeconds <= ESP32_ONLINE_THRESHOLD_SECONDS);
+            setEsp32LastSeen(ts);
+          }
         }
+        setEsp32Error(null);
+        setEsp32Detail('');
       }
-      setEsp32Error(null);
     } catch {
       setEsp32Error('Could not reach backend.');
     }
@@ -235,6 +276,8 @@ function SystemStatus() {
         detail={
           esp32Error
             ? esp32Error
+            : esp32Detail
+            ? esp32Detail
             : esp32LastSeen
             ? `Last heartbeat: ${timeAgo(esp32LastSeen)}`
             : 'No heartbeat received yet'

@@ -7,14 +7,15 @@
  * - Green/red status indicator based on camera.is_active
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../../utils/constants';
 
 function CameraCard({ camera }) {
   const [imgError, setImgError] = useState(false);
-  const token = localStorage.getItem('token');
-
-  const streamUrl = `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${token}`;
+  const streamToken = camera.stream_token || null;
+  const streamUrl = streamToken
+    ? `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${encodeURIComponent(streamToken)}`
+    : null;
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
     if (!value) return 'unknown';
@@ -28,12 +29,19 @@ function CameraCard({ camera }) {
   const cameraOnline =
     normalizeStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
   const isActive = detectionOnline && cameraOnline;
-  const showStream = isActive && !imgError;
+  const showStream = isActive && !imgError && Boolean(streamUrl);
+
+  useEffect(() => {
+    // Reset image fallback state whenever the stream token rotates.
+    setImgError(false);
+  }, [streamToken]);
 
   const offlineReason = !detectionOnline
     ? 'Detection engine offline'
     : !cameraOnline
     ? 'Camera offline'
+    : !streamToken
+    ? 'Authorizing stream…'
     : 'Stream unavailable';
 
   return (

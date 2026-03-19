@@ -11,6 +11,40 @@ import { formatDateTime } from '../../utils/dateFormat';
 
 const PAGE_SIZE = 10;
 
+function mapEventClassLabel(event = {}) {
+  return (
+    event.class_label
+    || event.class_name
+    || event.detected_class
+    || event.alert_class
+    || '—'
+  );
+}
+
+function mapEventConfidence(event = {}) {
+  const value = (
+    event.final_confidence
+    ?? event.confidence_score
+    ?? event.confidence
+    ?? event.yolo_confidence
+    ?? event.pose_confidence
+    ?? null
+  );
+  if (value == null || Number.isNaN(Number(value))) return null;
+  return Number(value);
+}
+
+function mapEventTimestamp(event = {}) {
+  return (
+    event.detected_at
+    || event.timestamp
+    || event.alerted_at
+    || event.created_at
+    || event.event_time
+    || null
+  );
+}
+
 function IncidentHistory() {
   const [events, setEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -96,35 +130,37 @@ function IncidentHistory() {
                 </td>
               </tr>
             ) : (
-              events.map((ev) => (
-                <tr key={ev.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-700">
-                    {formatDateTime(ev.detected_at)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-800 font-medium">
-                    {ev.zone_name || ev.zone_id || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 capitalize">
-                    {ev.class_label || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {ev.final_confidence != null
-                      ? `${(Number(ev.final_confidence) * 100).toFixed(1)}%`
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {ev.alert_triggered ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                        Yes
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
-                        No
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))
+              events.map((ev) => {
+                const confidence = mapEventConfidence(ev);
+                const eventTime = mapEventTimestamp(ev);
+                return (
+                  <tr key={ev.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap text-slate-700">
+                      {formatDateTime(eventTime)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-800 font-medium">
+                      {ev.zone_name || ev.zone_id || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 capitalize">
+                      {mapEventClassLabel(ev)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {confidence != null ? `${(confidence * 100).toFixed(1)}%` : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {ev.alert_triggered ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                          No
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

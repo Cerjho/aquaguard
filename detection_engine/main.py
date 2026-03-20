@@ -34,7 +34,6 @@ _SNAPSHOT_DIR = os.path.join(_BASE_DIR, "backend", "snapshots")
 os.makedirs(_SNAPSHOT_DIR, exist_ok=True)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-_CAMERAS_JSON = os.path.join(_BASE_DIR, "config", "cameras.json")
 _MODEL_PATH = os.path.join(_BASE_DIR, "detection_engine", "models", "aquaguard_yolov11s.pt")
 
 from config.settings import (
@@ -170,9 +169,19 @@ def main():
     _LIVE_DIR = os.path.join(_BASE_DIR, "backend", "snapshots", "live")
     os.makedirs(_LIVE_DIR, exist_ok=True)
 
+    # ── API client and backend camera source of truth ────────────────────────
+    api_client = APIClient(
+        base_url=os.environ.get("AQUAGUARD_API_URL", "http://localhost:5000"),
+        api_key=os.environ.get("AQUAGUARD_API_KEY", ""),
+    )
+    cameras = api_client.fetch_active_cameras()
+    if not cameras:
+        logger.error("Backend returned no active cameras; detection engine cannot start")
+        raise RuntimeError("No active cameras from backend internal endpoint")
+
     # ── Camera registry ───────────────────────────────────────────────────────
     registry = CameraRegistry()
-    registry.load_from_json(_CAMERAS_JSON)
+    registry.load_from_backend(cameras)
 
     # ── One DrowningDetector per camera zone (CRITICAL — Rule R6-A) ──────────
     # ByteTrack state must NOT be shared across cameras.
@@ -195,10 +204,6 @@ def main():
 
     # ── Alert dispatch ────────────────────────────────────────────────────────
     mqtt_client = MQTTClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
-    api_client = APIClient(
-        base_url=os.environ.get("AQUAGUARD_API_URL", "http://localhost:5000"),
-        api_key=os.environ.get("AQUAGUARD_API_KEY", ""),
-    )
     alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=_SNAPSHOT_DIR)
 
     try:

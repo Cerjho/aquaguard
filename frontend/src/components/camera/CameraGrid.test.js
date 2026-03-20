@@ -162,4 +162,90 @@ describe('CameraGrid stream token auth flow', () => {
 
     expect(await screen.findByRole('dialog', { name: /focused view for main pool/i })).toBeInTheDocument();
   });
+
+  test('limits concurrent grid streams to reduce duplicate load', async () => {
+    const cameraList = Array.from({ length: 5 }).map((_, idx) => ({
+      zone_id: `zone_${idx + 1}`,
+      zone_name: `Pool ${idx + 1}`,
+      location_description: `Lane ${idx + 1}`,
+      is_active: true,
+    }));
+
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/cameras') {
+        return Promise.resolve({ data: cameraList });
+      }
+      if (url === '/api/v1/system/status') {
+        return Promise.resolve({
+          data: {
+            detection_engine: { status: 'online' },
+            camera_status: cameraList.map((camera) => ({ zone_id: camera.zone_id, status: 'online' })),
+          },
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET URL ${url}`));
+    });
+
+    api.post.mockImplementation((url) => {
+      const match = url.match(/\/api\/v1\/cameras\/(.+)\/stream-token/);
+      if (!match) return Promise.reject(new Error(`Unexpected POST URL ${url}`));
+      const zoneId = match[1];
+      return Promise.resolve({
+        data: {
+          stream_token: `token-${zoneId}`,
+          ttl_seconds: 30,
+          expires_at: new Date(Date.now() + 30000).toISOString(),
+        },
+      });
+    });
+
+    render(<CameraGrid />);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledTimes(4);
+    });
+
+    expect(await screen.findByAltText('Live feed — Pool 1')).toBeInTheDocument();
+    expect(screen.getByAltText('Live feed — Pool 2')).toBeInTheDocument();
+    expect(screen.getByAltText('Live feed — Pool 3')).toBeInTheDocument();
+    expect(screen.getByAltText('Live feed — Pool 4')).toBeInTheDocument();
+    expect(screen.queryByAltText('Live feed — Pool 5')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Click to focus live stream/i).length).toBeGreaterThan(0);
+  });
+
+  test('pauses grid stream rendering while tab is hidden and restores when visible', async () => {
+    let hidden = true;
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => hidden,
+    });
+
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/cameras') {
+        return Promise.resolve({
+          data: [{ zone_id: 'zone_01', zone_name: 'Main Pool', location_description: 'North side', is_active: true }],
+        });
+      }
+      if (url === '/api/v1/system/status') {
+        return Promise.resolve({
+          data: { detection_engine: { status: 'online' }, camera_status: [{ zone_id: 'zone_01', status: 'online' }] },
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET URL ${url}`));
+    });
+
+    api.post.mockResolvedValue({
+      data: { stream_token: 'stream-short-lived', ttl_seconds: 30, expires_at: new Date(Date.now() + 30000).toISOString() },
+    });
+
+    render(<CameraGrid />);
+
+    expect(await screen.findByText(/Paused in background tab/i)).toBeInTheDocument();
+    expect(screen.queryByAltText('Live feed — Main Pool')).not.toBeInTheDocument();
+
+    hidden = false;
+    fireEvent(document, new Event('visibilitychange'));
+
+    expect(await screen.findByAltText('Live feed — Main Pool')).toBeInTheDocument();
+  });
 });

@@ -10,7 +10,13 @@
 import React, { useEffect, useState, memo } from 'react';
 import { API_BASE_URL } from '../../utils/constants';
 
-function CameraCard({ camera, onStreamAuthFailure, onFocus }) {
+function CameraCard({
+  camera,
+  onStreamAuthFailure,
+  onFocus,
+  shouldRenderStream = true,
+  pausedReason = 'Stream paused',
+}) {
   const [imgError, setImgError] = useState(false);
   const streamToken = camera.stream_token || null;
   const streamUrl = streamToken
@@ -29,7 +35,7 @@ function CameraCard({ camera, onStreamAuthFailure, onFocus }) {
   const cameraOnline =
     normalizeStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
   const isActive = detectionOnline && cameraOnline;
-  const showStream = isActive && !imgError && Boolean(streamUrl);
+  const showStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
 
   useEffect(() => {
     // Reset image fallback state whenever the stream token rotates.
@@ -40,6 +46,8 @@ function CameraCard({ camera, onStreamAuthFailure, onFocus }) {
     ? 'Detection engine offline'
     : !cameraOnline
     ? 'Camera offline'
+    : !shouldRenderStream
+    ? pausedReason
     : !streamToken
     ? 'Authorizing stream…'
     : 'Stream unavailable';

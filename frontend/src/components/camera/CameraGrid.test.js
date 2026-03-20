@@ -80,7 +80,7 @@ describe('CameraGrid stream token auth flow', () => {
     );
   });
 
-  test('opens and closes focus mode with zone context and recent events/alerts', async () => {
+  test('opens and closes focus mode from camera card with zone context and recent events/alerts', async () => {
     api.get.mockImplementation((url, config) => {
       if (url === '/api/v1/cameras') {
         return Promise.resolve({
@@ -115,8 +115,9 @@ describe('CameraGrid stream token auth flow', () => {
 
     render(<CameraGrid />);
 
-    const focusButton = await screen.findByRole('button', { name: /focus camera main pool/i });
-    fireEvent.click(focusButton);
+    const cameraCard = await screen.findByRole('button', { name: /camera card main pool/i });
+    expect(screen.queryByRole('button', { name: /focus camera main pool/i })).not.toBeInTheDocument();
+    fireEvent.click(cameraCard);
 
     expect(await screen.findByRole('dialog', { name: /focused view for main pool/i })).toBeInTheDocument();
     expect(await screen.findByText(/recent detections/i)).toBeInTheDocument();
@@ -127,5 +128,38 @@ describe('CameraGrid stream token auth flow', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: /focused view for main pool/i })).not.toBeInTheDocument();
     });
+  });
+
+  test('opens focus mode via keyboard Enter on camera card', async () => {
+    api.get.mockImplementation((url, config) => {
+      if (url === '/api/v1/cameras') {
+        return Promise.resolve({
+          data: [{ zone_id: 'zone_01', zone_name: 'Main Pool', location_description: 'North side', is_active: true }],
+        });
+      }
+      if (url === '/api/v1/system/status') {
+        return Promise.resolve({
+          data: { detection_engine: { status: 'online' }, camera_status: [{ zone_id: 'zone_01', status: 'online' }] },
+        });
+      }
+      if (url === '/api/v1/events' && config?.params?.zone_id === 'zone_01') {
+        return Promise.resolve({ data: { events: [] } });
+      }
+      if (url === '/api/v1/alerts' && config?.params?.zone_id === 'zone_01') {
+        return Promise.resolve({ data: { alerts: [] } });
+      }
+      return Promise.reject(new Error(`Unexpected GET URL ${url}`));
+    });
+
+    api.post.mockResolvedValue({
+      data: { stream_token: 'stream-short-lived', ttl_seconds: 30, expires_at: new Date(Date.now() + 30000).toISOString() },
+    });
+
+    render(<CameraGrid />);
+
+    const cameraCard = await screen.findByRole('button', { name: /camera card main pool/i });
+    fireEvent.keyDown(cameraCard, { key: 'Enter' });
+
+    expect(await screen.findByRole('dialog', { name: /focused view for main pool/i })).toBeInTheDocument();
   });
 });

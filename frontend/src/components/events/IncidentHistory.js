@@ -52,10 +52,38 @@ function IncidentHistory() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [draftFilters, setDraftFilters] = useState(triageFilters || {});
+
+  useEffect(() => {
+    setDraftFilters(triageFilters || {});
+  }, [triageFilters]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = draftFilters || {};
+      const current = triageFilters || {};
+      const hasChanged = (
+        (next.zone_id || '') !== (current.zone_id || '')
+        || (next.status || '') !== (current.status || '')
+        || (next.min_confidence || '') !== (current.min_confidence || '')
+        || (next.from || '') !== (current.from || '')
+        || (next.to || '') !== (current.to || '')
+      );
+      if (hasChanged) {
+        setTriageFilters(next);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [draftFilters, triageFilters, setTriageFilters]);
 
   const fetchEvents = useCallback(async (pageNum) => {
-    setLoading(true);
+    if (events.length === 0) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError(null);
     try {
       const filterState = triageFilters || {};
@@ -82,12 +110,13 @@ function IncidentHistory() {
       setError(err.response?.data?.message || 'Failed to load incident history.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [triageFilters]);
+  }, [triageFilters, events.length]);
 
   useEffect(() => {
     fetchEvents(page);
-  }, [fetchEvents, page, triageFilters]);
+  }, [fetchEvents, page]);
 
   useEffect(() => {
     setPage(1);
@@ -127,15 +156,15 @@ function IncidentHistory() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           <input
             aria-label="Filter incidents by zone ID"
-            value={triageFilters?.zone_id || ''}
-            onChange={(e) => setTriageFilters({ zone_id: e.target.value })}
+            value={draftFilters?.zone_id || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, zone_id: e.target.value }))}
             placeholder="Zone ID"
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <select
             aria-label="Filter incidents by status"
-            value={triageFilters?.status || ''}
-            onChange={(e) => setTriageFilters({ status: e.target.value })}
+            value={draftFilters?.status || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, status: e.target.value }))}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           >
             <option value="">All statuses</option>
@@ -150,29 +179,38 @@ function IncidentHistory() {
             min="0"
             max="1"
             step="0.01"
-            value={triageFilters?.min_confidence || ''}
-            onChange={(e) => setTriageFilters({ min_confidence: e.target.value })}
+            value={draftFilters?.min_confidence || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, min_confidence: e.target.value }))}
             placeholder="Min confidence"
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <input
             type="datetime-local"
             aria-label="Filter incidents from datetime"
-            value={triageFilters?.from || ''}
-            onChange={(e) => setTriageFilters({ from: e.target.value })}
+            value={draftFilters?.from || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, from: e.target.value }))}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <input
             type="datetime-local"
             aria-label="Filter incidents to datetime"
-            value={triageFilters?.to || ''}
-            onChange={(e) => setTriageFilters({ to: e.target.value })}
+            value={draftFilters?.to || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, to: e.target.value }))}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
         </div>
         <div className="mt-2 text-right">
           <button
-            onClick={resetTriageFilters}
+            onClick={() => {
+              resetTriageFilters();
+              setDraftFilters({
+                zone_id: '',
+                status: '',
+                min_confidence: '',
+                from: '',
+                to: '',
+              });
+            }}
             className="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-50"
           >
             Reset filters
@@ -237,6 +275,10 @@ function IncidentHistory() {
           </tbody>
         </table>
       </div>
+
+      {refreshing && (
+        <p className="mt-2 text-xs text-slate-500">Refreshing incidents…</p>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (

@@ -46,7 +46,16 @@ function CameraCard({ camera, onStreamAuthFailure, onFocus }) {
 
   return (
     <article
-      className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col"
+      role="button"
+      tabIndex={0}
+      onClick={() => onFocus?.(camera)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onFocus?.(camera);
+        }
+      }}
+      className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col cursor-pointer transition-all hover:shadow-md hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
       aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
     >
       {/* Stream area */}
@@ -124,20 +133,7 @@ function CameraCard({ camera, onStreamAuthFailure, onFocus }) {
             title={isActive ? 'Camera active' : 'Camera inactive'}
           />
         </div>
-        <button
-          type="button"
-          onClick={() => onFocus?.(camera)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onFocus?.(camera);
-            }
-          }}
-          className="mt-3 w-full rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-2 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-          aria-label={`Focus camera ${camera.zone_name || camera.zone_id}`}
-        >
-          Focus view
-        </button>
+        <p className="mt-2 text-[11px] text-slate-500">Click to open focus view</p>
       </div>
     </article>
   );

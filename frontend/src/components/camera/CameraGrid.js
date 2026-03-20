@@ -27,6 +27,7 @@ function CameraGrid() {
   const [zoneAlerts, setZoneAlerts] = useState([]);
   const { cameraStatuses, systemStatus } = useAlerts();
   const closeButtonRef = useRef(null);
+  const lastFocusedTriggerRef = useRef(null);
 
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -197,7 +198,8 @@ function CameraGrid() {
     setZoneAlerts([]);
   }, []);
 
-  const openFocus = useCallback(async (camera) => {
+  const openFocus = useCallback(async (camera, triggerElement) => {
+    lastFocusedTriggerRef.current = triggerElement || document.activeElement;
     setFocusedCamera(camera);
     try {
       const [eventsRes, alertsRes] = await Promise.all([
@@ -234,6 +236,12 @@ function CameraGrid() {
     if (!token) return null;
     return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}`;
   }, [focusedCamera, streamTokens]);
+
+  useEffect(() => {
+    if (!focusedCamera && lastFocusedTriggerRef.current?.focus) {
+      lastFocusedTriggerRef.current.focus();
+    }
+  }, [focusedCamera]);
 
   if (loading) {
     return (
@@ -309,7 +317,7 @@ function CameraGrid() {
               stream_token: streamTokens[camera.zone_id]?.token || null,
             }}
             onStreamAuthFailure={handleStreamAuthFailure}
-            onFocus={openFocus}
+            onFocus={(selectedCamera) => openFocus(selectedCamera, document.activeElement)}
           />
         ))}
       </div>
@@ -319,26 +327,30 @@ function CameraGrid() {
           role="dialog"
           aria-modal="true"
           aria-label={`Focused view for ${focusedCamera.zone_name || focusedCamera.zone_id}`}
-          className="fixed inset-0 z-50 bg-slate-950/80 p-4 md:p-8"
+          className="fixed inset-0 z-50 bg-slate-950/80 p-2 sm:p-4 md:p-6"
         >
           <div className="h-full w-full rounded-xl bg-white border border-slate-200 shadow-xl overflow-auto">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 sticky top-0 bg-white">
-              <div>
-                <h3 className="text-base font-semibold text-slate-800">{focusedCamera.zone_name || focusedCamera.zone_id}</h3>
-                <p className="text-xs text-slate-500">{focusedCamera.location_description || focusedCamera.zone_id}</p>
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur px-3 sm:px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Focused camera</p>
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-900">{focusedCamera.zone_name || focusedCamera.zone_id}</h3>
+                  <p className="text-xs text-slate-500">{focusedCamera.location_description || focusedCamera.zone_id}</p>
+                </div>
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  onClick={closeFocus}
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm border border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  aria-label="Close camera focus and return to camera grid"
+                >
+                  <span aria-hidden="true">←</span>
+                  Back to grid
+                </button>
               </div>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={closeFocus}
-                className="rounded-md px-3 py-1.5 text-sm border border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                aria-label="Close camera focus"
-              >
-                Back
-              </button>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
-              <div className="lg:col-span-2 rounded-lg overflow-hidden bg-slate-900 aspect-video">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 p-3 sm:p-4">
+              <div className="xl:col-span-8 rounded-lg overflow-hidden bg-slate-900 aspect-video min-h-[240px] sm:min-h-[320px]">
                 {focusedStreamUrl ? (
                   <img
                     src={focusedStreamUrl}
@@ -349,18 +361,18 @@ function CameraGrid() {
                   <div className="h-full flex items-center justify-center text-slate-300 text-sm">Stream unavailable</div>
                 )}
               </div>
-              <div className="space-y-4">
-                <section>
-                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Recent detections</h4>
-                  <ul className="text-xs text-slate-600 space-y-1">
+              <div className="xl:col-span-4 space-y-4">
+                <section className="rounded-lg border border-slate-200 p-3">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Recent detections</h4>
+                  <ul className="text-xs text-slate-600 space-y-1.5">
                     {zoneEvents.length === 0 ? <li>No recent detections</li> : zoneEvents.map((ev) => (
                       <li key={ev.event_id || ev.id}>{formatDateTime(ev.timestamp || ev.detected_at)} — {(ev.class_label || ev.class_name || 'Detection')}</li>
                     ))}
                   </ul>
                 </section>
-                <section>
-                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Recent alerts</h4>
-                  <ul className="text-xs text-slate-600 space-y-1">
+                <section className="rounded-lg border border-slate-200 p-3">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Recent alerts</h4>
+                  <ul className="text-xs text-slate-600 space-y-1.5">
                     {zoneAlerts.length === 0 ? <li>No recent alerts</li> : zoneAlerts.map((al) => (
                       <li key={al.alert_id || al.id}>{formatDateTime(al.alerted_at || al.timestamp)} — {(al.status || 'unknown')}</li>
                     ))}

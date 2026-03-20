@@ -15,7 +15,10 @@ import json
 import time
 from datetime import datetime, timezone
 import cv2
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI envs without python-dotenv
+    load_dotenv = None
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -60,7 +63,16 @@ def _load_api_env_from_backend_env() -> None:
         return
 
     if os.path.exists(_BACKEND_ENV_PATH):
-        load_dotenv(_BACKEND_ENV_PATH, override=False)
+        if load_dotenv is not None:
+            load_dotenv(_BACKEND_ENV_PATH, override=False)
+        else:
+            with open(_BACKEND_ENV_PATH, "r", encoding="utf-8") as env_file:
+                for line in env_file:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, value = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
         post_url = os.environ.get("AQUAGUARD_API_URL")
         post_key = os.environ.get("AQUAGUARD_API_KEY")
         if (not pre_url and post_url) or (not pre_key and post_key):
@@ -69,6 +81,17 @@ def _load_api_env_from_backend_env() -> None:
             logger.info("API config source: backend .env checked at %s", _BACKEND_ENV_PATH)
     else:
         logger.info("API config source: backend .env not found at %s", _BACKEND_ENV_PATH)
+
+
+def _get_required_api_url() -> str:
+    api_url = os.environ.get("AQUAGUARD_API_URL", "").strip()
+    if not api_url:
+        logger.error(
+            "AQUAGUARD_API_URL is missing. Set it in shell env or backend/.env "
+            "before starting detection_engine.main"
+        )
+        raise RuntimeError("Missing AQUAGUARD_API_URL for backend internal API")
+    return api_url
 
 
 def _annotate_live_frame(frame, detections, zone_id: str, frame_timestamp: str):
@@ -203,7 +226,7 @@ def main():
         raise RuntimeError("Missing AQUAGUARD_API_KEY for backend internal API authentication")
 
     api_client = APIClient(
-        base_url=os.environ.get("AQUAGUARD_API_URL", "http://localhost:5000"),
+        base_url=_get_required_api_url(),
         api_key=api_key,
     )
     cameras = api_client.fetch_active_cameras()
@@ -338,7 +361,16 @@ def main():
                             should_alert,
                         )
                         if should_alert:
-                            alert_engine.dispatch(zone_id, det.track_id, score, frame)
+                            alert_engine.dispatch(
+                                zone_id=zone_id,
+                                track_id=det.track_id,
+                                score=score,
+                                frame=frame,
+                                class_label=det.class_label,
+                                yolo_confidence=float(det.confidence),
+                                pose_confidence=None,
+                                final_confidence=float(score),
+                            )
                             logger.info(
                                 "Zone %s track %s: alert dispatched",
                                 zone_id,

@@ -71,6 +71,15 @@ def _parse_iso_datetime(raw_value):
         return None
 
 
+def _parse_event_id(raw_value):
+    if raw_value is None:
+        return str(uuid.uuid4()), None
+    try:
+        return str(uuid.UUID(str(raw_value))), None
+    except (TypeError, ValueError, AttributeError):
+        return None, jsonify({'error': 'event_id must be a valid UUID'})
+
+
 @events_bp.route('/events', methods=['POST'])
 def create_event():
     """Internal endpoint called by the detection engine."""
@@ -82,7 +91,9 @@ def create_event():
     if missing:
         return jsonify({'error': f'Missing fields: {missing}'}), 400
 
-    event_id = str(uuid.uuid4())
+    event_id, event_id_error = _parse_event_id(data.get('event_id'))
+    if event_id_error is not None:
+        return event_id_error, 400
     snapshot_path = None
 
     # Save snapshot if provided
@@ -116,6 +127,10 @@ def create_event():
         event_id         = event_id,
         zone_id          = data['zone_id'],
         track_id         = data.get('track_id'),
+        class_label      = data.get('class_label'),
+        yolo_confidence  = data.get('yolo_confidence'),
+        pose_confidence  = data.get('pose_confidence'),
+        final_confidence = data.get('final_confidence'),
         confidence_score = data.get('confidence_score'),
         behavior_flags   = data.get('behavior_flags'),
         alert_triggered  = bool(data.get('alert_triggered', False)),

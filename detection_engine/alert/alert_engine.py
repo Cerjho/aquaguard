@@ -36,6 +36,10 @@ class AlertEngine:
         track_id: str,
         score: float,
         frame: np.ndarray,
+        class_label: str | None = None,
+        yolo_confidence: float | None = None,
+        pose_confidence: float | None = None,
+        final_confidence: float | None = None,
     ) -> None:
         """Save snapshot and dispatch alert payload to all three channels.
 
@@ -77,6 +81,10 @@ class AlertEngine:
             snapshot_path=snapshot_path,
             snapshot_b64=snapshot_b64,
             timestamp=timestamp,
+            class_label=class_label,
+            yolo_confidence=yolo_confidence,
+            pose_confidence=pose_confidence,
+            final_confidence=final_confidence if final_confidence is not None else score,
         )
 
         payload_dict = {

@@ -7,6 +7,7 @@ import numpy as np
 
 from detection_engine.main import (
     _annotate_live_frame,
+    _get_required_api_url,
     _load_api_env_from_backend_env,
     _send_zone_heartbeat_if_due,
     _write_live_zone_artifacts,
@@ -110,3 +111,12 @@ def test_load_api_env_from_backend_env_does_not_override_shell_values(tmp_path, 
 
     assert os.environ.get("AQUAGUARD_API_URL") == "http://from-shell:5000"
     assert os.environ.get("AQUAGUARD_API_KEY") == "shell-key"
+
+
+def test_get_required_api_url_raises_when_missing(monkeypatch):
+    monkeypatch.delenv("AQUAGUARD_API_URL", raising=False)
+    try:
+        _get_required_api_url()
+        assert False, "Expected RuntimeError when AQUAGUARD_API_URL is missing"
+    except RuntimeError as exc:
+        assert "Missing AQUAGUARD_API_URL" in str(exc)

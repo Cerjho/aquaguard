@@ -12,3 +12,7 @@ class AlertPayload:
     snapshot_path: str
     snapshot_b64: str     # JPEG frame encoded as base64 string
     timestamp: str        # ISO-8601 UTC timestamp
+    class_label: str | None = None
+    yolo_confidence: float | None = None
+    pose_confidence: float | None = None
+    final_confidence: float | None = None

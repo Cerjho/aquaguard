@@ -12,7 +12,7 @@ def test_heartbeat_updates_esp32_status(client, admin_token):
         'status': 'online',
         'uptime_ms': 123456,
         'timestamp': datetime.now(timezone.utc).isoformat(),
-    })
+    }, headers={'X-API-Key': 'test-internal-api-key'})
     assert heartbeat.status_code == 200
 
     status = client.get('/api/v1/system/status',
@@ -24,6 +24,15 @@ def test_heartbeat_updates_esp32_status(client, admin_token):
     assert payload['esp32']['status'] == 'online'
     assert payload['esp32']['uptime_ms'] == 123456
     assert payload['esp32']['last_heartbeat_at'] is not None
+
+
+def test_heartbeat_rejects_missing_api_key(client):
+    heartbeat = client.post('/api/v1/system/heartbeat', json={
+        'device_id': 'ESP32_AquaGuard_01',
+        'status': 'online',
+    })
+    assert heartbeat.status_code == 401
+    assert heartbeat.get_json()['error'] == 'Unauthorized'
 
 
 def test_system_status_contains_subsystem_freshness_and_health(client, admin_token):

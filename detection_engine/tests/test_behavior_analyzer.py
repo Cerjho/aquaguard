@@ -46,6 +46,13 @@ class TestBehaviorAnalyzerScore:
         # Both tracks start fresh — scores should be equal
         assert abs(s1 - s2) < 1e-9
 
+    def test_analyze_returns_zero_when_landmarks_none(self):
+        assert self.analyzer.analyze(None, "swimming", 0.4, "track_none") == 0.0
+
+    def test_analyze_returns_zero_when_landmarks_too_short(self):
+        short_landmarks = [Landmark(x=0.1, y=0.1, z=0.0, visibility=1.0)] * 10
+        assert self.analyzer.analyze(short_landmarks, "swimming", 0.4, "track_short") == 0.0
+
 
 class TestBehaviorAnalyzerIndicators:
     def setup_method(self):

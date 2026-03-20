@@ -46,3 +46,27 @@ def test_fetch_active_cameras_raises_on_malformed_payload():
 
     with pytest.raises(RuntimeError, match="malformed"):
         client.fetch_active_cameras()
+
+
+def test_log_event_includes_payload_metadata_fields():
+    client = APIClient("http://localhost:5000", "test-key")
+    client._session.post = MagicMock(return_value=MagicMock(status_code=201, text="ok"))
+
+    class Payload:
+        event_id = "evt-1"
+        zone_id = "zone_01"
+        track_id = 7
+        score = 0.88
+        class_label = "drowning"
+        yolo_confidence = 0.91
+        pose_confidence = 0.72
+        final_confidence = 0.88
+        snapshot_b64 = "abc"
+        timestamp = "2026-01-01T00:00:00Z"
+
+    client.log_event(Payload())
+    sent_json = client._session.post.call_args.kwargs["json"]
+    assert sent_json["class_label"] == "drowning"
+    assert sent_json["yolo_confidence"] == 0.91
+    assert sent_json["pose_confidence"] == 0.72
+    assert sent_json["final_confidence"] == 0.88

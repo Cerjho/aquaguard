@@ -11,6 +11,7 @@ import { formatDateTime } from '../../utils/dateFormat';
 import { useAlerts } from '../../context/AlertContext';
 
 const POLL_INTERVAL_MS = 5000;
+const HIDDEN_POLL_INTERVAL_MS = 30000;
 const MAX_DISPLAY = 20;
 const STALE_AFTER_MS = 15000;
 const MAX_BACKOFF_MS = 60000;
@@ -54,8 +55,8 @@ function DetectionFeed() {
   const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
   const [lastPollAt, setLastPollAt] = useState(null);
-  const [failureCount, setFailureCount] = useState(0);
   const intervalRef = useRef(null);
+  const failureCountRef = useRef(0);
 
   const fetchLatest = useCallback(async () => {
     try {
@@ -66,11 +67,11 @@ function DetectionFeed() {
       setPolledEvents(data);
       setLastPollAt(Date.now());
       setError(null);
-      setFailureCount(0);
+      failureCountRef.current = 0;
       return true;
     } catch (err) {
       setError('Could not fetch detection events.');
-      setFailureCount((prev) => prev + 1);
+      failureCountRef.current += 1;
       return false;
     }
   }, []);
@@ -82,13 +83,13 @@ function DetectionFeed() {
       if (intervalRef.current) clearTimeout(intervalRef.current);
       intervalRef.current = setTimeout(async () => {
         if (document.hidden) {
-          schedule(Math.min(POLL_INTERVAL_MS * 2, MAX_BACKOFF_MS));
+          schedule(HIDDEN_POLL_INTERVAL_MS);
           return;
         }
         const ok = await fetchLatest();
         const next = ok
           ? POLL_INTERVAL_MS
-          : Math.min(POLL_INTERVAL_MS * (2 ** Math.max(1, failureCount)), MAX_BACKOFF_MS);
+          : Math.min(POLL_INTERVAL_MS * (2 ** Math.max(1, failureCountRef.current)), MAX_BACKOFF_MS);
         schedule(next);
       }, delay);
     };
@@ -107,7 +108,7 @@ function DetectionFeed() {
       if (intervalRef.current) clearTimeout(intervalRef.current);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [fetchLatest, failureCount]);
+  }, [fetchLatest]);
 
   const hasRealtimeEvents = detectionEvents.length > 0;
   const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;

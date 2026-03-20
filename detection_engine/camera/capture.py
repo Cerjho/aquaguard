@@ -25,6 +25,7 @@ class CameraCapture:
         self.frame_rate = frame_rate
 
         self._cap: Optional[cv2.VideoCapture] = None
+        self._cap_lock = threading.Lock()
         self._latest_frame: Optional[np.ndarray] = None
         self._frame_lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -33,12 +34,9 @@ class CameraCapture:
 
     def start(self) -> None:
         """Open the video capture and launch the background capture thread."""
-        self._cap = (
-            cv2.VideoCapture(int(self.rtsp_url), cv2.CAP_DSHOW)
-            if platform.system() == 'Windows' and str(self.rtsp_url).isdigit()
-            else cv2.VideoCapture(self.rtsp_url)
-        )
-        if not self._cap.isOpened():
+        cap = self._open_capture()
+        self._set_capture(cap)
+        if not cap.isOpened():
             logger.warning(
                 "[%s] Failed to open camera at startup — will retry in loop", self.zone_id
             )
@@ -69,10 +67,10 @@ class CameraCapture:
     def stop(self) -> None:
         """Signal the capture thread to stop and wait for it to finish."""
         self._stop_event.set()
+        self._release_capture()
         if self._thread is not None:
-            self._thread.join(timeout=5.0)
-        if self._cap is not None:
-            self._cap.release()
+            self._thread.join()
+        self._release_capture()
         logger.info("[%s] Camera capture stopped", self.zone_id)
 
     # ── Private ───────────────────────────────────────────────────────────────
@@ -82,11 +80,25 @@ class CameraCapture:
         interval = 1.0 / max(self.frame_rate, 1)
 
         while not self._stop_event.is_set():
-            if self._cap is None or not self._cap.isOpened():
+            ret = False
+            frame = None
+            should_reconnect = False
+
+            with self._cap_lock:
+                cap = self._cap
+                if cap is None or not cap.isOpened():
+                    should_reconnect = True
+                else:
+                    try:
+                        ret, frame = cap.read()
+                    except Exception as exc:
+                        logger.warning("[%s] Exception while reading frame: %s", self.zone_id, exc)
+                        ret, frame = False, None
+
+            if should_reconnect:
                 self._reconnect()
                 continue
 
-            ret, frame = self._cap.read()
             if not ret or frame is None:
                 self._consecutive_failures += 1
                 logger.warning(
@@ -107,22 +119,22 @@ class CameraCapture:
 
     def _reconnect(self) -> None:
         """Exponential backoff reconnect loop."""
-        if self._cap is not None:
-            self._cap.release()
-            self._cap = None
+        self._release_capture()
 
         for delay in RECONNECT_BACKOFF_SECONDS:
             if self._stop_event.is_set():
                 return
             logger.info("[%s] Reconnecting in %ds ...", self.zone_id, delay)
-            time.sleep(delay)
+            # Interruptible wait: allows immediate shutdown instead of waiting full delay.
+            if self._stop_event.wait(delay):
+                return
+            # Re-check before opening handle to avoid stop/reconnect race.
+            if self._stop_event.is_set():
+                return
 
-            self._cap = (
-            cv2.VideoCapture(int(self.rtsp_url), cv2.CAP_DSHOW)
-            if platform.system() == 'Windows' and str(self.rtsp_url).isdigit()
-            else cv2.VideoCapture(self.rtsp_url)
-        )
-            if self._cap.isOpened():
+            cap = self._open_capture()
+            self._set_capture(cap)
+            if cap.isOpened():
                 self._consecutive_failures = 0
                 logger.info("[%s] Reconnected successfully", self.zone_id)
                 return
@@ -134,3 +146,21 @@ class CameraCapture:
             len(RECONNECT_BACKOFF_SECONDS),
         )
         self._consecutive_failures = 0  # reset so outer loop tries again
+
+    def _open_capture(self) -> cv2.VideoCapture:
+        with self._cap_lock:
+            return (
+                cv2.VideoCapture(int(self.rtsp_url), cv2.CAP_DSHOW)
+                if platform.system() == 'Windows' and str(self.rtsp_url).isdigit()
+                else cv2.VideoCapture(self.rtsp_url)
+            )
+
+    def _release_capture(self) -> None:
+        with self._cap_lock:
+            if self._cap is not None:
+                self._cap.release()
+                self._cap = None
+
+    def _set_capture(self, cap: Optional[cv2.VideoCapture]) -> None:
+        with self._cap_lock:
+            self._cap = cap

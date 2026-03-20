@@ -18,6 +18,7 @@ function AlertHistory() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [draftFilters, setDraftFilters] = useState(triageFilters || {});
 
@@ -27,13 +28,28 @@ function AlertHistory() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setTriageFilters(draftFilters || {});
+      const next = draftFilters || {};
+      const current = triageFilters || {};
+      const hasChanged = (
+        (next.zone_id || '') !== (current.zone_id || '')
+        || (next.status || '') !== (current.status || '')
+        || (next.min_confidence || '') !== (current.min_confidence || '')
+        || (next.from || '') !== (current.from || '')
+        || (next.to || '') !== (current.to || '')
+      );
+      if (hasChanged) {
+        setTriageFilters(next);
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [draftFilters, setTriageFilters]);
+  }, [draftFilters, triageFilters, setTriageFilters]);
 
   const fetchAlerts = useCallback(async (pageNum) => {
-    setLoading(true);
+    if (alerts.length === 0) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError(null);
     try {
       const filterState = triageFilters || {};
@@ -61,8 +77,9 @@ function AlertHistory() {
       setError(err.response?.data?.message || 'Failed to load alert history.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [triageFilters]);
+  }, [triageFilters, alerts.length]);
 
   useEffect(() => {
     fetchAlerts(page);
@@ -193,6 +210,10 @@ function AlertHistory() {
           </button>
         </div>
       </div>
+
+      {refreshing && (
+        <p className="mt-2 text-xs text-slate-500">Refreshing alerts…</p>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">

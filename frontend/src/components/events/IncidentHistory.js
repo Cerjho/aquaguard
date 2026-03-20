@@ -107,7 +107,11 @@ function IncidentHistory() {
         setTotal(data.total || 0);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load incident history.');
+      setError(
+        err.response?.data?.message
+        || err.response?.data?.error
+        || 'Failed to load incident history.'
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);

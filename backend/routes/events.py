@@ -80,6 +80,19 @@ def _parse_event_id(raw_value):
         return None, jsonify({'error': 'event_id must be a valid UUID'})
 
 
+def _parse_int_query(name, default, min_value=1, max_value=None):
+    raw = request.args.get(name, default)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None, jsonify({'error': f'{name} must be an integer'})
+    if value < min_value:
+        return None, jsonify({'error': f'{name} must be >= {min_value}'})
+    if max_value is not None and value > max_value:
+        return max_value, None
+    return value, None
+
+
 @events_bp.route('/events', methods=['POST'])
 def create_event():
     """Internal endpoint called by the detection engine."""
@@ -192,8 +205,12 @@ def list_events():
     status          = request.args.get('status')
     min_confidence  = request.args.get('min_confidence')
     max_confidence  = request.args.get('max_confidence')
-    page            = int(request.args.get('page', 1))
-    limit           = min(int(request.args.get('limit', 20)), 100)
+    page, page_error = _parse_int_query('page', 1, min_value=1)
+    if page_error is not None:
+        return page_error, 400
+    limit, limit_error = _parse_int_query('limit', 20, min_value=1, max_value=100)
+    if limit_error is not None:
+        return limit_error, 400
 
     query = DetectionEvent.query
 
@@ -229,8 +246,12 @@ def list_events():
                 Alert.status == normalized_status
             )
 
-    query = query.order_by(DetectionEvent.detected_at.desc())
-    pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    try:
+        query = query.order_by(DetectionEvent.detected_at.desc())
+        pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    except Exception as exc:
+        current_app.logger.error('Failed to fetch events: %s', exc)
+        return jsonify({'error': 'Failed to load events'}), 500
 
     return jsonify({
         'total': pagination.total,

@@ -33,10 +33,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       // Token expired or invalid — clear storage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+
+      // Force auth boundary reset so protected pages do not keep firing requests.
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
     }
     return Promise.reject(error);
   }

@@ -9,6 +9,18 @@ param(
 $ROOT = Split-Path -Parent $PSScriptRoot
 $VENV_PYTHON = "$ROOT\aquaguard_env\Scripts\python.exe"
 $VENV_ACTIVATE = "$ROOT\aquaguard_env\Scripts\Activate.ps1"
+$backendJob = $null
+$frontendJob = $null
+
+function Test-ProcessCommandLine {
+    param(
+        [Parameter(Mandatory = $true)][string]$Pattern
+    )
+
+    $matches = Get-CimInstance Win32_Process |
+        Where-Object { $_.CommandLine -and $_.CommandLine -match $Pattern }
+    return @($matches).Count -gt 0
+}
 
 Write-Host "==> AquaGuard Dev Environment Starting..." -ForegroundColor Cyan
 
@@ -24,10 +36,14 @@ if (-not $SkipMqtt) {
     Write-Host "==> Starting Mosquitto MQTT broker..." -ForegroundColor Green
     $mosquittoPath = "C:\Program Files\mosquitto\mosquitto.exe"
     if (Test-Path $mosquittoPath) {
-        Start-Process -FilePath $mosquittoPath `
-            -ArgumentList "-c `"$ROOT\mqtt\mosquitto.conf`"" `
-            -WindowStyle Minimized
-        Write-Host "    Mosquitto running on port 1883" -ForegroundColor Green
+        if (Get-Process mosquitto -ErrorAction SilentlyContinue) {
+            Write-Host "    Mosquitto already running (skip start)" -ForegroundColor Yellow
+        } else {
+            Start-Process -FilePath $mosquittoPath `
+                -ArgumentList "-c `"$ROOT\mqtt\mosquitto.conf`"" `
+                -WindowStyle Minimized
+            Write-Host "    Mosquitto running on port 1883" -ForegroundColor Green
+        }
     } else {
         Write-Host "    WARNING: Mosquitto not found. Install from https://mosquitto.org/download/" -ForegroundColor Yellow
         Write-Host "    Or run: winget install EclipseFoundation.Mosquitto" -ForegroundColor Yellow
@@ -36,25 +52,33 @@ if (-not $SkipMqtt) {
 
 # 3. Start Flask backend
 Write-Host "==> Starting Flask backend..." -ForegroundColor Green
-$backendScript = {
-    param($root, $activate)
-    & $activate
-    Set-Location "$root\backend"
-    python wsgi.py
+if (Test-ProcessCommandLine -Pattern 'wsgi\.py') {
+    Write-Host "    Flask backend already running (skip start)" -ForegroundColor Yellow
+} else {
+    $backendScript = {
+        param($root, $activate)
+        & $activate
+        Set-Location "$root\backend"
+        python wsgi.py
+    }
+    $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_ACTIVATE
+    Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green
 }
-$backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_ACTIVATE
-Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green
 
 # 4. Start React frontend
 if (-not $SkipFrontend) {
     Write-Host "==> Starting React dashboard..." -ForegroundColor Green
-    $frontendScript = {
-        param($root)
-        Set-Location "$root\frontend"
-        npm start
+    if (Test-ProcessCommandLine -Pattern 'react-scripts\s+start') {
+        Write-Host "    React dashboard already running (skip start)" -ForegroundColor Yellow
+    } else {
+        $frontendScript = {
+            param($root)
+            Set-Location "$root\frontend"
+            npm start
+        }
+        $frontendJob = Start-Job -ScriptBlock $frontendScript -ArgumentList $ROOT
+        Write-Host "    React starting on http://localhost:3000" -ForegroundColor Green
     }
-    $frontendJob = Start-Job -ScriptBlock $frontendScript -ArgumentList $ROOT
-    Write-Host "    React starting on http://localhost:3000" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -69,7 +93,7 @@ try {
     while ($true) { Start-Sleep -Seconds 5 }
 } finally {
     Write-Host "Stopping services..." -ForegroundColor Red
-    Stop-Job $backendJob -ErrorAction SilentlyContinue
-    if (-not $SkipFrontend) { Stop-Job $frontendJob -ErrorAction SilentlyContinue }
+    if ($backendJob) { Stop-Job $backendJob -ErrorAction SilentlyContinue }
+    if (-not $SkipFrontend -and $frontendJob) { Stop-Job $frontendJob -ErrorAction SilentlyContinue }
     Get-Process mosquitto -ErrorAction SilentlyContinue | Stop-Process
 }

@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from flask import Flask
 from dotenv import load_dotenv
+from werkzeug.exceptions import HTTPException
 
 from extensions import db, jwt, socketio, bcrypt, migrate, cors
 from token_blocklist import is_token_revoked
@@ -58,5 +59,20 @@ def create_app():
 
     # Register SocketIO handlers
     import sockets  # noqa: F401
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(exc):
+        return {
+            'error': exc.name,
+            'message': exc.description,
+        }, exc.code
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_exception(exc):
+        app.logger.exception('Unhandled server error: %s', exc)
+        return {
+            'error': 'Internal Server Error',
+            'message': 'An unexpected error occurred.',
+        }, 500
 
     return app

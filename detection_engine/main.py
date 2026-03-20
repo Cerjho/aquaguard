@@ -46,6 +46,8 @@ from config.settings import (
     MQTT_BROKER_PORT,
     DETECTION_ENGINE_HEARTBEAT_INTERVAL_SECONDS,
     LIVE_SNAPSHOT_JPEG_QUALITY,
+    LIVE_ARTIFACT_REPLACE_RETRIES,
+    LIVE_ARTIFACT_RETRY_DELAY_SECONDS,
 )
 
 
@@ -128,8 +130,12 @@ def _annotate_live_frame(frame, detections, zone_id: str, frame_timestamp: str):
 
 
 def _atomic_write_jpeg(path: str, frame) -> None:
-    """Safely write JPEG via temp file then atomic replace."""
-    tmp_path = f"{path}.tmp"
+    """Safely write JPEG via temp file then atomic replace.
+
+    On Windows, readers can briefly lock the destination file while streaming.
+    Retry replace with short backoff to avoid noisy transient failures.
+    """
+    tmp_path = f"{path}.{os.getpid()}.tmp"
     ok, encoded = cv2.imencode(
         ".jpg",
         frame,
@@ -139,7 +145,25 @@ def _atomic_write_jpeg(path: str, frame) -> None:
         raise OSError(f"Failed to encode JPEG for {path}")
     with open(tmp_path, "wb") as fh:
         fh.write(encoded.tobytes())
-    os.replace(tmp_path, path)
+
+    retries = max(int(LIVE_ARTIFACT_REPLACE_RETRIES), 1)
+    try:
+        for attempt in range(retries):
+            try:
+                os.replace(tmp_path, path)
+                return
+            except PermissionError:
+                if attempt == retries - 1:
+                    raise
+                sleep_s = max(float(LIVE_ARTIFACT_RETRY_DELAY_SECONDS), 0.0) * (attempt + 1)
+                if sleep_s > 0:
+                    time.sleep(sleep_s)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 
 def _atomic_write_json(path: str, payload: dict) -> None:

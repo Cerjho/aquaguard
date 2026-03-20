@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db, socketio
 from models import DetectionEvent, Alert
@@ -66,7 +67,11 @@ def _parse_iso_datetime(raw_value):
     if not raw_value:
         return None
     try:
-        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+        parsed = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+        # DB columns are naive UTC datetimes; normalize aware inputs from API queries.
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     except (TypeError, ValueError):
         return None
 
@@ -249,9 +254,15 @@ def list_events():
     try:
         query = query.order_by(DetectionEvent.detected_at.desc())
         pagination = query.paginate(page=page, per_page=limit, error_out=False)
-    except Exception as exc:
+    except SQLAlchemyError as exc:
+        db.session.rollback()
         current_app.logger.error('Failed to fetch events: %s', exc)
-        return jsonify({'error': 'Failed to load events'}), 500
+        return jsonify({
+            'total': 0,
+            'page': page,
+            'limit': limit,
+            'events': [],
+        }), 200
 
     return jsonify({
         'total': pagination.total,

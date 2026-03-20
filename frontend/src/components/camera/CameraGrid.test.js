@@ -248,4 +248,43 @@ describe('CameraGrid stream token auth flow', () => {
 
     expect(await screen.findByAltText('Live feed — Main Pool')).toBeInTheDocument();
   });
+
+  test('rotates stream session when reload token changes', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/cameras') {
+        return Promise.resolve({
+          data: [{ zone_id: 'zone_01', zone_name: 'Main Pool', location_description: 'North side', is_active: true }],
+        });
+      }
+      if (url === '/api/v1/system/status') {
+        return Promise.resolve({
+          data: { detection_engine: { status: 'online' }, camera_status: [{ zone_id: 'zone_01', status: 'online' }] },
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET URL ${url}`));
+    });
+
+    api.post.mockResolvedValue({
+      data: {
+        stream_token: 'stream-short-lived',
+        ttl_seconds: 30,
+        expires_at: new Date(Date.now() + 30000).toISOString(),
+      },
+    });
+
+    const { rerender } = render(<CameraGrid reloadToken="route-a" />);
+
+    const firstImage = await screen.findByAltText('Live feed — Main Pool');
+    const firstSrc = firstImage.getAttribute('src');
+    expect(firstSrc).toContain('session=');
+
+    rerender(<CameraGrid reloadToken="route-b" />);
+
+    await waitFor(() => {
+      const nextImage = screen.getByAltText('Live feed — Main Pool');
+      const nextSrc = nextImage.getAttribute('src');
+      expect(nextSrc).toContain('session=');
+      expect(nextSrc).not.toBe(firstSrc);
+    });
+  });
 });

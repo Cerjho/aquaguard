@@ -27,20 +27,52 @@ function CameraGrid({ reloadToken = 0 }) {
   const [focusedCamera, setFocusedCamera] = useState(null);
   const [zoneEvents, setZoneEvents] = useState([]);
   const [zoneAlerts, setZoneAlerts] = useState([]);
+  const [streamSessionId, setStreamSessionId] = useState(() => Date.now());
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     typeof document === 'undefined' ? true : !document.hidden
   );
   const { cameraStatuses, systemStatus } = useAlerts();
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
+  const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);
+
+  const bumpStreamSession = useCallback(() => {
+    setStreamSessionId(Date.now());
+  }, []);
+
+  useEffect(() => {
+    bumpStreamSession();
+  }, [reloadToken, bumpStreamSession]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsDocumentVisible(!document.hidden);
+      const currentlyHidden = document.hidden;
+      setIsDocumentVisible(!currentlyHidden);
+      if (!currentlyHidden && wasDocumentHiddenRef.current) {
+        bumpStreamSession();
+      }
+      wasDocumentHiddenRef.current = currentlyHidden;
     };
+
+    const handleWindowFocus = () => {
+      setIsDocumentVisible(!document.hidden);
+      bumpStreamSession();
+    };
+
+    const handlePageShow = () => {
+      setIsDocumentVisible(!document.hidden);
+      bumpStreamSession();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [bumpStreamSession]);
 
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -269,8 +301,8 @@ function CameraGrid({ reloadToken = 0 }) {
     if (!focusedCamera?.zone_id) return null;
     const token = streamTokens[focusedCamera.zone_id]?.token;
     if (!token) return null;
-    return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}`;
-  }, [focusedCamera, streamTokens]);
+    return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}&session=${encodeURIComponent(streamSessionId)}`;
+  }, [focusedCamera, streamTokens, streamSessionId]);
 
   useEffect(() => {
     if (!focusedCamera && lastFocusedTriggerRef.current?.focus) {
@@ -350,6 +382,7 @@ function CameraGrid({ reloadToken = 0 }) {
               runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
               detection_engine_status: detectionEngineStatus,
               stream_token: streamTokens[camera.zone_id]?.token || null,
+              stream_session_id: streamSessionId,
             }}
             onStreamAuthFailure={handleStreamAuthFailure}
             onFocus={(selectedCamera) => openFocus(selectedCamera, document.activeElement)}

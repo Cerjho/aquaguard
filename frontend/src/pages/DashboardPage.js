@@ -7,11 +7,14 @@
  */
 
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import CameraGrid from '../components/camera/CameraGrid';
 import DetectionFeed from '../components/events/DetectionFeed';
 import SystemStatus from '../components/system/SystemStatus';
 
 function DashboardPage() {
+  const location = useLocation();
+
   return (
     <div className="flex flex-col gap-6 h-full">
       {/* Page header */}
@@ -26,7 +29,7 @@ function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Camera feeds — takes 2/3 width on xl */}
         <div className="xl:col-span-2 space-y-4">
-          <CameraGrid />
+          <CameraGrid reloadToken={location.key} />
         </div>
 
         {/* Right sidebar — detection feed + system status */}

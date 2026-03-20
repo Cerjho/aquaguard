@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func, case
+from sqlalchemy.exc import SQLAlchemyError
 
 from models import DetectionEvent, CameraZone
 
@@ -13,7 +14,11 @@ def _parse_iso_datetime(raw_value):
     if not raw_value:
         return None
     try:
-        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+        parsed = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+        # DB columns are naive UTC datetimes; normalize aware inputs from API queries.
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     except (TypeError, ValueError):
         return None
 
@@ -35,22 +40,34 @@ def summary():
     if parsed_to:
         query = query.filter(DetectionEvent.detected_at <= parsed_to)
 
-    total_detections = query.count()
-    confirmed_alerts = query.filter_by(alert_triggered=True).count()
-    false_positives_suppressed = total_detections - confirmed_alerts
+    try:
+        total_detections = query.count()
+        confirmed_alerts = query.filter_by(alert_triggered=True).count()
+        false_positives_suppressed = total_detections - confirmed_alerts
 
-    # Keep existing by_zone contract
-    zones = CameraZone.query.all()
-    by_zone = []
-    for zone in zones:
-        zone_detections = query.filter_by(zone_id=zone.zone_id).count()
-        zone_alerts = query.filter_by(zone_id=zone.zone_id, alert_triggered=True).count()
-        by_zone.append({
-            'zone_id': zone.zone_id,
-            'zone_name': zone.zone_name,
-            'detections': zone_detections,
-            'alerts': zone_alerts,
-        })
+        # Keep existing by_zone contract
+        zones = CameraZone.query.all()
+        by_zone = []
+        for zone in zones:
+            zone_detections = query.filter_by(zone_id=zone.zone_id).count()
+            zone_alerts = query.filter_by(zone_id=zone.zone_id, alert_triggered=True).count()
+            by_zone.append({
+                'zone_id': zone.zone_id,
+                'zone_name': zone.zone_name,
+                'detections': zone_detections,
+                'alerts': zone_alerts,
+            })
+    except SQLAlchemyError as exc:
+        current_app.logger.error('Reports summary query failed: %s', exc)
+        response = {
+            'total_detections': 0,
+            'confirmed_alerts': 0,
+            'false_positives_suppressed': 0,
+            'by_zone': [],
+        }
+        if group_by == 'day':
+            response['daily'] = []
+        return jsonify(response), 200
 
     response = {
         'total_detections': total_detections,

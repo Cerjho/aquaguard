@@ -15,6 +15,7 @@ import json
 import time
 from datetime import datetime, timezone
 import cv2
+from dotenv import load_dotenv
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -35,6 +36,7 @@ os.makedirs(_SNAPSHOT_DIR, exist_ok=True)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 _MODEL_PATH = os.path.join(_BASE_DIR, "detection_engine", "models", "aquaguard_yolov11s.pt")
+_BACKEND_ENV_PATH = os.path.join(_BASE_DIR, "backend", ".env")
 
 from config.settings import (
     MQTT_BROKER_HOST,
@@ -46,6 +48,27 @@ from config.settings import (
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _load_api_env_from_backend_env() -> None:
+    """Load backend/.env for local dev without overriding existing shell env."""
+    pre_url = os.environ.get("AQUAGUARD_API_URL")
+    pre_key = os.environ.get("AQUAGUARD_API_KEY")
+
+    if pre_url and pre_key:
+        logger.info("API config source: shell environment (AQUAGUARD_API_URL + AQUAGUARD_API_KEY)")
+        return
+
+    if os.path.exists(_BACKEND_ENV_PATH):
+        load_dotenv(_BACKEND_ENV_PATH, override=False)
+        post_url = os.environ.get("AQUAGUARD_API_URL")
+        post_key = os.environ.get("AQUAGUARD_API_KEY")
+        if (not pre_url and post_url) or (not pre_key and post_key):
+            logger.info("API config source: loaded missing values from %s", _BACKEND_ENV_PATH)
+        else:
+            logger.info("API config source: backend .env checked at %s", _BACKEND_ENV_PATH)
+    else:
+        logger.info("API config source: backend .env not found at %s", _BACKEND_ENV_PATH)
 
 
 def _annotate_live_frame(frame, detections, zone_id: str, frame_timestamp: str):
@@ -170,9 +193,18 @@ def main():
     os.makedirs(_LIVE_DIR, exist_ok=True)
 
     # ── API client and backend camera source of truth ────────────────────────
+    _load_api_env_from_backend_env()
+    api_key = os.environ.get("AQUAGUARD_API_KEY", "").strip()
+    if not api_key:
+        logger.error(
+            "AQUAGUARD_API_KEY is missing. Set it in shell env or backend/.env "
+            "before starting detection_engine.main"
+        )
+        raise RuntimeError("Missing AQUAGUARD_API_KEY for backend internal API authentication")
+
     api_client = APIClient(
         base_url=os.environ.get("AQUAGUARD_API_URL", "http://localhost:5000"),
-        api_key=os.environ.get("AQUAGUARD_API_KEY", ""),
+        api_key=api_key,
     )
     cameras = api_client.fetch_active_cameras()
     if not cameras:

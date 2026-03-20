@@ -1,11 +1,13 @@
 """Tests for live annotated output and heartbeat behavior in detection_engine.main."""
 import json
+import os
 
 import cv2
 import numpy as np
 
 from detection_engine.main import (
     _annotate_live_frame,
+    _load_api_env_from_backend_env,
     _send_zone_heartbeat_if_due,
     _write_live_zone_artifacts,
 )
@@ -76,3 +78,35 @@ def test_send_zone_heartbeat_if_due_respects_interval():
     assert sent_third is True
     assert len(published) == 2
     assert all(item["message_type"] == "heartbeat" for item in published)
+
+
+def test_load_api_env_from_backend_env_loads_missing_values(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "AQUAGUARD_API_URL=http://localhost:5000\nAQUAGUARD_API_KEY=dev-key\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("AQUAGUARD_API_URL", raising=False)
+    monkeypatch.delenv("AQUAGUARD_API_KEY", raising=False)
+    monkeypatch.setattr("detection_engine.main._BACKEND_ENV_PATH", str(env_file))
+
+    _load_api_env_from_backend_env()
+
+    assert os.environ.get("AQUAGUARD_API_URL") == "http://localhost:5000"
+    assert os.environ.get("AQUAGUARD_API_KEY") == "dev-key"
+
+
+def test_load_api_env_from_backend_env_does_not_override_shell_values(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "AQUAGUARD_API_URL=http://from-env-file:5000\nAQUAGUARD_API_KEY=file-key\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AQUAGUARD_API_URL", "http://from-shell:5000")
+    monkeypatch.setenv("AQUAGUARD_API_KEY", "shell-key")
+    monkeypatch.setattr("detection_engine.main._BACKEND_ENV_PATH", str(env_file))
+
+    _load_api_env_from_backend_env()
+
+    assert os.environ.get("AQUAGUARD_API_URL") == "http://from-shell:5000"
+    assert os.environ.get("AQUAGUARD_API_KEY") == "shell-key"

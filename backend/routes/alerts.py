@@ -28,6 +28,15 @@ def _parse_positive_int(raw_value, default_value):
         return default_value
 
 
+def _serialize_alert(alert, confidence_score):
+    payload = alert.to_dict()
+    payload['alerted_at'] = payload.get('triggered_at')
+    payload['confidence_score'] = confidence_score
+    payload['confidence'] = confidence_score
+    payload['final_confidence'] = confidence_score
+    return payload
+
+
 @alerts_bp.route('/alerts', methods=['GET'])
 @jwt_required()
 def list_alerts():
@@ -39,12 +48,15 @@ def list_alerts():
     max_confidence = request.args.get('max_confidence')
     page_raw = request.args.get('page')
     limit_raw = request.args.get('limit')
-    query = Alert.query
+    query = (
+        db.session.query(Alert, DetectionEvent.confidence_score)
+        .outerjoin(DetectionEvent, DetectionEvent.event_id == Alert.event_id)
+    )
 
     if status:
-        query = query.filter_by(status=status)
+        query = query.filter(Alert.status == status)
     if zone_id:
-        query = query.filter_by(zone_id=zone_id)
+        query = query.filter(Alert.zone_id == zone_id)
 
     parsed_from = _parse_iso_datetime(from_dt)
     if parsed_from:
@@ -54,35 +66,34 @@ def list_alerts():
     if parsed_to:
         query = query.filter(Alert.triggered_at <= parsed_to)
 
-    has_confidence_filter = min_confidence is not None or max_confidence is not None
-    if has_confidence_filter:
-        query = query.join(DetectionEvent, DetectionEvent.event_id == Alert.event_id)
-        if min_confidence is not None:
-            try:
-                query = query.filter(DetectionEvent.confidence_score >= float(min_confidence))
-            except (TypeError, ValueError):
-                pass
-        if max_confidence is not None:
-            try:
-                query = query.filter(DetectionEvent.confidence_score <= float(max_confidence))
-            except (TypeError, ValueError):
-                pass
+    if min_confidence is not None:
+        try:
+            query = query.filter(DetectionEvent.confidence_score >= float(min_confidence))
+        except (TypeError, ValueError):
+            pass
+    if max_confidence is not None:
+        try:
+            query = query.filter(DetectionEvent.confidence_score <= float(max_confidence))
+        except (TypeError, ValueError):
+            pass
 
     ordered_query = query.order_by(Alert.triggered_at.desc())
     if page_raw is not None or limit_raw is not None:
         page = _parse_positive_int(page_raw, 1)
         limit = _parse_positive_int(limit_raw, 10)
         total = ordered_query.count()
-        alerts = ordered_query.offset((page - 1) * limit).limit(limit).all()
+        rows = ordered_query.offset((page - 1) * limit).limit(limit).all()
         return jsonify({
-            'alerts': [a.to_dict() for a in alerts],
+            'alerts': [_serialize_alert(alert, confidence) for alert, confidence in rows],
             'total': total,
             'page': page,
             'limit': limit,
         }), 200
 
-    alerts = ordered_query.all()
-    return jsonify([a.to_dict() for a in alerts]), 200
+    rows = ordered_query.all()
+    return jsonify([
+        _serialize_alert(alert, confidence) for alert, confidence in rows
+    ]), 200
 
 
 @alerts_bp.route('/alerts/<alert_id>/acknowledge', methods=['POST'])

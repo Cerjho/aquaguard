@@ -19,6 +19,18 @@ function AlertHistory() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [draftFilters, setDraftFilters] = useState(triageFilters || {});
+
+  useEffect(() => {
+    setDraftFilters(triageFilters || {});
+  }, [triageFilters]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTriageFilters(draftFilters || {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [draftFilters, setTriageFilters]);
 
   const fetchAlerts = useCallback(async (pageNum) => {
     setLoading(true);
@@ -54,13 +66,34 @@ function AlertHistory() {
 
   useEffect(() => {
     fetchAlerts(page);
-  }, [fetchAlerts, page, triageFilters]);
+  }, [fetchAlerts, page]);
 
   useEffect(() => {
     setPage(1);
   }, [triageFilters]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const getAlertTime = (alert) => (
+    alert?.alerted_at || alert?.triggered_at || alert?.timestamp || null
+  );
+
+  const formatAlertTime = (alert) => {
+    const value = getAlertTime(alert);
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return formatDateTime(parsed);
+  };
+
+  const formatConfidence = (alert) => {
+    const raw = alert?.confidence ?? alert?.final_confidence ?? alert?.confidence_score ?? null;
+    if (raw === null || raw === undefined || raw === '') return '—';
+    const value = Number(raw);
+    if (Number.isNaN(value)) return '—';
+    const normalized = value > 1 ? value / 100 : value;
+    return `${(normalized * 100).toFixed(1)}%`;
+  };
 
   const statusBadge = (status) => {
     const base = 'px-2 py-0.5 rounded-full text-xs font-semibold';
@@ -101,15 +134,15 @@ function AlertHistory() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           <input
             aria-label="Filter alerts by zone ID"
-            value={triageFilters?.zone_id || ''}
-            onChange={(e) => setTriageFilters({ zone_id: e.target.value })}
+            value={draftFilters?.zone_id || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, zone_id: e.target.value }))}
             placeholder="Zone ID"
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <select
             aria-label="Filter alerts by status"
-            value={triageFilters?.status || ''}
-            onChange={(e) => setTriageFilters({ status: e.target.value })}
+            value={draftFilters?.status || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, status: e.target.value }))}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           >
             <option value="">All statuses</option>
@@ -122,29 +155,38 @@ function AlertHistory() {
             min="0"
             max="1"
             step="0.01"
-            value={triageFilters?.min_confidence || ''}
-            onChange={(e) => setTriageFilters({ min_confidence: e.target.value })}
+            value={draftFilters?.min_confidence || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, min_confidence: e.target.value }))}
             placeholder="Min confidence"
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <input
             type="datetime-local"
             aria-label="Filter alerts from datetime"
-            value={triageFilters?.from || ''}
-            onChange={(e) => setTriageFilters({ from: e.target.value })}
+            value={draftFilters?.from || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, from: e.target.value }))}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <input
             type="datetime-local"
             aria-label="Filter alerts to datetime"
-            value={triageFilters?.to || ''}
-            onChange={(e) => setTriageFilters({ to: e.target.value })}
+            value={draftFilters?.to || ''}
+            onChange={(e) => setDraftFilters((prev) => ({ ...prev, to: e.target.value }))}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
         </div>
         <div className="mt-2 text-right">
           <button
-            onClick={resetTriageFilters}
+            onClick={() => {
+              resetTriageFilters();
+              setDraftFilters({
+                zone_id: '',
+                status: '',
+                min_confidence: '',
+                from: '',
+                to: '',
+              });
+            }}
             className="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-50"
           >
             Reset filters
@@ -175,19 +217,16 @@ function AlertHistory() {
               </tr>
             ) : (
               alerts.map((alert) => {
-                const confidence = alert.confidence ?? alert.final_confidence ?? null;
                 return (
-                  <tr key={alert.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={alert.id || alert.alert_id || `${alert.zone_id || 'zone'}-${getAlertTime(alert) || 'time'}`} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap text-slate-700">
-                      {formatDateTime(alert.alerted_at)}
+                      {formatAlertTime(alert)}
                     </td>
                     <td className="px-4 py-3 text-slate-800 font-medium">
                       {alert.zone_name || alert.zone_id || '—'}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
-                      {confidence !== null
-                        ? `${(Number(confidence) * 100).toFixed(1)}%`
-                        : '—'}
+                      {formatConfidence(alert)}
                     </td>
                     <td className="px-4 py-3">{statusBadge(alert.status)}</td>
                     <td className="px-4 py-3 text-slate-600">

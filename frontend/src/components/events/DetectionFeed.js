@@ -13,6 +13,7 @@ import { useAlerts } from '../../context/AlertContext';
 const POLL_INTERVAL_MS = 5000;
 const MAX_DISPLAY = 20;
 const STALE_AFTER_MS = 15000;
+const MAX_BACKOFF_MS = 60000;
 
 function mapEventClassLabel(event = {}) {
   return (
@@ -53,6 +54,7 @@ function DetectionFeed() {
   const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
   const [lastPollAt, setLastPollAt] = useState(null);
+  const [failureCount, setFailureCount] = useState(0);
   const intervalRef = useRef(null);
 
   const fetchLatest = useCallback(async () => {
@@ -64,16 +66,48 @@ function DetectionFeed() {
       setPolledEvents(data);
       setLastPollAt(Date.now());
       setError(null);
+      setFailureCount(0);
+      return true;
     } catch (err) {
       setError('Could not fetch detection events.');
+      setFailureCount((prev) => prev + 1);
+      return false;
     }
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const schedule = (delay) => {
+      if (cancelled) return;
+      if (intervalRef.current) clearTimeout(intervalRef.current);
+      intervalRef.current = setTimeout(async () => {
+        if (document.hidden) {
+          schedule(Math.min(POLL_INTERVAL_MS * 2, MAX_BACKOFF_MS));
+          return;
+        }
+        const ok = await fetchLatest();
+        const next = ok
+          ? POLL_INTERVAL_MS
+          : Math.min(POLL_INTERVAL_MS * (2 ** Math.max(1, failureCount)), MAX_BACKOFF_MS);
+        schedule(next);
+      }, delay);
+    };
+
     fetchLatest();
-    intervalRef.current = setInterval(fetchLatest, POLL_INTERVAL_MS);
-    return () => clearInterval(intervalRef.current);
-  }, [fetchLatest]);
+    schedule(POLL_INTERVAL_MS);
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchLatest();
+        schedule(POLL_INTERVAL_MS);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      if (intervalRef.current) clearTimeout(intervalRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [fetchLatest, failureCount]);
 
   const hasRealtimeEvents = detectionEvents.length > 0;
   const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;

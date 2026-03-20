@@ -32,6 +32,7 @@ function IncidentsPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            aria-label={`Open ${tab.label}`}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-150 ${
               activeTab === tab.id
                 ? 'border-sky-600 text-sky-700'

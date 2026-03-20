@@ -72,7 +72,7 @@ function normalizeEsp32Payload(payload) {
   const status = normalizeServiceStatus(
     nested.status ?? nested.state ?? nested.online
   );
-  const lastSeen = nested.last_seen ?? nested.last_heartbeat ?? nested.timestamp ?? null;
+  const lastSeen = nested.last_seen ?? nested.last_heartbeat ?? nested.last_heartbeat_at ?? nested.timestamp ?? null;
   const detail = nested.message ?? nested.detail ?? '';
 
   return { status, lastSeen, detail };

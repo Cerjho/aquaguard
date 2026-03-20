@@ -22,6 +22,7 @@ describe('DetectionFeed mapping resilience', () => {
       detectionEvents: [],
       socketConnected: false,
     });
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
   });
 
   test('maps confidence_score, class_name, and timestamp fallback keys', async () => {
@@ -79,5 +80,21 @@ describe('DetectionFeed mapping resilience', () => {
         params: { limit: 20, page: 1 },
       });
     });
+  });
+
+  test('pauses aggressive polling when tab is hidden', async () => {
+    jest.useFakeTimers();
+    api.get.mockResolvedValue({ data: { events: [] } });
+
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    render(<DetectionFeed />);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledTimes(1);
+    });
+
+    jest.advanceTimersByTime(20000);
+    expect(api.get).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
   });
 });

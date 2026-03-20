@@ -12,6 +12,34 @@ from auth_helpers import role_required
 cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 
 
+def _validate_internal_api_key():
+    expected_key = current_app.config.get('AQUAGUARD_API_KEY')
+    provided_key = request.headers.get('X-API-Key')
+    return bool(expected_key and provided_key and expected_key == provided_key)
+
+
+@cameras_bp.route('/internal/cameras', methods=['GET'])
+def list_internal_cameras():
+    if not _validate_internal_api_key():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    cameras = CameraZone.query.filter_by(is_active=True).all()
+    return jsonify({
+        'cameras': [
+            {
+                'zone_id': camera.zone_id,
+                'rtsp_url': camera.rtsp_url,
+                'frame_rate': camera.frame_rate,
+                'zone_name': camera.zone_name,
+                'location_description': camera.location_description,
+                'resolution': camera.resolution,
+                'is_active': camera.is_active,
+            }
+            for camera in cameras
+        ]
+    }), 200
+
+
 @cameras_bp.route('/cameras', methods=['GET'])
 @jwt_required()
 def list_cameras():
@@ -71,7 +99,9 @@ def update_camera(zone_id):
     if 'is_active' in data and not isinstance(data.get('is_active'), bool):
         return jsonify({'error': 'is_active must be a boolean'}), 400
 
-    for field in ['zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active']:
+    for field in [
+        'zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active'
+    ]:
         if field in data:
             setattr(camera, field, data[field])
 

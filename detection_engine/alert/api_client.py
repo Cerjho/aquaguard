@@ -56,3 +56,46 @@ class APIClient:
             logger.error("API request timed out after %ds", _REQUEST_TIMEOUT_SECONDS)
         except Exception as exc:
             logger.error("Unexpected API error (log_event): %s", exc)
+
+    def fetch_active_cameras(self) -> list[dict]:
+        """Fetch active camera list from backend internal endpoint.
+
+        Returns:
+            List of camera dictionaries from payload shape {"cameras": [...]}.
+
+        Raises:
+            RuntimeError: If backend request fails, returns non-200, or payload
+                shape is malformed.
+        """
+        url = f"{self._base_url}/api/v1/internal/cameras"
+        try:
+            response = self._session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
+        except requests.exceptions.RequestException as exc:
+            logger.error("API fetch_active_cameras request failed: %s", exc)
+            raise RuntimeError("Failed to fetch active cameras from backend") from exc
+
+        if response.status_code != 200:
+            logger.error(
+                "API fetch_active_cameras returned %d: %s",
+                response.status_code,
+                response.text[:200],
+            )
+            raise RuntimeError(
+                f"Backend camera fetch failed with status {response.status_code}"
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            logger.error("API fetch_active_cameras returned non-JSON response")
+            raise RuntimeError("Backend camera fetch returned invalid JSON") from exc
+
+        cameras = payload.get("cameras") if isinstance(payload, dict) else None
+        if not isinstance(cameras, list):
+            logger.error(
+                "API fetch_active_cameras malformed payload: expected {'cameras': [...]} got %r",
+                payload,
+            )
+            raise RuntimeError("Backend camera fetch payload malformed")
+
+        return cameras

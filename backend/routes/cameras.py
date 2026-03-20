@@ -15,7 +15,13 @@ cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 @cameras_bp.route('/cameras', methods=['GET'])
 @jwt_required()
 def list_cameras():
-    cameras = CameraZone.query.filter_by(is_active=True).all()
+    include_inactive = request.args.get('include_inactive', '').strip().lower() in {
+        '1', 'true', 'yes'
+    }
+    query = CameraZone.query
+    if not include_inactive:
+        query = query.filter_by(is_active=True)
+    cameras = query.all()
     return jsonify([c.to_dict() for c in cameras]), 200
 
 
@@ -32,6 +38,9 @@ def create_camera():
     if CameraZone.query.filter_by(zone_id=data['zone_id']).first():
         return jsonify({'error': 'zone_id already exists'}), 409
 
+    if 'is_active' in data and not isinstance(data.get('is_active'), bool):
+        return jsonify({'error': 'is_active must be a boolean'}), 400
+
     camera = CameraZone(
         zone_id              = data['zone_id'],
         zone_name            = data['zone_name'],
@@ -39,6 +48,7 @@ def create_camera():
         location_description = data.get('location_description'),
         frame_rate           = data.get('frame_rate', 30),
         resolution           = data.get('resolution', '1280x720'),
+        is_active            = data.get('is_active', True),
     )
     db.session.add(camera)
     try:
@@ -55,10 +65,13 @@ def create_camera():
 @jwt_required()
 @role_required('admin')
 def update_camera(zone_id):
-    camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
+    camera = CameraZone.query.filter_by(zone_id=zone_id).first_or_404()
     data = request.get_json(silent=True) or {}
 
-    for field in ['zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution']:
+    if 'is_active' in data and not isinstance(data.get('is_active'), bool):
+        return jsonify({'error': 'is_active must be a boolean'}), 400
+
+    for field in ['zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active']:
         if field in data:
             setattr(camera, field, data[field])
 

@@ -15,7 +15,7 @@ import { API_BASE_URL } from '../../utils/constants';
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
 
-function CameraGrid() {
+function CameraGrid({ reloadToken = 0 }) {
   const [cameras, setCameras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,7 +145,7 @@ function CameraGrid() {
   useEffect(() => {
     fetchCameras();
     fetchRuntimeStatus();
-  }, [fetchCameras, fetchRuntimeStatus]);
+  }, [fetchCameras, fetchRuntimeStatus, reloadToken]);
 
   useEffect(() => {
     mintStreamTokensForCameras(cameras);

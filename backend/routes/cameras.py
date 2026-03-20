@@ -99,7 +99,9 @@ def update_camera(zone_id):
     if 'is_active' in data and not isinstance(data.get('is_active'), bool):
         return jsonify({'error': 'is_active must be a boolean'}), 400
 
-    for field in ['zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active']:
+    for field in [
+        'zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active'
+    ]:
         if field in data:
             setattr(camera, field, data[field])
 

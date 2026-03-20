@@ -61,7 +61,7 @@ def test_list_cameras(client, admin_token):
     assert resp.status_code == 200
     assert isinstance(resp.get_json(), list)
 
- 
+
 def test_list_cameras_include_inactive(client, admin_token):
     client.post('/api/v1/cameras', json={
         'zone_id':   'zone_inactive_1',

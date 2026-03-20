@@ -118,6 +118,7 @@ describe('AlertPanel', () => {
     test('returns sensible relative path when api base is missing', () => {
       expect(resolveSnapshotUrl('/snapshots/frame.jpg', '')).toBe('/snapshots/frame.jpg');
       expect(resolveSnapshotUrl('snapshots/frame.jpg', '')).toBe('/snapshots/frame.jpg');
+      expect(resolveSnapshotUrl('snapshots/frame.jpg', '   ')).toBe('/snapshots/frame.jpg');
     });
   });
 });

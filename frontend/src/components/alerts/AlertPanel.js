@@ -21,12 +21,13 @@ export function resolveSnapshotUrl(snapshotPath, apiBaseUrl = API_BASE_URL) {
     return rawPath;
   }
 
+  const normalizedBase = typeof apiBaseUrl === 'string' ? apiBaseUrl.trim().replace(/\/+$/, '') : '';
+
   // If API base is missing, keep a sensible app-relative URL.
-  if (!apiBaseUrl) {
+  if (!normalizedBase) {
     return rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
   }
 
-  const normalizedBase = String(apiBaseUrl).replace(/\/+$/, '');
   const normalizedPath = rawPath.replace(/^\/+/, '');
   return `${normalizedBase}/${normalizedPath}`;
 }

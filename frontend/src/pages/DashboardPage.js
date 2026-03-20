@@ -6,12 +6,15 @@
  * - DetectionFeed + SystemStatus (right sidebar)
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import CameraGrid from '../components/camera/CameraGrid';
+import CameraManagementPanel from '../components/camera/CameraManagementPanel';
 import DetectionFeed from '../components/events/DetectionFeed';
 import SystemStatus from '../components/system/SystemStatus';
 
 function DashboardPage() {
+  const [cameraReloadToken, setCameraReloadToken] = useState(0);
+
   return (
     <div className="flex flex-col gap-6 h-full">
       {/* Page header */}
@@ -25,8 +28,11 @@ function DashboardPage() {
       {/* Main grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Camera feeds — takes 2/3 width on xl */}
-        <div className="xl:col-span-2">
-          <CameraGrid />
+        <div className="xl:col-span-2 space-y-4">
+          <CameraGrid reloadToken={cameraReloadToken} />
+          <CameraManagementPanel
+            onCamerasChanged={() => setCameraReloadToken((prev) => prev + 1)}
+          />
         </div>
 
         {/* Right sidebar — detection feed + system status */}

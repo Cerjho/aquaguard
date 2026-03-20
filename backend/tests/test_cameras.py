@@ -14,6 +14,29 @@ def test_list_cameras(client, admin_token):
     assert resp.status_code == 200
     assert isinstance(resp.get_json(), list)
 
+ 
+def test_list_cameras_include_inactive(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_inactive_1',
+        'zone_name': 'Inactive Zone',
+        'rtsp_url':  'rtsp://localhost/inactive1',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    client.delete('/api/v1/cameras/zone_inactive_1',
+                  headers={'Authorization': f'Bearer {admin_token}'})
+
+    default_list = client.get('/api/v1/cameras',
+                              headers={'Authorization': f'Bearer {admin_token}'})
+    assert default_list.status_code == 200
+    assert 'zone_inactive_1' not in [c['zone_id'] for c in default_list.get_json()]
+
+    include_all = client.get('/api/v1/cameras?include_inactive=true',
+                             headers={'Authorization': f'Bearer {admin_token}'})
+    assert include_all.status_code == 200
+    rows = include_all.get_json()
+    match = next((c for c in rows if c['zone_id'] == 'zone_inactive_1'), None)
+    assert match is not None
+    assert match['is_active'] is False
+
 
 def test_create_camera_admin(client, admin_token):
     resp = client.post('/api/v1/cameras', json={
@@ -55,6 +78,48 @@ def test_update_camera(client, admin_token):
     }, headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
     assert resp.get_json()['zone_name'] == 'New Name'
+
+
+def test_update_camera_can_toggle_is_active(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id': 'zone_toggle', 'zone_name': 'Toggle', 'rtsp_url': 'rtsp://toggle'
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    resp = client.put('/api/v1/cameras/zone_toggle', json={
+        'is_active': False
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    assert resp.status_code == 200
+    assert resp.get_json()['is_active'] is False
+
+    include_all = client.get('/api/v1/cameras?include_inactive=1',
+                             headers={'Authorization': f'Bearer {admin_token}'})
+    assert include_all.status_code == 200
+    match = next((c for c in include_all.get_json() if c['zone_id'] == 'zone_toggle'), None)
+    assert match is not None
+    assert match['is_active'] is False
+
+
+def test_update_camera_rejects_invalid_is_active_type(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id': 'zone_bad_toggle', 'zone_name': 'Bad Toggle', 'rtsp_url': 'rtsp://bad-toggle'
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    resp = client.put('/api/v1/cameras/zone_bad_toggle', json={
+        'is_active': 'false'
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    assert resp.status_code == 400
+    assert 'is_active must be a boolean' in resp.get_json()['error']
+
+
+def test_create_camera_rejects_invalid_is_active_type(client, admin_token):
+    resp = client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_bad_create',
+        'zone_name': 'Bad Create',
+        'rtsp_url':  'rtsp://localhost/bad-create',
+        'is_active': 'true',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    assert resp.status_code == 400
+    assert 'is_active must be a boolean' in resp.get_json()['error']
 
 
 def test_delete_camera(client, admin_token):

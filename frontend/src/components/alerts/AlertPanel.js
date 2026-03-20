@@ -12,6 +12,25 @@ import { useAlerts } from '../../context/AlertContext';
 import { API_BASE_URL } from '../../utils/constants';
 import { formatDateTime } from '../../utils/dateFormat';
 
+export function resolveSnapshotUrl(snapshotPath, apiBaseUrl = API_BASE_URL) {
+  const rawPath = typeof snapshotPath === 'string' ? snapshotPath.trim() : '';
+  if (!rawPath) return null;
+
+  // Already absolute URL (http/https) — use as-is.
+  if (/^https?:\/\//i.test(rawPath)) {
+    return rawPath;
+  }
+
+  // If API base is missing, keep a sensible app-relative URL.
+  if (!apiBaseUrl) {
+    return rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+  }
+
+  const normalizedBase = String(apiBaseUrl).replace(/\/+$/, '');
+  const normalizedPath = rawPath.replace(/^\/+/, '');
+  return `${normalizedBase}/${normalizedPath}`;
+}
+
 function AlertPanel() {
   const {
     activeAlert,
@@ -61,9 +80,7 @@ function AlertPanel() {
   const confidencePercent =
     confidence !== null ? `${(Number(confidence) * 100).toFixed(1)}%` : '—';
 
-  const snapshotUrl = activeAlert?.frame_snapshot_path
-    ? `${API_BASE_URL}/${activeAlert?.frame_snapshot_path}`
-    : null;
+  const snapshotUrl = resolveSnapshotUrl(activeAlert?.frame_snapshot_path);
 
   const activeAlertId = activeAlert?.alert_id || activeAlert?.id;
   const isAcknowledging = activeAlertId && acknowledgingAlertId === String(activeAlertId);

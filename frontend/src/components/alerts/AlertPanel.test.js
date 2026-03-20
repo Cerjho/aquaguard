@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import AlertPanel from './AlertPanel';
+import AlertPanel, { resolveSnapshotUrl } from './AlertPanel';
 import * as AlertContext from '../../context/AlertContext';
 
 // Prevent axios ESM import errors from transitive deps
@@ -96,5 +96,28 @@ describe('AlertPanel', () => {
       acknowledgeError: 'Acknowledge failed.',
     });
     expect(screen.getByText('Acknowledge failed.')).toBeInTheDocument();
+  });
+
+  describe('resolveSnapshotUrl', () => {
+    test('returns absolute http/https snapshot path as-is', () => {
+      expect(
+        resolveSnapshotUrl('https://cdn.example.com/snapshots/frame.jpg', 'http://api.example.com')
+      ).toBe('https://cdn.example.com/snapshots/frame.jpg');
+      expect(
+        resolveSnapshotUrl('http://cdn.example.com/snapshots/frame.jpg', 'http://api.example.com')
+      ).toBe('http://cdn.example.com/snapshots/frame.jpg');
+    });
+
+    test('joins relative path with api base without duplicate slashes', () => {
+      expect(resolveSnapshotUrl('/snapshots/frame.jpg', 'http://api.example.com/'))
+        .toBe('http://api.example.com/snapshots/frame.jpg');
+      expect(resolveSnapshotUrl('snapshots/frame.jpg', 'http://api.example.com///'))
+        .toBe('http://api.example.com/snapshots/frame.jpg');
+    });
+
+    test('returns sensible relative path when api base is missing', () => {
+      expect(resolveSnapshotUrl('/snapshots/frame.jpg', '')).toBe('/snapshots/frame.jpg');
+      expect(resolveSnapshotUrl('snapshots/frame.jpg', '')).toBe('/snapshots/frame.jpg');
+    });
   });
 });

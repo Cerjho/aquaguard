@@ -77,4 +77,21 @@ describe('SystemStatus', () => {
     expect(screen.getByText(/Freshness: 15s/)).toBeInTheDocument();
     expect(screen.getByText('Warning')).toBeInTheDocument();
   });
+
+  test('uses esp32 last_heartbeat_at field for heartbeat detail', async () => {
+    useAlerts.mockReturnValue({
+      socketConnected: true,
+      cameraStatuses: {},
+      systemStatus: {
+        esp32: {
+          status: 'online',
+          last_heartbeat_at: new Date().toISOString(),
+          message: '',
+        },
+      },
+    });
+
+    render(<SystemStatus />);
+    expect(await screen.findByText(/Last heartbeat:/i)).toBeInTheDocument();
+  });
 });

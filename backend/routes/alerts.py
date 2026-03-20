@@ -20,6 +20,14 @@ def _parse_iso_datetime(raw_value):
         return None
 
 
+def _parse_positive_int(raw_value, default_value):
+    try:
+        parsed = int(raw_value)
+        return parsed if parsed > 0 else default_value
+    except (TypeError, ValueError):
+        return default_value
+
+
 @alerts_bp.route('/alerts', methods=['GET'])
 @jwt_required()
 def list_alerts():
@@ -29,7 +37,9 @@ def list_alerts():
     to_dt = request.args.get('to')
     min_confidence = request.args.get('min_confidence')
     max_confidence = request.args.get('max_confidence')
-    query  = Alert.query
+    page_raw = request.args.get('page')
+    limit_raw = request.args.get('limit')
+    query = Alert.query
 
     if status:
         query = query.filter_by(status=status)
@@ -58,7 +68,20 @@ def list_alerts():
             except (TypeError, ValueError):
                 pass
 
-    alerts = query.order_by(Alert.triggered_at.desc()).all()
+    ordered_query = query.order_by(Alert.triggered_at.desc())
+    if page_raw is not None or limit_raw is not None:
+        page = _parse_positive_int(page_raw, 1)
+        limit = _parse_positive_int(limit_raw, 10)
+        total = ordered_query.count()
+        alerts = ordered_query.offset((page - 1) * limit).limit(limit).all()
+        return jsonify({
+            'alerts': [a.to_dict() for a in alerts],
+            'total': total,
+            'page': page,
+            'limit': limit,
+        }), 200
+
+    alerts = ordered_query.all()
     return jsonify([a.to_dict() for a in alerts]), 200
 
 

@@ -16,8 +16,15 @@ import AlertBadge from '../alerts/AlertBadge';
 
 function TopBar() {
   const { currentUser, logout } = useAuth();
-  const { unacknowledgedCount } = useAlerts();
+  const { unacknowledgedCount, socketConnected, systemStatus, apiStatus } = useAlerts();
   const navigate = useNavigate();
+  const detectionFreshness = systemStatus?.subsystems?.detection_engine?.freshness_seconds;
+  const detectionThreshold = systemStatus?.subsystems?.detection_engine?.stale_threshold_seconds;
+  const detectionStale = (
+    typeof detectionFreshness === 'number'
+    && typeof detectionThreshold === 'number'
+    && detectionFreshness > detectionThreshold
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -25,7 +32,23 @@ function TopBar() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
+    <header className="bg-white border-b border-slate-200 shrink-0 shadow-sm">
+      <div
+        className="px-6 py-1.5 text-xs border-b border-slate-100 flex flex-wrap items-center gap-3"
+        role="status"
+        aria-live="polite"
+      >
+        <span className={`font-semibold ${apiStatus?.connected ? 'text-green-700' : 'text-red-700'}`}>
+          API: {apiStatus?.connected ? 'Online' : 'Offline'}
+        </span>
+        <span className={`font-semibold ${socketConnected ? 'text-green-700' : 'text-amber-700'}`}>
+          Socket: {socketConnected ? 'Connected' : 'Disconnected'}
+        </span>
+        <span className={`font-semibold ${detectionStale ? 'text-amber-700' : 'text-green-700'}`}>
+          Detection freshness: {typeof detectionFreshness === 'number' ? `${detectionFreshness}s` : 'unknown'}
+        </span>
+      </div>
+      <div className="h-14 flex items-center justify-between px-6">
       {/* Left: title */}
       <div className="flex items-center gap-2">
         <h1 className="text-lg font-semibold text-slate-700">
@@ -63,6 +86,7 @@ function TopBar() {
         {/* Logout button */}
         <button
           onClick={handleLogout}
+          aria-label="Logout"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-150"
           title="Sign out"
         >
@@ -81,6 +105,7 @@ function TopBar() {
           </svg>
           Logout
         </button>
+      </div>
       </div>
     </header>
   );

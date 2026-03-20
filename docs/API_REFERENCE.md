@@ -412,14 +412,30 @@ Notes:
 
 ### GET /cameras/{zone_id}/stream
 
-- Auth required: Optional
-- Role required: Any (if token provided)
+- Auth required: No JWT header required
+- Role required: Stream token holder
 
 Request body:
 
 - None
 
 Responses:
+
+- `401 Unauthorized`
+
+```json
+{
+  "error": "stream token is required"
+}
+```
+
+- `401 Unauthorized`
+
+```json
+{
+  "error": "Stream token expired"
+}
+```
 
 - `200 OK` (`multipart/x-mixed-replace; boundary=frame`)
 
@@ -442,7 +458,58 @@ Content-Type: image/jpeg
 
 Notes:
 
-- Streams MJPEG frames generated from RTSP or integer webcam source.
+- Streams MJPEG frames generated from latest zone snapshot (`backend/snapshots/live/{zone_id}_latest.jpg`).
+- Requires short-lived query token: `GET /api/v1/cameras/{zone_id}/stream?token=<stream_token>`.
+- Recommended flow:
+  1. `POST /api/v1/cameras/{zone_id}/stream-token` with JWT
+  2. Consume stream with returned token until expiry
+  3. Refresh token before expiry
+
+---
+
+### POST /cameras/{zone_id}/stream-token
+
+- Auth required: Yes
+- Role required: Any authenticated role
+
+Request body:
+
+- None
+
+Responses:
+
+- `200 OK`
+
+```json
+{
+  "zone_id": "zone_01",
+  "stream_token": "<signed-token>",
+  "ttl_seconds": 30,
+  "expires_at": "2026-03-20T10:42:33.512000+00:00",
+  "expires_in_seconds": 30
+}
+```
+
+- `401 Unauthorized`
+
+```json
+{
+  "msg": "Missing Authorization Header"
+}
+```
+
+- `404 Not Found`
+
+```json
+{
+  "error": "Camera zone not found"
+}
+```
+
+Notes:
+
+- Token is zone-scoped and time-limited (`STREAM_TOKEN_TTL_SECONDS`, default 30s).
+- Stream endpoint validates token signature, age, and zone match.
 
 ---
 
@@ -599,6 +666,11 @@ Notes:
 Query params:
 
 - `status` (optional, example `unacknowledged`)
+- `zone_id` (optional)
+- `from` (optional ISO datetime)
+- `to` (optional ISO datetime)
+- `min_confidence` (optional float, joined against `DetectionEvent.confidence_score`)
+- `max_confidence` (optional float, joined against `DetectionEvent.confidence_score`)
 
 Responses:
 
@@ -631,6 +703,7 @@ Responses:
 Notes:
 
 - Results are ordered by newest `triggered_at` first.
+- Confidence/date triage filters are supported for history workflows.
 
 ---
 
@@ -807,6 +880,15 @@ Notes:
 
 - WebSocket `connect` handler accepts optional JWT token in handshake auth.
 - Invalid token causes connection rejection.
+- Current implementation emits `system_status` + `camera_status` immediately to newly connected clients.
+- Frontend consumes `system_status` for detection engine/ESP32 health and falls back to polling `GET /api/v1/system/status` when socket is disconnected.
+
+---
+
+## Known Gaps from Latest Review
+
+- **Alert history contract mismatch:** some frontend history views still read `alerted_at`/generic confidence aliases, while backend alert payloads expose `triggered_at` and confidence is sourced from `DetectionEvent.confidence_score`.
+- **WebSocket anonymous connect:** `backend/sockets.py` currently permits connect without token; only invalid provided tokens are rejected.
 
 ---
 

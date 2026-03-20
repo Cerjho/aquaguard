@@ -126,12 +126,14 @@ function IncidentHistory() {
       <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           <input
+            aria-label="Filter incidents by zone ID"
             value={triageFilters?.zone_id || ''}
             onChange={(e) => setTriageFilters({ zone_id: e.target.value })}
             placeholder="Zone ID"
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <select
+            aria-label="Filter incidents by status"
             value={triageFilters?.status || ''}
             onChange={(e) => setTriageFilters({ status: e.target.value })}
             className="px-3 py-2 text-sm rounded border border-slate-300"
@@ -144,6 +146,7 @@ function IncidentHistory() {
           </select>
           <input
             type="number"
+            aria-label="Filter incidents by minimum confidence"
             min="0"
             max="1"
             step="0.01"
@@ -154,12 +157,14 @@ function IncidentHistory() {
           />
           <input
             type="datetime-local"
+            aria-label="Filter incidents from datetime"
             value={triageFilters?.from || ''}
             onChange={(e) => setTriageFilters({ from: e.target.value })}
             className="px-3 py-2 text-sm rounded border border-slate-300"
           />
           <input
             type="datetime-local"
+            aria-label="Filter incidents to datetime"
             value={triageFilters?.to || ''}
             onChange={(e) => setTriageFilters({ to: e.target.value })}
             className="px-3 py-2 text-sm rounded border border-slate-300"

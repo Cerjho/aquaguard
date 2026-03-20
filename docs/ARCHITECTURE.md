@@ -76,7 +76,9 @@ AlertEngine (3 parallel daemon threads)
 ### React Dashboard
 
 - Receives `alert_event`, `camera_status`, `system_status` via Socket.IO.
-- Displays live incidents and history.
+- Uses stream-token flow for camera feeds (`POST /stream-token` -> `GET /stream?token=...`) with periodic token refresh.
+- Supports camera focus mode for zone-level triage (expanded live view + recent events/alerts).
+- Displays live incidents/history with filter-driven triage interactions.
 - Acknowledges alerts through REST endpoint.
 
 ### ESP32 Alarm Node
@@ -259,6 +261,7 @@ Connection model:
 
 - Client connects with `io(WS_URL, { auth: { token } })`
 - Backend validates token during handshake when provided
+- Backend also emits initial `system_status` and `camera_status` snapshot to the connecting session for immediate UI hydration
 
 ## 9. Key Design Decisions
 
@@ -279,6 +282,7 @@ Connection model:
 - Matches current Flask application model and deployment style.
 - Avoids event loop incompatibilities in this stack.
 - Ensures stable real-time event push with existing backend setup.
+- Keeps compatibility with current dashboard strategy that combines socket-first updates plus REST polling fallback for status continuity.
 
 ### Why rolling confidence filter
 
@@ -314,3 +318,8 @@ Pipeline latency profile (design budget view):
 - Alert dispatch and backend persistence: typically sub-second on local LAN
 
 The dominant contribution to total end-to-end alert time is temporal confirmation across the rolling detection window, which is intentional to suppress false positives while staying under the 3-second safety target.
+
+## 11. Known Gaps from Latest Review
+
+- **Alert history contract mismatch:** frontend alert history still carries compatibility mapping for `alerted_at` and generic confidence aliases, while backend canonical fields are `triggered_at` (alert timestamp) and `DetectionEvent.confidence_score` (confidence source).
+- **WebSocket anonymous connect currently allowed:** `backend/sockets.py` accepts socket connections with no token and only rejects explicitly invalid provided tokens.

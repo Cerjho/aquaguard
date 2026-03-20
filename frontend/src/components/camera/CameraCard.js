@@ -7,10 +7,10 @@
  * - Green/red status indicator based on camera.is_active
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import { API_BASE_URL } from '../../utils/constants';
 
-function CameraCard({ camera, onStreamAuthFailure }) {
+function CameraCard({ camera, onStreamAuthFailure, onFocus }) {
   const [imgError, setImgError] = useState(false);
   const streamToken = camera.stream_token || null;
   const streamUrl = streamToken
@@ -45,7 +45,10 @@ function CameraCard({ camera, onStreamAuthFailure }) {
     : 'Stream unavailable';
 
   return (
-    <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col">
+    <article
+      className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col"
+      aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
+    >
       {/* Stream area */}
       <div className="relative w-full bg-slate-900 aspect-video overflow-hidden">
         {showStream ? (
@@ -121,9 +124,23 @@ function CameraCard({ camera, onStreamAuthFailure }) {
             title={isActive ? 'Camera active' : 'Camera inactive'}
           />
         </div>
+        <button
+          type="button"
+          onClick={() => onFocus?.(camera)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onFocus?.(camera);
+            }
+          }}
+          className="mt-3 w-full rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-2 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          aria-label={`Focus camera ${camera.zone_name || camera.zone_id}`}
+        >
+          Focus view
+        </button>
       </div>
-    </div>
+    </article>
   );
 }
 
-export default CameraCard;
+export default memo(CameraCard);

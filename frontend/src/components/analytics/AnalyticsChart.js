@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -22,8 +23,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import api from '../../hooks/useApi';
+import { useAlerts } from '../../context/AlertContext';
 
 function AnalyticsChart() {
+  const navigate = useNavigate();
+  const { setTriageFilters } = useAlerts();
   const [rangeDays, setRangeDays] = useState('7');
   const [groupBy, setGroupBy] = useState('zone');
   const [zoneData, setZoneData] = useState([]);
@@ -51,6 +55,7 @@ function AnalyticsChart() {
 
       setZoneData(
         zones.map((z) => ({
+          zoneId: z.zone_id || z.zone_name || 'Unknown',
           zone: z.zone_name || z.zone_id || 'Unknown',
           alerts: z.alert_count ?? z.alerts ?? 0,
           detections: z.event_count ?? z.detections ?? 0,
@@ -88,6 +93,20 @@ function AnalyticsChart() {
   useEffect(() => {
     fetchSummary();
   }, [fetchSummary]);
+
+  const handleZoneDrilldown = useCallback((entry) => {
+    if (!entry?.zoneId) return;
+    setTriageFilters({ zone_id: entry.zoneId });
+    navigate('/incidents');
+  }, [navigate, setTriageFilters]);
+
+  const handleTimeDrilldown = useCallback((entry) => {
+    if (!entry?.date) return;
+    const from = new Date(`${entry.date}T00:00:00Z`).toISOString().slice(0, 16);
+    const to = new Date(`${entry.date}T23:59:59Z`).toISOString().slice(0, 16);
+    setTriageFilters({ from, to });
+    navigate('/incidents');
+  }, [navigate, setTriageFilters]);
 
   if (loading) {
     return (
@@ -154,10 +173,11 @@ function AnalyticsChart() {
           <p className="text-slate-400 text-sm text-center py-8">No zone data available.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              data={zoneData}
-              margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-            >
+              <BarChart
+                data={zoneData}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                onClick={(state) => handleZoneDrilldown(state?.activePayload?.[0]?.payload)}
+              >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="zone"
@@ -195,10 +215,11 @@ function AnalyticsChart() {
           <p className="text-slate-400 text-sm text-center py-8">No time-series data available.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart
-              data={timeData}
-              margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-            >
+              <LineChart
+                data={timeData}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                onClick={(state) => handleTimeDrilldown(state?.activePayload?.[0]?.payload)}
+              >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="date"

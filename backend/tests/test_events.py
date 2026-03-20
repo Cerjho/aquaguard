@@ -24,6 +24,35 @@ def test_create_event(client):
     assert 'event_id' in data
 
 
+def test_create_event_preserves_client_event_id(client):
+    event_id = '4d7c32d8-0ac7-4bcf-a7b2-8ae95876c5d5'
+    resp = client.post('/api/v1/events', json=_event_payload(event_id=event_id))
+    assert resp.status_code == 201
+    assert resp.get_json()['event_id'] == event_id
+
+
+def test_create_event_rejects_invalid_event_id(client):
+    resp = client.post('/api/v1/events', json=_event_payload(event_id='not-a-uuid'))
+    assert resp.status_code == 400
+    assert resp.get_json()['error'] == 'event_id must be a valid UUID'
+
+
+def test_create_event_persists_detection_metadata_fields(client):
+    payload = _event_payload(
+        class_label='drowning',
+        yolo_confidence=0.91,
+        pose_confidence=0.73,
+        final_confidence=0.88,
+    )
+    resp = client.post('/api/v1/events', json=payload)
+    assert resp.status_code == 201
+    data = resp.get_json()
+    assert data['class_label'] == 'drowning'
+    assert data['yolo_confidence'] == 0.91
+    assert data['pose_confidence'] == 0.73
+    assert data['final_confidence'] == 0.88
+
+
 def test_create_event_missing_field(client):
     payload = _event_payload()
     del payload['zone_id']

@@ -62,6 +62,10 @@ class DetectionEvent(db.Model):
     event_id         = db.Column(db.String(36), unique=True, nullable=False)
     zone_id          = db.Column(db.String(50), nullable=False, index=True)
     track_id         = db.Column(db.Integer)
+    class_label      = db.Column(db.String(50))
+    yolo_confidence  = db.Column(db.Float)
+    pose_confidence  = db.Column(db.Float)
+    final_confidence = db.Column(db.Float)
     confidence_score = db.Column(db.Float)
     behavior_flags   = db.Column(db.JSON)
     alert_triggered  = db.Column(db.Boolean, default=False, index=True)
@@ -78,6 +82,10 @@ class DetectionEvent(db.Model):
             'event_id':         self.event_id,
             'zone_id':          self.zone_id,
             'track_id':         self.track_id,
+            'class_label':      self.class_label,
+            'yolo_confidence':  self.yolo_confidence,
+            'pose_confidence':  self.pose_confidence,
+            'final_confidence': self.final_confidence,
             'confidence_score': self.confidence_score,
             'behavior_flags':   self.behavior_flags,
             'alert_triggered':  self.alert_triggered,

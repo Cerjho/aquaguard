@@ -57,6 +57,10 @@ class BehaviorAnalyzer:
         Returns:
             Final drowning score in [0.0, 1.0].
         """
+        if not isinstance(landmarks, list) or len(landmarks) < 33:
+            logger.warning("Invalid landmarks for track %s; returning 0.0", track_id)
+            return 0.0
+
         # ── Indicator evaluation ──────────────────────────────────────────────
         vertical = self._is_vertical_orientation(landmarks)
         arms_up = self._are_arms_elevated(landmarks)

@@ -60,6 +60,21 @@ def test_create_event_missing_field(client):
     assert resp.status_code == 400
 
 
+def test_create_event_preserves_incoming_event_id(client):
+    event_id = '11111111-2222-3333-4444-555555555555'
+    resp = client.post('/api/v1/events', json=_event_payload(event_id=event_id))
+    assert resp.status_code == 201
+    data = resp.get_json()
+    assert data['event_id'] == event_id
+
+
+def test_create_event_rejects_invalid_event_id(client):
+    resp = client.post('/api/v1/events', json=_event_payload(event_id='not-a-uuid'))
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert data['error'] == 'event_id must be a valid UUID'
+
+
 def test_create_event_with_alert(client):
     resp = client.post('/api/v1/events', json=_event_payload(alert_triggered=True))
     assert resp.status_code == 201
@@ -197,3 +212,19 @@ def test_snapshot_write_uses_atomic_replace(client, monkeypatch):
     assert replaced.get('src')
     assert replaced.get('dst')
     assert replaced['dst'].endswith('.jpg')
+
+
+def test_create_event_persists_detection_metadata(client):
+    payload = _event_payload(
+        class_label='drowning',
+        yolo_confidence=0.91,
+        pose_confidence=0.72,
+        final_confidence=0.88,
+    )
+    resp = client.post('/api/v1/events', json=payload)
+    assert resp.status_code == 201
+    data = resp.get_json()
+    assert data['class_label'] == 'drowning'
+    assert data['yolo_confidence'] == 0.91
+    assert data['pose_confidence'] == 0.72
+    assert data['final_confidence'] == 0.88

@@ -30,6 +30,19 @@ class CameraRegistry:
             self.cameras[zone_id] = CameraCapture(zone_id, rtsp_url, frame_rate)
             logger.info("Registered camera zone: %s → %s", zone_id, rtsp_url)
 
+    def load_from_backend(self, cameras: list[dict]) -> None:
+        """Load cameras from backend payload list.
+
+        Args:
+            cameras: List of camera dictionaries.
+        """
+        for entry in cameras:
+            zone_id = entry["zone_id"]
+            rtsp_url = entry["rtsp_url"]
+            frame_rate = entry.get("frame_rate", 30)
+            self.cameras[zone_id] = CameraCapture(zone_id, rtsp_url, frame_rate)
+            logger.info("Registered backend camera zone: %s → %s", zone_id, rtsp_url)
+
     def get(self, zone_id: str) -> CameraCapture:
         """Return the CameraCapture for a zone (O(1) dict lookup).
 

@@ -8,13 +8,60 @@ def test_list_cameras_requires_auth(client):
     assert resp.status_code == 401
 
 
+def test_internal_list_cameras_requires_api_key(client):
+    resp = client.get('/api/v1/internal/cameras')
+    assert resp.status_code == 401
+    assert resp.get_json()['error'] == 'Unauthorized'
+
+
+def test_internal_list_cameras_with_valid_api_key(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_internal_active',
+        'zone_name': 'Internal Active',
+        'rtsp_url':  'rtsp://localhost/internal-active',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    resp = client.get(
+        '/api/v1/internal/cameras',
+        headers={'X-API-Key': 'test-internal-api-key'}
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'cameras' in data
+    assert isinstance(data['cameras'], list)
+    camera = next((c for c in data['cameras'] if c['zone_id'] == 'zone_internal_active'), None)
+    assert camera is not None
+    assert camera['rtsp_url'] == 'rtsp://localhost/internal-active'
+    assert 'frame_rate' in camera
+
+
+def test_internal_list_cameras_excludes_inactive(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id':   'zone_internal_inactive',
+        'zone_name': 'Internal Inactive',
+        'rtsp_url':  'rtsp://localhost/internal-inactive',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    client.delete(
+        '/api/v1/cameras/zone_internal_inactive',
+        headers={'Authorization': f'Bearer {admin_token}'}
+    )
+
+    resp = client.get(
+        '/api/v1/internal/cameras',
+        headers={'X-API-Key': 'test-internal-api-key'}
+    )
+    assert resp.status_code == 200
+    zone_ids = [c['zone_id'] for c in resp.get_json()['cameras']]
+    assert 'zone_internal_inactive' not in zone_ids
+
+
 def test_list_cameras(client, admin_token):
     resp = client.get('/api/v1/cameras',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
     assert isinstance(resp.get_json(), list)
 
- 
+
 def test_list_cameras_include_inactive(client, admin_token):
     client.post('/api/v1/cameras', json={
         'zone_id':   'zone_inactive_1',

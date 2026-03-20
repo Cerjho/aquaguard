@@ -21,6 +21,7 @@ def create_app():
 
     app.config['SECRET_KEY'] = secret_key
     app.config['JWT_SECRET_KEY'] = jwt_secret_key
+    app.config['AQUAGUARD_API_KEY'] = os.environ.get('AQUAGUARD_API_KEY')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=60)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(

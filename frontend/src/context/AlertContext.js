@@ -24,6 +24,7 @@ const AlertContext = createContext(null);
 const MAX_DETECTION_EVENTS = 50;
 const STATUS_POLL_BASE_INTERVAL_MS = 15000;
 const STATUS_POLL_MAX_INTERVAL_MS = 120000;
+const STATUS_POLL_HIDDEN_INTERVAL_MS = 60000;
 const DETECTION_EVENT_BATCH_MS = 250;
 
 const DEFAULT_TRIAGE_FILTERS = {
@@ -299,7 +300,7 @@ export function AlertProvider({ children }) {
       if (statusPollTimerRef.current) clearTimeout(statusPollTimerRef.current);
       statusPollTimerRef.current = setTimeout(async () => {
         if (document.hidden) {
-          scheduleNextPoll(Math.min(STATUS_POLL_MAX_INTERVAL_MS, STATUS_POLL_BASE_INTERVAL_MS * 2));
+          scheduleNextPoll(Math.min(STATUS_POLL_MAX_INTERVAL_MS, STATUS_POLL_HIDDEN_INTERVAL_MS));
           return;
         }
         await refreshSystemStatus();

@@ -1,5 +1,6 @@
 """YOLOv11s drowning detector — one instance per camera zone."""
 import logging
+import time
 from typing import List
 
 import numpy as np
@@ -33,6 +34,7 @@ class DrowningDetector:
             model_path: Path to .pt weights file.
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self._cuda_oom_cooldown_until = 0.0
         logger.info("Loading YOLOv11s from %s on device=%s", model_path, self.device)
         self.model = YOLO(model_path)
         # Warm up to ensure device is assigned
@@ -47,17 +49,24 @@ class DrowningDetector:
         Returns:
             List of Detection objects; empty list on failure.
         """
+        run_device = self.device
+        now = time.monotonic()
+        cooldown_until = getattr(self, "_cuda_oom_cooldown_until", 0.0)
+        if self.device == "cuda" and now < cooldown_until:
+            run_device = "cpu"
+
         try:
             results = self.model.track(
                 frame,
                 persist=True,
                 conf=0.4,
-                device=self.device,
+                device=run_device,
                 verbose=False,
             )
         except RuntimeError as exc:
             if "out of memory" in str(exc).lower():
                 logger.error("CUDA OOM — falling back to CPU for this frame: %s", exc)
+                self._handle_cuda_oom()
                 try:
                     results = self.model.track(
                         frame,
@@ -99,3 +108,18 @@ class DrowningDetector:
                     )
                 )
         return detections
+
+    def _handle_cuda_oom(self) -> None:
+        """Best-effort CUDA cleanup and temporary cooldown after OOM."""
+        if not torch.cuda.is_available():
+            return
+        try:
+            torch.cuda.empty_cache()
+        except Exception as exc:
+            logger.debug("torch.cuda.empty_cache failed: %s", exc)
+        try:
+            torch.cuda.synchronize()
+        except Exception as exc:
+            logger.debug("torch.cuda.synchronize failed: %s", exc)
+        # Prevent immediate repeated CUDA retries after OOM storm.
+        self._cuda_oom_cooldown_until = time.monotonic() + 5.0

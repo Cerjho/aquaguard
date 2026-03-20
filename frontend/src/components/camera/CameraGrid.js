@@ -14,6 +14,8 @@ import { API_BASE_URL } from '../../utils/constants';
 
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
+const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
+const MAX_GRID_STREAMS = 4;
 
 function CameraGrid({ reloadToken = 0 }) {
   const [cameras, setCameras] = useState([]);
@@ -25,9 +27,20 @@ function CameraGrid({ reloadToken = 0 }) {
   const [focusedCamera, setFocusedCamera] = useState(null);
   const [zoneEvents, setZoneEvents] = useState([]);
   const [zoneAlerts, setZoneAlerts] = useState([]);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    typeof document === 'undefined' ? true : !document.hidden
+  );
   const { cameraStatuses, systemStatus } = useAlerts();
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -147,14 +160,34 @@ function CameraGrid({ reloadToken = 0 }) {
     fetchRuntimeStatus();
   }, [fetchCameras, fetchRuntimeStatus, reloadToken]);
 
+  const activeStreamZoneIds = useMemo(() => {
+    if (!Array.isArray(cameras) || cameras.length === 0) return new Set();
+    if (focusedCamera?.zone_id) return new Set([focusedCamera.zone_id]);
+    if (!isDocumentVisible) return new Set();
+    const prioritized = cameras
+      .filter((camera) => {
+        const runtime = normalizeStatus(cameraRuntimeMap[camera.zone_id] ?? camera.is_active);
+        return runtime === 'online';
+      })
+      .slice(0, MAX_GRID_STREAMS)
+      .map((camera) => camera.zone_id);
+    return new Set(prioritized);
+  }, [cameras, focusedCamera, isDocumentVisible, cameraRuntimeMap]);
+
+  const streamCandidateCameras = useMemo(
+    () => cameras.filter((camera) => activeStreamZoneIds.has(camera.zone_id)),
+    [cameras, activeStreamZoneIds]
+  );
+
   useEffect(() => {
-    mintStreamTokensForCameras(cameras);
-  }, [cameras, mintStreamTokensForCameras]);
+    mintStreamTokensForCameras(streamCandidateCameras);
+  }, [streamCandidateCameras, mintStreamTokensForCameras]);
 
   useEffect(() => {
     if (!Array.isArray(cameras) || cameras.length === 0) return undefined;
     const intervalId = setInterval(() => {
       const now = Date.now();
+      const shouldThrottle = !isDocumentVisible && !focusedCamera;
       cameras.forEach((camera) => {
         const zoneId = camera?.zone_id;
         if (!zoneId) return;
@@ -162,12 +195,13 @@ function CameraGrid({ reloadToken = 0 }) {
         if (!meta?.expiresAt) return;
         const expiresInMs = meta.expiresAt - now;
         if (expiresInMs <= STREAM_TOKEN_REFRESH_BUFFER_SECONDS * 1000) {
+          if (shouldThrottle && !activeStreamZoneIds.has(zoneId)) return;
           refreshSingleToken(zoneId);
         }
       });
-    }, STREAM_REFRESH_CHECK_MS);
+    }, isDocumentVisible ? STREAM_REFRESH_CHECK_MS : HIDDEN_TOKEN_REFRESH_CHECK_MS);
     return () => clearInterval(intervalId);
-  }, [cameras, streamTokens, refreshSingleToken]);
+  }, [cameras, streamTokens, refreshSingleToken, isDocumentVisible, focusedCamera, activeStreamZoneIds]);
 
   useEffect(() => {
     if (systemStatus?.detection_engine?.status) {
@@ -189,8 +223,9 @@ function CameraGrid({ reloadToken = 0 }) {
 
   const handleStreamAuthFailure = useCallback((zoneId) => {
     if (!zoneId) return;
+    if (!activeStreamZoneIds.has(zoneId)) return;
     refreshSingleToken(zoneId);
-  }, [refreshSingleToken]);
+  }, [refreshSingleToken, activeStreamZoneIds]);
 
   const closeFocus = useCallback(() => {
     setFocusedCamera(null);
@@ -318,6 +353,14 @@ function CameraGrid({ reloadToken = 0 }) {
             }}
             onStreamAuthFailure={handleStreamAuthFailure}
             onFocus={(selectedCamera) => openFocus(selectedCamera, document.activeElement)}
+            shouldRenderStream={!focusedCamera && activeStreamZoneIds.has(camera.zone_id)}
+            pausedReason={
+              focusedCamera
+                ? 'Focus mode active'
+                : isDocumentVisible
+                ? 'Click to focus live stream'
+                : 'Paused in background tab'
+            }
           />
         ))}
       </div>

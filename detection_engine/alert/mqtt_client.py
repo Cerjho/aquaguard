@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+import threading
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
@@ -26,6 +27,7 @@ class MQTTClient:
     def __init__(self, broker_host: str, broker_port: int):
         self._broker_host = broker_host
         self._broker_port = broker_port
+        self._closing = threading.Event()
         self._client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
@@ -50,6 +52,19 @@ class MQTTClient:
         except Exception as exc:
             logger.error("MQTT publish_detection failed: %s", exc)
 
+    def close(self) -> None:
+        """Stop MQTT loop and disconnect broker connection."""
+        self._closing.set()
+        try:
+            self._client.loop_stop()
+        except Exception as exc:
+            logger.warning("MQTT loop_stop failed: %s", exc)
+        try:
+            self._client.disconnect()
+        except Exception as exc:
+            logger.warning("MQTT disconnect failed: %s", exc)
+        logger.info("MQTT client closed")
+
     # ── Callbacks (paho-mqtt 2.x — 5-argument signatures required) ───────────
 
     def _on_connect(self, client, userdata, connect_flags, reason_code, properties):
@@ -59,6 +74,9 @@ class MQTTClient:
             logger.warning("MQTT connect returned reason_code=%s", reason_code)
 
     def _on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
+        if self._closing.is_set():
+            logger.info("MQTT disconnected cleanly during shutdown")
+            return
         logger.warning(
             "MQTT disconnected (reason_code=%s) — retrying in %ds",
             reason_code, _RECONNECT_DELAY_SECONDS,

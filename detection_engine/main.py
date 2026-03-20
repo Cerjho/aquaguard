@@ -315,6 +315,10 @@ def main():
         logger.info("KeyboardInterrupt received — shutting down ...")
     finally:
         registry.stop_all()
+        try:
+            mqtt_client.close()
+        except Exception as exc:
+            logger.warning("MQTT shutdown encountered an error: %s", exc)
         logger.info("All camera threads stopped. Goodbye.")
 
 

@@ -32,6 +32,24 @@ def test_list_alerts_filter_unacknowledged(client, admin_token):
     assert resp.status_code == 200
 
 
+def test_list_alerts_pagination_contract(client, admin_token):
+    _make_alert_event(client)
+    _make_alert_event(client)
+
+    resp = client.get(
+        '/api/v1/alerts?page=1&limit=1',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert isinstance(data, dict)
+    assert isinstance(data.get('alerts'), list)
+    assert data.get('page') == 1
+    assert data.get('limit') == 1
+    assert data.get('total', 0) >= 2
+    assert len(data['alerts']) <= 1
+
+
 def test_list_alerts_filters_by_zone_time_and_confidence(client, admin_token):
     first = client.post('/api/v1/events', json={
         'zone_id': 'zone_filter_a',

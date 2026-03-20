@@ -141,7 +141,9 @@ describe('AlertContext payload normalization and acknowledge contract', () => {
       });
     });
 
-    expect(screen.getByTestId('detection-history-size')).toHaveTextContent('1');
+    return waitFor(() => {
+      expect(screen.getByTestId('detection-history-size')).toHaveTextContent('1');
+    });
   });
 
   test('tracks socket connection state transitions', () => {

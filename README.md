@@ -114,6 +114,25 @@ Set-Location ..
 
 ---
 
+## Dashboard Features
+
+- **Camera focus mode:** Each camera tile supports **Focus view** to open a larger modal stream with recent zone detections and alerts for faster operator triage.
+- **Secure stream access:** Camera streams are consumed using short-lived stream tokens (`POST /api/v1/cameras/{zone_id}/stream-token` then `GET /stream?token=...`), with automatic token refresh in the dashboard.
+- **Connectivity health banner:** The system panel shows Socket.IO connection state (`Connected` vs `Disconnected (status polling only)`), plus detection engine, ESP32, and per-camera freshness indicators.
+- **Analytics drilldown interactions:** Clicking chart points/bars in analytics applies incident triage filters (`zone_id` or date range) and navigates directly to incidents/history views.
+- **Alert triage and history filters:** Alert history supports filtering by zone, status, confidence threshold, and date range to reduce response noise during active monitoring.
+- **Accessibility behaviors:** Focus mode supports keyboard interaction (`Enter`/`Space` to open, `Esc` to close), initial focus management on modal controls, and descriptive `aria-label` attributes on critical controls.
+
+## Realtime Behavior
+
+- Dashboard listens to `alert_event`, `camera_status`, and `system_status` over Socket.IO.
+- On WebSocket connect, backend immediately sends current `system_status` and `camera_status` snapshot to the connecting client session.
+- If socket transport drops, dashboard keeps status visibility via authenticated polling of `GET /api/v1/system/status` with adaptive backoff.
+- Detection feed updates are batched client-side to avoid UI thrash during bursty events.
+- Stream tokens are refreshed before expiry to keep MJPEG views active without exposing long-lived stream URLs.
+
+---
+
 ## Running Tests
 
 ### Backend
@@ -172,6 +191,13 @@ See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 | Backend tests | 27/27 passing |
 | CV engine tests | 36/36 passing |
 | Frontend tests | 22/22 passing |
+
+---
+
+## Known Gaps from Latest Review
+
+- **Alert history contract mismatch:** frontend history currently checks `alerted_at` and confidence aliases, while backend alert records are timestamped with `triggered_at`; confidence filtering is sourced from joined `DetectionEvent.confidence_score`.
+- **WebSocket auth hardening pending:** backend `backend/sockets.py` currently accepts anonymous socket connections when no token is provided (invalid token is rejected, missing token is allowed).
 
 ---
 

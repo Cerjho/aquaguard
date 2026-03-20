@@ -5,10 +5,12 @@
  * a responsive grid of CameraCard tiles.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '../../hooks/useApi';
 import CameraCard from './CameraCard';
 import { useAlerts } from '../../context/AlertContext';
+import { formatDateTime } from '../../utils/dateFormat';
+import { API_BASE_URL } from '../../utils/constants';
 
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
@@ -20,7 +22,11 @@ function CameraGrid() {
   const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
   const [cameraRuntimeMap, setCameraRuntimeMap] = useState({});
   const [streamTokens, setStreamTokens] = useState({});
+  const [focusedCamera, setFocusedCamera] = useState(null);
+  const [zoneEvents, setZoneEvents] = useState([]);
+  const [zoneAlerts, setZoneAlerts] = useState([]);
   const { cameraStatuses, systemStatus } = useAlerts();
+  const closeButtonRef = useRef(null);
 
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -185,6 +191,50 @@ function CameraGrid() {
     refreshSingleToken(zoneId);
   }, [refreshSingleToken]);
 
+  const closeFocus = useCallback(() => {
+    setFocusedCamera(null);
+    setZoneEvents([]);
+    setZoneAlerts([]);
+  }, []);
+
+  const openFocus = useCallback(async (camera) => {
+    setFocusedCamera(camera);
+    try {
+      const [eventsRes, alertsRes] = await Promise.all([
+        api.get('/api/v1/events', {
+          params: { page: 1, limit: 5, zone_id: camera.zone_id },
+        }),
+        api.get('/api/v1/alerts', {
+          params: { page: 1, limit: 5, zone_id: camera.zone_id },
+        }),
+      ]);
+      const eventsData = Array.isArray(eventsRes.data) ? eventsRes.data : eventsRes.data.events || [];
+      const alertsData = Array.isArray(alertsRes.data) ? alertsRes.data : alertsRes.data.alerts || [];
+      setZoneEvents(eventsData);
+      setZoneAlerts(alertsData);
+    } catch {
+      setZoneEvents([]);
+      setZoneAlerts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!focusedCamera) return undefined;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') closeFocus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [focusedCamera, closeFocus]);
+
+  const focusedStreamUrl = useMemo(() => {
+    if (!focusedCamera?.zone_id) return null;
+    const token = streamTokens[focusedCamera.zone_id]?.token;
+    if (!token) return null;
+    return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}`;
+  }, [focusedCamera, streamTokens]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -259,9 +309,68 @@ function CameraGrid() {
               stream_token: streamTokens[camera.zone_id]?.token || null,
             }}
             onStreamAuthFailure={handleStreamAuthFailure}
+            onFocus={openFocus}
           />
         ))}
       </div>
+
+      {focusedCamera && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Focused view for ${focusedCamera.zone_name || focusedCamera.zone_id}`}
+          className="fixed inset-0 z-50 bg-slate-950/80 p-4 md:p-8"
+        >
+          <div className="h-full w-full rounded-xl bg-white border border-slate-200 shadow-xl overflow-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 sticky top-0 bg-white">
+              <div>
+                <h3 className="text-base font-semibold text-slate-800">{focusedCamera.zone_name || focusedCamera.zone_id}</h3>
+                <p className="text-xs text-slate-500">{focusedCamera.location_description || focusedCamera.zone_id}</p>
+              </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={closeFocus}
+                className="rounded-md px-3 py-1.5 text-sm border border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                aria-label="Close camera focus"
+              >
+                Back
+              </button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
+              <div className="lg:col-span-2 rounded-lg overflow-hidden bg-slate-900 aspect-video">
+                {focusedStreamUrl ? (
+                  <img
+                    src={focusedStreamUrl}
+                    alt={`Focused live feed — ${focusedCamera.zone_name || focusedCamera.zone_id}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-300 text-sm">Stream unavailable</div>
+                )}
+              </div>
+              <div className="space-y-4">
+                <section>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Recent detections</h4>
+                  <ul className="text-xs text-slate-600 space-y-1">
+                    {zoneEvents.length === 0 ? <li>No recent detections</li> : zoneEvents.map((ev) => (
+                      <li key={ev.event_id || ev.id}>{formatDateTime(ev.timestamp || ev.detected_at)} — {(ev.class_label || ev.class_name || 'Detection')}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-1">Recent alerts</h4>
+                  <ul className="text-xs text-slate-600 space-y-1">
+                    {zoneAlerts.length === 0 ? <li>No recent alerts</li> : zoneAlerts.map((al) => (
+                      <li key={al.alert_id || al.id}>{formatDateTime(al.alerted_at || al.timestamp)} — {(al.status || 'unknown')}</li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

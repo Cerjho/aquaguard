@@ -15,13 +15,16 @@ import React, {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
 } from 'react';
 import useAlertSocket from '../hooks/useAlertSocket';
 import api from '../hooks/useApi';
 
 const AlertContext = createContext(null);
 const MAX_DETECTION_EVENTS = 50;
-const STATUS_POLL_INTERVAL_MS = 15000;
+const STATUS_POLL_BASE_INTERVAL_MS = 15000;
+const STATUS_POLL_MAX_INTERVAL_MS = 120000;
+const DETECTION_EVENT_BATCH_MS = 250;
 
 const DEFAULT_TRIAGE_FILTERS = {
   zone_id: '',
@@ -129,8 +132,18 @@ export function AlertProvider({ children }) {
   const [systemStatus, setSystemStatus] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [socketMeta, setSocketMeta] = useState(null);
+  const [apiStatus, setApiStatus] = useState({
+    connected: null,
+    failures: 0,
+    lastSuccessAt: null,
+    lastCheckedAt: null,
+  });
 
   const [triageFilters, setTriageFiltersState] = useState(DEFAULT_TRIAGE_FILTERS);
+  const statusPollTimerRef = useRef(null);
+  const statusPollFailuresRef = useRef(0);
+  const detectionBufferRef = useRef([]);
+  const detectionFlushTimerRef = useRef(null);
 
   const setTriageFilters = useCallback((next) => {
     setTriageFiltersState((prev) => {
@@ -153,28 +166,38 @@ export function AlertProvider({ children }) {
 
   const onDetectionEvent = useCallback((payload) => {
     if (!payload) return;
-    setDetectionEvents((prev) => {
-      const merged = [payload, ...prev];
-      const unique = [];
-      const seen = new Set();
-      merged.forEach((event) => {
-        const key = event.event_id || event.id || event.timestamp || JSON.stringify(event);
-        if (!seen.has(key)) {
-          seen.add(key);
-          unique.push(event);
-        }
+    detectionBufferRef.current.push(payload);
+    if (detectionFlushTimerRef.current) return;
+    detectionFlushTimerRef.current = setTimeout(() => {
+      const buffered = detectionBufferRef.current;
+      detectionBufferRef.current = [];
+      detectionFlushTimerRef.current = null;
+      if (buffered.length === 0) return;
+
+      setDetectionEvents((prev) => {
+        const merged = [...buffered.reverse(), ...prev];
+        const unique = [];
+        const seen = new Set();
+        merged.forEach((event) => {
+          const key = event.event_id || event.id || event.timestamp || JSON.stringify(event);
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(event);
+          }
+        });
+        return unique.slice(0, MAX_DETECTION_EVENTS);
       });
-      return unique.slice(0, MAX_DETECTION_EVENTS);
-    });
+    }, DETECTION_EVENT_BATCH_MS);
   }, []);
 
   const onCameraStatus = useCallback((payload) => {
     const incoming = Array.isArray(payload) ? payload : [payload];
     setCameraStatuses((prev) => {
       const next = { ...prev };
+      let changed = false;
       incoming.forEach((camera) => {
         if (!camera || !camera.zone_id) return;
-        next[camera.zone_id] = {
+        const normalized = {
           zone_id: camera.zone_id,
           zone_name: camera.zone_name || camera.zone_id,
           status: normalizeServiceStatus(camera.status ?? camera.is_active),
@@ -182,8 +205,19 @@ export function AlertProvider({ children }) {
             typeof camera.snapshot_age_seconds === 'number' ? camera.snapshot_age_seconds : null,
           last_snapshot_at: camera.last_snapshot_at || null,
         };
+        const existing = prev[camera.zone_id];
+        if (
+          !existing
+          || existing.zone_name !== normalized.zone_name
+          || existing.status !== normalized.status
+          || existing.snapshot_age_seconds !== normalized.snapshot_age_seconds
+          || existing.last_snapshot_at !== normalized.last_snapshot_at
+        ) {
+          changed = true;
+          next[camera.zone_id] = normalized;
+        }
       });
-      return next;
+      return changed ? next : prev;
     });
   }, []);
 
@@ -235,15 +269,65 @@ export function AlertProvider({ children }) {
       if (Array.isArray(payload.camera_status)) {
         onCameraStatus(payload.camera_status);
       }
+      statusPollFailuresRef.current = 0;
+      const now = new Date().toISOString();
+      setApiStatus((prev) => ({
+        ...prev,
+        connected: true,
+        failures: 0,
+        lastSuccessAt: now,
+        lastCheckedAt: now,
+      }));
+      return true;
     } catch {
-      // Silent fallback; socket updates may still keep UI fresh
+      statusPollFailuresRef.current += 1;
+      setApiStatus((prev) => ({
+        ...prev,
+        connected: false,
+        failures: statusPollFailuresRef.current,
+        lastCheckedAt: new Date().toISOString(),
+      }));
+      return false;
     }
   }, [onCameraStatus]);
 
   useEffect(() => {
+    let unmounted = false;
+
+    const scheduleNextPoll = (delayMs) => {
+      if (unmounted) return;
+      if (statusPollTimerRef.current) clearTimeout(statusPollTimerRef.current);
+      statusPollTimerRef.current = setTimeout(async () => {
+        if (document.hidden) {
+          scheduleNextPoll(Math.min(STATUS_POLL_MAX_INTERVAL_MS, STATUS_POLL_BASE_INTERVAL_MS * 2));
+          return;
+        }
+        await refreshSystemStatus();
+        const backoff = Math.min(
+          STATUS_POLL_BASE_INTERVAL_MS * (2 ** statusPollFailuresRef.current),
+          STATUS_POLL_MAX_INTERVAL_MS
+        );
+        scheduleNextPoll(backoff);
+      }, delayMs);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshSystemStatus();
+        scheduleNextPoll(STATUS_POLL_BASE_INTERVAL_MS);
+      }
+    };
+
     refreshSystemStatus();
-    const intervalId = setInterval(refreshSystemStatus, STATUS_POLL_INTERVAL_MS);
-    return () => clearInterval(intervalId);
+    scheduleNextPoll(STATUS_POLL_BASE_INTERVAL_MS);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      unmounted = true;
+      if (statusPollTimerRef.current) clearTimeout(statusPollTimerRef.current);
+      if (detectionFlushTimerRef.current) clearTimeout(detectionFlushTimerRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshSystemStatus]);
 
   /**
@@ -304,6 +388,7 @@ export function AlertProvider({ children }) {
     systemStatus,
     socketConnected,
     socketMeta,
+    apiStatus,
     triageFilters,
     setTriageFilters,
     resetTriageFilters,
@@ -321,6 +406,7 @@ export function AlertProvider({ children }) {
     systemStatus,
     socketConnected,
     socketMeta,
+    apiStatus,
     triageFilters,
     setTriageFilters,
     resetTriageFilters,

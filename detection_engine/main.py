@@ -15,7 +15,10 @@ import json
 import time
 from datetime import datetime, timezone
 import cv2
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - exercised in CI envs without python-dotenv
+    load_dotenv = None
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -60,7 +63,16 @@ def _load_api_env_from_backend_env() -> None:
         return
 
     if os.path.exists(_BACKEND_ENV_PATH):
-        load_dotenv(_BACKEND_ENV_PATH, override=False)
+        if load_dotenv is not None:
+            load_dotenv(_BACKEND_ENV_PATH, override=False)
+        else:
+            with open(_BACKEND_ENV_PATH, "r", encoding="utf-8") as env_file:
+                for line in env_file:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, value = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
         post_url = os.environ.get("AQUAGUARD_API_URL")
         post_key = os.environ.get("AQUAGUARD_API_KEY")
         if (not pre_url and post_url) or (not pre_key and post_key):

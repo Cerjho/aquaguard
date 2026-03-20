@@ -7,7 +7,7 @@
  * - Green/red status indicator based on camera.is_active
  */
 
-import React, { useEffect, useState, memo } from 'react';
+import React, { useEffect, useState, memo, useRef } from 'react';
 import { API_BASE_URL } from '../../utils/constants';
 
 function CameraCard({
@@ -18,9 +18,11 @@ function CameraCard({
   pausedReason = 'Stream paused',
 }) {
   const [imgError, setImgError] = useState(false);
+  const imgRef = useRef(null);
   const streamToken = camera.stream_token || null;
+  const streamSessionId = camera.stream_session_id || 0;
   const streamUrl = streamToken
-    ? `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${encodeURIComponent(streamToken)}`
+    ? `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${encodeURIComponent(streamToken)}&session=${encodeURIComponent(streamSessionId)}`
     : null;
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
@@ -41,6 +43,28 @@ function CameraCard({
     // Reset image fallback state whenever the stream token rotates.
     setImgError(false);
   }, [streamToken]);
+
+  useEffect(() => {
+    // Resume from transient browser/network hiccups when stream rendering is re-enabled.
+    if (shouldRenderStream) {
+      setImgError(false);
+    }
+  }, [shouldRenderStream, streamSessionId]);
+
+  useEffect(() => {
+    if (shouldRenderStream) return;
+    // Explicitly clear src when stream is paused so browsers close stale MJPEG connections.
+    if (imgRef.current) {
+      imgRef.current.src = '';
+    }
+  }, [shouldRenderStream]);
+
+  useEffect(() => () => {
+    // Ensure connection is closed when navigating away from dashboard route.
+    if (imgRef.current) {
+      imgRef.current.src = '';
+    }
+  }, []);
 
   const offlineReason = !detectionOnline
     ? 'Detection engine offline'
@@ -70,9 +94,14 @@ function CameraCard({
       <div className="relative w-full bg-slate-900 aspect-video overflow-hidden">
         {showStream ? (
           <img
+            ref={imgRef}
+            key={`${camera.zone_id}-${streamToken}-${streamSessionId}`}
             src={streamUrl}
             alt={`Live feed — ${camera.zone_name}`}
             className="w-full h-full object-cover"
+            onLoad={() => {
+              setImgError(false);
+            }}
             onError={() => {
               setImgError(true);
               if (typeof onStreamAuthFailure === 'function') {

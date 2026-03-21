@@ -4,7 +4,7 @@ from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 
-from extensions import db, jwt, socketio, bcrypt, migrate, cors
+from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 
 
@@ -34,6 +34,9 @@ def create_app():
     app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
     app.config['JWT_REFRESH_COOKIE_PATH'] = '/api/v1/auth/refresh'
     app.config['JWT_CSRF_METHODS'] = ['POST', 'PUT', 'PATCH', 'DELETE']
+    app.config['RATELIMIT_ENABLED'] = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in {
+        '1', 'true', 'yes'
+    }
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL', 'sqlite:///aquaguard.db'
     )
@@ -63,6 +66,7 @@ def create_app():
     jwt.init_app(app)
     bcrypt.init_app(app)
     migrate.init_app(app, db)
+    limiter.init_app(app)
     allowed_origins_raw = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
     allowed_origins = [
         origin.strip() for origin in allowed_origins_raw.split(',') if origin.strip()

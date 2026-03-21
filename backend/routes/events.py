@@ -2,20 +2,24 @@ import os
 import base64
 import uuid
 import tempfile
+import io
 from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
+from PIL import Image, UnidentifiedImageError
 
 from extensions import db, socketio
 from models import DetectionEvent, Alert
+from utils.date_utils import parse_iso_datetime
 
 events_bp = Blueprint('events', __name__, url_prefix='/api/v1')
 
 SNAPSHOTS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'snapshots'
 )
+MAX_SNAPSHOT_BYTES = 10 * 1024 * 1024
 
 
 def _serialize_alert_event_payload(alert, event):
@@ -64,19 +68,6 @@ def _serialize_detection_event_payload(event):
     return payload
 
 
-def _parse_iso_datetime(raw_value):
-    if not raw_value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
-        # DB columns are naive UTC datetimes; normalize aware inputs from API queries.
-        if parsed.tzinfo is not None:
-            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed
-    except (TypeError, ValueError):
-        return None
-
-
 def _parse_event_id(raw_value):
     if raw_value is None:
         return str(uuid.uuid4()), None
@@ -120,7 +111,11 @@ def create_event():
     if snapshot_b64:
         try:
             os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
-            img_data = base64.b64decode(snapshot_b64)
+            img_data = base64.b64decode(snapshot_b64, validate=True)
+            if len(img_data) > MAX_SNAPSHOT_BYTES:
+                return jsonify({'error': 'Snapshot too large'}), 413
+            image_obj = Image.open(io.BytesIO(img_data))
+            image_obj.verify()
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
             with tempfile.NamedTemporaryFile(
                 mode='wb',
@@ -132,6 +127,10 @@ def create_event():
                 temp_file.write(img_data)
                 temp_path = temp_file.name
             os.replace(temp_path, snapshot_path)
+        except (base64.binascii.Error, ValueError):
+            return jsonify({'error': 'Invalid snapshot encoding'}), 400
+        except UnidentifiedImageError:
+            return jsonify({'error': 'Invalid image data'}), 400
         except Exception as exc:
             current_app.logger.warning(f'Failed to save snapshot: {exc}')
             snapshot_path = None
@@ -233,10 +232,10 @@ def list_events():
 
     if zone_id:
         query = query.filter_by(zone_id=zone_id)
-    parsed_from = _parse_iso_datetime(from_dt)
+    parsed_from = parse_iso_datetime(from_dt)
     if parsed_from:
         query = query.filter(DetectionEvent.detected_at >= parsed_from)
-    parsed_to = _parse_iso_datetime(to_dt)
+    parsed_to = parse_iso_datetime(to_dt)
     if parsed_to:
         query = query.filter(DetectionEvent.detected_at <= parsed_to)
     if alert_triggered is not None:

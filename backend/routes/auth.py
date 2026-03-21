@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -11,7 +11,7 @@ from flask_jwt_extended import (
     set_refresh_cookies,
     unset_jwt_cookies,
 )
-from extensions import bcrypt, db
+from extensions import bcrypt, db, limiter
 from models import User
 from token_blocklist import revoke_token
 
@@ -30,6 +30,7 @@ def _expires_in_from_jwt(payload):
 
 
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit('5 per minute', exempt_when=lambda: current_app.config.get('TESTING', False))
 def login():
     data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()

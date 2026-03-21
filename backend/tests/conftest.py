@@ -20,6 +20,7 @@ def app():
     os.environ['SECRET_KEY'] = 'test-secret-key-32-bytes-long!!'
     os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-32-bytes-long!!'
     os.environ['AQUAGUARD_API_KEY'] = 'test-internal-api-key'
+    os.environ['RATELIMIT_ENABLED'] = 'false'
     app = create_app()
     app.config.update({
         'TESTING':                   True,

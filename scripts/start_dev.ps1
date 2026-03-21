@@ -4,7 +4,8 @@
 param(
     [switch]$SkipMqtt,
     [switch]$SkipTurn,
-    [switch]$SkipFrontend
+    [switch]$SkipFrontend,
+    [switch]$ForceRestartBackend
 )
 
 $ROOT = Split-Path -Parent $PSScriptRoot
@@ -24,6 +25,44 @@ function Test-ProcessCommandLine {
     } catch {
         return $false
     }
+}
+
+function Test-TcpPortListening {
+    param(
+        [Parameter(Mandatory = $true)][int]$Port
+    )
+    try {
+        return @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction Stop).Count -gt 0
+    } catch {
+        return $false
+    }
+}
+
+function Wait-BackendReady {
+    param(
+        [Parameter(Mandatory = $true)][string]$BaseUrl,
+        [Parameter(Mandatory = $true)][int]$TimeoutSeconds
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            # Unauthorized is acceptable here; it confirms backend route is alive.
+            $response = Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/api/v1/system/status" -TimeoutSec 3 -ErrorAction Stop
+            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+                return $true
+            }
+        } catch {
+            $statusCode = $null
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+            if ($statusCode -eq 401 -or $statusCode -eq 403) {
+                return $true
+            }
+        }
+        Start-Sleep -Milliseconds 750
+    }
+    return $false
 }
 
 function Stop-JobSafe {
@@ -77,8 +116,25 @@ if (-not $SkipTurn) {
 
 # 4. Start Flask backend
 Write-Host "==> Starting Flask backend..." -ForegroundColor Green
-if (Test-ProcessCommandLine -Pattern 'wsgi\.py') {
-    Write-Host "    Flask backend already running (skip start)" -ForegroundColor Yellow
+if ($ForceRestartBackend) {
+    Write-Host "    Force restarting backend processes..." -ForegroundColor Yellow
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue `
+        | Where-Object {
+            $_.Name -match 'python(\.exe)?$' -and $_.CommandLine -match 'backend\\wsgi\.py'
+        } `
+        | ForEach-Object {
+            try {
+                Stop-Process -Id $_.ProcessId -ErrorAction Stop
+                Write-Host "    Stopped backend PID $($_.ProcessId)" -ForegroundColor Yellow
+            } catch {
+                Write-Host "    WARNING: Failed to stop PID $($_.ProcessId): $($_.Exception.Message)" -ForegroundColor Yellow
+            }
+        }
+}
+
+$backendPortListening = Test-TcpPortListening -Port 5000
+if ($backendPortListening -and -not $ForceRestartBackend) {
+    Write-Host "    Port 5000 already listening (backend assumed running, skip start)" -ForegroundColor Yellow
 } else {
     $backendScript = {
         param($root, $activate)
@@ -88,6 +144,15 @@ if (Test-ProcessCommandLine -Pattern 'wsgi\.py') {
     }
     $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_ACTIVATE
     Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green
+}
+
+# 4.1 Wait for backend readiness before starting frontend
+Write-Host "==> Waiting for backend readiness..." -ForegroundColor Green
+if (Wait-BackendReady -BaseUrl "http://localhost:5000" -TimeoutSeconds 45) {
+    Write-Host "    Backend is reachable." -ForegroundColor Green
+} else {
+    Write-Host "    WARNING: Backend did not become reachable within timeout." -ForegroundColor Yellow
+    Write-Host "             Frontend may show stale/offline status until backend is ready." -ForegroundColor Yellow
 }
 
 # 5. Start React frontend

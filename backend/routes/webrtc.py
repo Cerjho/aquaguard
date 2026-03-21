@@ -217,14 +217,18 @@ def _run_in_webrtc_loop(coro):
 async def _create_answer_async(zone_id, offer_type, offer_sdp):
     pc = RTCPeerConnection()
     pc.addTrack(SnapshotVideoTrack(zone_id))
-    await pc.setRemoteDescription(RTCSessionDescription(sdp=offer_sdp, type=offer_type))
-    answer = await pc.createAnswer()
-    await pc.setLocalDescription(answer)
-    return {
-        'pc': pc,
-        'sdp': pc.localDescription.sdp,
-        'type': pc.localDescription.type,
-    }
+    try:
+        await pc.setRemoteDescription(RTCSessionDescription(sdp=offer_sdp, type=offer_type))
+        answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        return {
+            'pc': pc,
+            'sdp': pc.localDescription.sdp,
+            'type': pc.localDescription.type,
+        }
+    except Exception as exc:
+        await pc.close()
+        raise RuntimeError(f'Answer creation failed: {type(exc).__name__}: {exc}') from exc
 
 
 async def _close_peer_connection_async(pc):

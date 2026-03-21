@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useState, memo, useRef } from 'react';
-import { API_BASE_URL } from '../../utils/constants';
+import useWebRTCStream from '../../hooks/useWebRTCStream';
 
 function CameraCard({
   camera,
@@ -21,9 +21,7 @@ function CameraCard({
   const imgRef = useRef(null);
   const streamToken = camera.stream_token || null;
   const streamSessionId = camera.stream_session_id || 0;
-  const streamUrl = streamToken
-    ? `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${encodeURIComponent(streamToken)}&session=${encodeURIComponent(streamSessionId)}`
-    : null;
+  const videoRef = useRef(null);
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
     if (!value) return 'unknown';
@@ -37,7 +35,14 @@ function CameraCard({
   const cameraOnline =
     normalizeStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
   const isActive = detectionOnline && cameraOnline;
-  const showStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
+  const { transport, webrtcState, streamUrl, videoStream } = useWebRTCStream({
+    zoneId: camera.zone_id,
+    streamToken,
+    shouldRenderStream,
+    isActive,
+  });
+  const showWebRTC = shouldRenderStream && isActive && transport === 'webrtc' && Boolean(videoStream);
+  const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
 
   useEffect(() => {
     // Reset image fallback state whenever the stream token rotates.
@@ -66,12 +71,23 @@ function CameraCard({
     }
   }, []);
 
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (!videoStream) {
+      videoRef.current.srcObject = null;
+      return;
+    }
+    videoRef.current.srcObject = videoStream;
+  }, [videoStream]);
+
   const offlineReason = !detectionOnline
     ? 'Detection engine offline'
     : !cameraOnline
     ? 'Camera offline'
     : !shouldRenderStream
     ? pausedReason
+    : transport === 'webrtc' && webrtcState === 'connecting'
+    ? 'Negotiating WebRTC…'
     : !streamToken
     ? 'Authorizing stream…'
     : 'Stream unavailable';
@@ -92,7 +108,16 @@ function CameraCard({
     >
       {/* Stream area */}
       <div className="relative w-full bg-slate-900 aspect-video overflow-hidden">
-        {showStream ? (
+        {showWebRTC ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            aria-label={`Live feed — ${camera.zone_name}`}
+          />
+        ) : showFallbackStream ? (
           <img
             ref={imgRef}
             key={`${camera.zone_id}-${streamToken}-${streamSessionId}`}
@@ -129,8 +154,8 @@ function CameraCard({
           </div>
         )}
 
-        {/* Status pill overlaid on the stream */}
-        <div className="absolute top-2 right-2">
+        {/* Status pills overlaid on the stream */}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
           <span
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shadow ${
               isActive
@@ -145,6 +170,11 @@ function CameraCard({
             />
             {isActive ? 'Live' : 'Offline'}
           </span>
+          {isActive && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-900/80 text-white">
+              {transport === 'webrtc' ? 'WebRTC' : 'MJPEG fallback'}
+            </span>
+          )}
         </div>
       </div>
 

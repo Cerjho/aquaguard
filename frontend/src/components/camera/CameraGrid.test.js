@@ -249,7 +249,7 @@ describe('CameraGrid stream token auth flow', () => {
     expect(await screen.findByAltText('Live feed — Main Pool')).toBeInTheDocument();
   });
 
-  test('rotates stream session when reload token changes', async () => {
+  test('keeps stream URL stable when reload token changes', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/api/v1/cameras') {
         return Promise.resolve({
@@ -276,15 +276,14 @@ describe('CameraGrid stream token auth flow', () => {
 
     const firstImage = await screen.findByAltText('Live feed — Main Pool');
     const firstSrc = firstImage.getAttribute('src');
-    expect(firstSrc).toContain('session=');
+    expect(firstSrc).toContain('/api/v1/cameras/zone_01/stream?token=stream-short-lived');
 
     rerender(<CameraGrid reloadToken="route-b" />);
 
     await waitFor(() => {
       const nextImage = screen.getByAltText('Live feed — Main Pool');
       const nextSrc = nextImage.getAttribute('src');
-      expect(nextSrc).toContain('session=');
-      expect(nextSrc).not.toBe(firstSrc);
+      expect(nextSrc).toBe(firstSrc);
     });
   });
 });

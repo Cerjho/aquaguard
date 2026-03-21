@@ -164,13 +164,16 @@ def create_event():
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
         return jsonify({'error': 'Database error'}), 500
-    socketio.emit('detection_event', _serialize_detection_event_payload(event))
-    socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
-    socketio.emit('system_status', {
-        'component': 'detection_engine',
-        'status': 'online',
-        'message': f'Event received from {event.zone_id}',
-    })
+    try:
+        socketio.emit('detection_event', _serialize_detection_event_payload(event))
+        socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
+        socketio.emit('system_status', {
+            'component': 'detection_engine',
+            'status': 'online',
+            'message': f'Event received from {event.zone_id}',
+        })
+    except Exception as exc:
+        current_app.logger.error('SocketIO emit failed for detection event %s: %s', event_id, exc)
 
     alert_dict = None
     if event.alert_triggered:
@@ -190,7 +193,14 @@ def create_event():
         else:
             # emit AFTER commit so alert_id exists in DB
             alert_dict = _serialize_alert_event_payload(alert, event)
-            socketio.emit('alert_event', alert_dict)
+            try:
+                socketio.emit('alert_event', alert_dict)
+            except Exception as exc:
+                current_app.logger.error(
+                    'SocketIO emit failed for alert event %s: %s',
+                    event_id,
+                    exc,
+                )
 
     result = event.to_dict()
     if alert_dict:

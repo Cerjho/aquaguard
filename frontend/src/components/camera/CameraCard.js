@@ -96,11 +96,11 @@ function CameraCard({
     <article
       role="button"
       tabIndex={0}
-      onClick={() => onFocus?.(camera)}
+      onClick={(e) => onFocus?.(camera, e.currentTarget)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onFocus?.(camera);
+          onFocus?.(camera, e.currentTarget);
         }
       }}
       className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col cursor-pointer transition-all hover:shadow-md hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"

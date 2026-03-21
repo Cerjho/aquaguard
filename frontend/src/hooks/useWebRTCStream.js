@@ -40,6 +40,8 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
   const sessionIdRef = useRef(null);
   const negotiatedRef = useRef(false);
   const stoppedRef = useRef(false);
+  const retryScheduledRef = useRef(false);
+  const pollFailureCountRef = useRef(0);
 
   const fallbackUrl = useMemo(() => {
     if (!zoneId || !streamToken) return null;
@@ -68,6 +70,8 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
     let negotiationTimeoutId = null;
     stoppedRef.current = false;
     negotiatedRef.current = false;
+    retryScheduledRef.current = false;
+    pollFailureCountRef.current = 0;
 
     const clearTimers = () => {
       if (statusTimerRef.current) {
@@ -97,12 +101,15 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
 
     const scheduleRetry = () => {
       if (stoppedRef.current) return;
+      if (retryScheduledRef.current) return;
+      retryScheduledRef.current = true;
       clearTimers();
       teardownPeer();
       setTransport('fallback');
       setWebrtcState('retrying');
       setStreamUrl(fallbackUrl);
       retryTimerRef.current = setTimeout(() => {
+        retryScheduledRef.current = false;
         if (!stoppedRef.current) startWebRTC();
       }, WEBRTC_RETRY_INTERVAL_MS);
     };
@@ -112,11 +119,15 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       try {
         const response = await api.get(`/api/v1/webrtc/session-status/${sessionIdRef.current}`);
         const status = response?.data?.status;
+        pollFailureCountRef.current = 0;
         if (status === 'fallback_active') {
           scheduleRetry();
         }
       } catch {
-        scheduleRetry();
+        pollFailureCountRef.current += 1;
+        if (pollFailureCountRef.current >= 3) {
+          scheduleRetry();
+        }
       }
     };
 
@@ -149,6 +160,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         const rtcConfig = await fetchIceConfig();
         const pc = new RTCPeerConnection(rtcConfig);
         pcRef.current = pc;
+        pollFailureCountRef.current = 0;
 
         pc.ontrack = (event) => {
           negotiatedRef.current = true;
@@ -174,7 +186,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         };
 
         pc.onconnectionstatechange = () => {
-          if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+          if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
             scheduleRetry();
           }
         };

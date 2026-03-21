@@ -42,6 +42,12 @@ def create_app():
         'WEBRTC_ICE_TRANSPORT_POLICY', 'all'
     )
     app.config['WEBRTC_FORCE_RELAY'] = os.environ.get('WEBRTC_FORCE_RELAY', 'false')
+    app.config['WEBRTC_FUTURE_TIMEOUT_SECONDS'] = os.environ.get(
+        'WEBRTC_FUTURE_TIMEOUT_SECONDS', 20
+    )
+    app.config['WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS'] = os.environ.get(
+        'WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS', 3
+    )
 
     # Init extensions
     db.init_app(app)

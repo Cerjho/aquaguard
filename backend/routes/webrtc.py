@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
@@ -18,6 +19,8 @@ _SESSIONS = {}
 _WEBRTC_LOOP = None
 _WEBRTC_LOOP_THREAD = None
 _WEBRTC_FUTURE_TIMEOUT_SECONDS = 10
+
+LOGGER = logging.getLogger(__name__)
 
 try:
     import cv2
@@ -45,18 +48,36 @@ if AIORTC_AVAILABLE:
         def __init__(self, zone_id):
             super().__init__()
             self.zone_id = zone_id
+            self._cached_frame = None
+            self._frame_timestamp = 0
+            self._cache_interval = 0.033  # ~30fps
 
-        def _read_latest_frame(self):
+        async def _read_latest_frame_async(self):
+            loop = asyncio.get_event_loop()
             frame_path = os.path.join(LIVE_SNAPSHOT_DIR, f'{self.zone_id}_latest.jpg')
-            if not os.path.exists(frame_path):
-                return None
-            return cv2.imread(frame_path)
+            try:
+                # Run I/O in thread pool to avoid blocking event loop
+                frame = await loop.run_in_executor(None, cv2.imread, frame_path)
+                if frame is not None:
+                    self._cached_frame = frame
+                    self._frame_timestamp = time.time()
+                    return frame
+            except Exception as exc:
+                LOGGER.warning('WebRTC frame read failed for zone %s: %s', self.zone_id, exc)
+            return self._cached_frame
 
         async def recv(self):
             pts, time_base = await self.next_timestamp()
-            frame = self._read_latest_frame()
+
+            # Check if cache is stale
+            now = time.time()
+            if now - self._frame_timestamp > self._cache_interval:
+                await self._read_latest_frame_async()
+
+            frame = self._cached_frame
             if frame is None:
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
             video_frame = VideoFrame.from_ndarray(frame, format='bgr24')
             video_frame.pts = pts
             video_frame.time_base = time_base
@@ -205,11 +226,27 @@ def _ensure_webrtc_loop():
     raise RuntimeError('WebRTC event loop failed to start')
 
 
+def _future_timeout_seconds():
+    raw = current_app.config.get('WEBRTC_FUTURE_TIMEOUT_SECONDS', _WEBRTC_FUTURE_TIMEOUT_SECONDS)
+    try:
+        return max(float(raw), 5.0)
+    except (TypeError, ValueError):
+        return float(_WEBRTC_FUTURE_TIMEOUT_SECONDS)
+
+
+def _ice_gathering_timeout_seconds():
+    raw = current_app.config.get('WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS', 3)
+    try:
+        return max(float(raw), 0.5)
+    except (TypeError, ValueError):
+        return 3.0
+
+
 def _run_in_webrtc_loop(coro):
     loop = _ensure_webrtc_loop()
     future = asyncio.run_coroutine_threadsafe(coro, loop)
     try:
-        return future.result(timeout=_WEBRTC_FUTURE_TIMEOUT_SECONDS)
+        return future.result(timeout=_future_timeout_seconds())
     except FutureTimeoutError as exc:
         raise RuntimeError('WebRTC operation timed out') from exc
 
@@ -221,6 +258,22 @@ async def _create_answer_async(zone_id, offer_type, offer_sdp):
         await pc.setRemoteDescription(RTCSessionDescription(sdp=offer_sdp, type=offer_type))
         answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
+        ice_timeout = _ice_gathering_timeout_seconds()
+        if pc.iceGatheringState != 'complete':
+            try:
+                await asyncio.wait_for(
+                    _wait_for_ice_gathering_complete(pc),
+                    timeout=ice_timeout,
+                )
+            except asyncio.TimeoutError:
+                LOGGER.warning(
+                    (
+                        'WebRTC ICE gathering timeout for zone %s after %.2fs; '
+                        'continuing with partial candidates'
+                    ),
+                    zone_id,
+                    ice_timeout,
+                )
         return {
             'pc': pc,
             'sdp': pc.localDescription.sdp,
@@ -233,6 +286,19 @@ async def _create_answer_async(zone_id, offer_type, offer_sdp):
 
 async def _close_peer_connection_async(pc):
     await pc.close()
+
+
+async def _wait_for_ice_gathering_complete(pc):
+    if pc.iceGatheringState == 'complete':
+        return
+    done = asyncio.Event()
+
+    @pc.on('icegatheringstatechange')
+    async def _on_ice_gathering_state_change():
+        if pc.iceGatheringState == 'complete':
+            done.set()
+
+    await done.wait()
 
 
 async def _add_ice_candidate_async(pc, candidate, sdp_mid, sdp_mline_index):
@@ -251,8 +317,8 @@ def _close_peer_connection(session):
         return
     try:
         _run_in_webrtc_loop(_close_peer_connection_async(pc))
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        LOGGER.warning('WebRTC peer connection close failed: %s', exc)
 
 
 @webrtc_bp.route('/offer', methods=['POST'])
@@ -309,6 +375,7 @@ def create_offer():
         try:
             answer_payload = _run_in_webrtc_loop(_create_answer_async(zone_id, offer_type, sdp))
         except Exception as exc:
+            LOGGER.warning('WebRTC answer creation failed for zone %s: %s', zone_id, exc)
             session_payload['status'] = 'fallback_active'
             session_payload['fallback']['active'] = True
             session_payload['fallback']['reason'] = f'webrtc_answer_failed: {exc}'
@@ -417,7 +484,8 @@ def add_ice_candidate():
                     data.get('sdpMLineIndex'),
                 )
             )
-        except Exception:
+        except Exception as exc:
+            LOGGER.warning('WebRTC ICE candidate rejected for session %s: %s', session_id, exc)
             with _SESSION_LOCK:
                 existing = _SESSIONS.get(session_id)
                 if existing:

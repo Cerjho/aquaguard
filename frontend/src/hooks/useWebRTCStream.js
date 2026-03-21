@@ -120,14 +120,15 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         const response = await api.get(`/api/v1/webrtc/session-status/${sessionIdRef.current}`);
         const status = response?.data?.status;
         pollFailureCountRef.current = 0;
-        if (status === 'fallback_active') {
-          scheduleRetry();
+        if (status === 'fallback_active' && !negotiatedRef.current) {
+          clearTimers();
+          teardownPeer();
+          setTransport('fallback');
+          setWebrtcState('fallback');
+          setStreamUrl(fallbackUrl);
         }
       } catch {
         pollFailureCountRef.current += 1;
-        if (pollFailureCountRef.current >= 3) {
-          scheduleRetry();
-        }
       }
     };
 
@@ -181,7 +182,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
               sdpMLineIndex: event.candidate.sdpMLineIndex,
             });
           } catch {
-            scheduleRetry();
+            // ICE candidate relay errors can be transient and should not force full renegotiation.
           }
         };
 
@@ -204,7 +205,11 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         const offerStatus = offerResponse?.data?.status;
         const fallbackActive = Boolean(offerResponse?.data?.fallback?.active);
         if (offerStatus === 'fallback_active' || fallbackActive) {
-          scheduleRetry();
+          clearTimers();
+          teardownPeer();
+          setTransport('fallback');
+          setWebrtcState('fallback');
+          setStreamUrl(fallbackUrl);
           return;
         }
         const answerSdp = offerResponse?.data?.sdp;

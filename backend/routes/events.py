@@ -35,6 +35,7 @@ def _serialize_alert_event_payload(alert, event):
         # Alias used by some clients
         'timestamp': alert.triggered_at.isoformat() if alert.triggered_at else None,
         'confidence_score': event.confidence_score,
+        'bbox': event.bbox,
         'snapshot_path': event.snapshot_path,
         'snapshot_url': None,
     })
@@ -151,6 +152,7 @@ def create_event():
         final_confidence = data.get('final_confidence'),
         confidence_score = data.get('confidence_score'),
         behavior_flags   = data.get('behavior_flags'),
+        bbox             = data.get('bbox'),
         alert_triggered  = bool(data.get('alert_triggered', False)),
         snapshot_path    = snapshot_path,
         detected_at      = detected_at,

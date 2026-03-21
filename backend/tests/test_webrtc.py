@@ -22,11 +22,17 @@ def test_webrtc_offer_accepts_jwt_and_returns_contract_shape(client, admin_token
                        })
     assert resp.status_code == 202
     payload = resp.get_json()
-    assert payload['status'] == 'offer_received'
+    assert payload['status'] in {'answer_created', 'fallback_active'}
     assert payload['accepted'] is True
     assert payload['session_id']
     assert payload['next']['ice_candidate_url'] == '/api/v1/webrtc/ice-candidate'
     assert '/api/v1/webrtc/session-status/' in payload['next']['session_status_url']
+    if payload['status'] == 'answer_created':
+        assert payload['type'] == 'answer'
+        assert payload['sdp']
+    else:
+        assert payload['fallback']['active'] is True
+        assert payload['fallback']['reason']
 
 
 def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
@@ -62,6 +68,7 @@ def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
     status_payload = status.get_json()
     assert status_payload['session_id'] == session_id
     assert status_payload['webrtc']['offer_received'] is True
+    assert 'answer_created' in status_payload['webrtc']
     assert status_payload['webrtc']['candidate_count'] >= 1
     assert 'fallback' in status_payload
     assert status_payload['compat']['sessionStatus'] == status_payload['status']

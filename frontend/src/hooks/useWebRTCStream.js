@@ -189,11 +189,19 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         });
 
         sessionIdRef.current = offerResponse?.data?.session_id || null;
+        const offerStatus = offerResponse?.data?.status;
+        const fallbackActive = Boolean(offerResponse?.data?.fallback?.active);
+        if (offerStatus === 'fallback_active' || fallbackActive) {
+          scheduleRetry();
+          return;
+        }
         const answerSdp = offerResponse?.data?.sdp;
         const answerType = offerResponse?.data?.type || 'answer';
-        if (answerSdp) {
-          await pc.setRemoteDescription({ type: answerType, sdp: answerSdp });
+        if (!answerSdp) {
+          scheduleRetry();
+          return;
         }
+        await pc.setRemoteDescription({ type: answerType, sdp: answerSdp });
 
         negotiationTimeoutId = setTimeout(() => {
           if (!negotiatedRef.current) scheduleRetry();

@@ -1,5 +1,9 @@
+import asyncio
+import os
+import time
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import datetime, timedelta, timezone
-from threading import Lock
+from threading import Lock, Thread
 from uuid import uuid4
 
 from flask import Blueprint, current_app, jsonify, request
@@ -11,6 +15,52 @@ webrtc_bp = Blueprint('webrtc', __name__, url_prefix='/api/v1/webrtc')
 
 _SESSION_LOCK = Lock()
 _SESSIONS = {}
+_WEBRTC_LOOP = None
+_WEBRTC_LOOP_THREAD = None
+_WEBRTC_FUTURE_TIMEOUT_SECONDS = 10
+
+try:
+    import cv2
+    import numpy as np
+    from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+    from aiortc.sdp import candidate_from_sdp
+    from av import VideoFrame
+
+    AIORTC_AVAILABLE = True
+    AIORTC_IMPORT_ERROR = None
+except ImportError as exc:
+    AIORTC_AVAILABLE = False
+    AIORTC_IMPORT_ERROR = str(exc)
+
+
+LIVE_SNAPSHOT_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'snapshots',
+    'live',
+)
+
+
+if AIORTC_AVAILABLE:
+    class SnapshotVideoTrack(VideoStreamTrack):
+        def __init__(self, zone_id):
+            super().__init__()
+            self.zone_id = zone_id
+
+        def _read_latest_frame(self):
+            frame_path = os.path.join(LIVE_SNAPSHOT_DIR, f'{self.zone_id}_latest.jpg')
+            if not os.path.exists(frame_path):
+                return None
+            return cv2.imread(frame_path)
+
+        async def recv(self):
+            pts, time_base = await self.next_timestamp()
+            frame = self._read_latest_frame()
+            if frame is None:
+                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            video_frame = VideoFrame.from_ndarray(frame, format='bgr24')
+            video_frame.pts = pts
+            video_frame.time_base = time_base
+            return video_frame
 
 
 def _utc_now():
@@ -32,12 +82,18 @@ def _session_ttl_seconds():
 
 def _cleanup_expired_sessions():
     now = _utc_now()
-    expired_ids = [
-        session_id for session_id, payload in _SESSIONS.items()
-        if payload.get('expires_at') and payload['expires_at'] <= now
-    ]
+    expired_ids = []
+    expired_payloads = []
+    for session_id, payload in _SESSIONS.items():
+        expires_at = payload.get('expires_at')
+        if expires_at and expires_at <= now:
+            expired_ids.append(session_id)
+            expired_payloads.append(payload)
+
     for session_id in expired_ids:
         _SESSIONS.pop(session_id, None)
+    for payload in expired_payloads:
+        _close_peer_connection(payload)
 
 
 def _authorized_actor():
@@ -64,6 +120,7 @@ def _ensure_authorized():
 
 def _session_payload(session):
     offer = session.get('offer') or {}
+    answer = session.get('answer') or {}
     candidates = session.get('ice_candidates') or []
     fallback = session.get('fallback') or {}
     return {
@@ -78,6 +135,8 @@ def _session_payload(session):
         'webrtc': {
             'offer_received': bool(offer.get('sdp')),
             'offer_type': offer.get('type'),
+            'answer_created': bool(answer.get('sdp')),
+            'answer_type': answer.get('type'),
             'candidate_count': len(candidates),
         },
         'fallback': {
@@ -123,6 +182,75 @@ def _ice_servers_from_config():
     }
 
 
+def _start_webrtc_loop():
+    global _WEBRTC_LOOP
+    loop = asyncio.new_event_loop()
+    _WEBRTC_LOOP = loop
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
+def _ensure_webrtc_loop():
+    global _WEBRTC_LOOP_THREAD
+    if not AIORTC_AVAILABLE:
+        raise RuntimeError(f'aiortc unavailable: {AIORTC_IMPORT_ERROR}')
+    if _WEBRTC_LOOP and _WEBRTC_LOOP.is_running():
+        return _WEBRTC_LOOP
+    _WEBRTC_LOOP_THREAD = Thread(target=_start_webrtc_loop, daemon=True, name='webrtc-loop')
+    _WEBRTC_LOOP_THREAD.start()
+    for _ in range(20):
+        if _WEBRTC_LOOP and _WEBRTC_LOOP.is_running():
+            return _WEBRTC_LOOP
+        time.sleep(0.05)
+    raise RuntimeError('WebRTC event loop failed to start')
+
+
+def _run_in_webrtc_loop(coro):
+    loop = _ensure_webrtc_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    try:
+        return future.result(timeout=_WEBRTC_FUTURE_TIMEOUT_SECONDS)
+    except FutureTimeoutError as exc:
+        raise RuntimeError('WebRTC operation timed out') from exc
+
+
+async def _create_answer_async(zone_id, offer_type, offer_sdp):
+    pc = RTCPeerConnection()
+    pc.addTrack(SnapshotVideoTrack(zone_id))
+    await pc.setRemoteDescription(RTCSessionDescription(sdp=offer_sdp, type=offer_type))
+    answer = await pc.createAnswer()
+    await pc.setLocalDescription(answer)
+    return {
+        'pc': pc,
+        'sdp': pc.localDescription.sdp,
+        'type': pc.localDescription.type,
+    }
+
+
+async def _close_peer_connection_async(pc):
+    await pc.close()
+
+
+async def _add_ice_candidate_async(pc, candidate, sdp_mid, sdp_mline_index):
+    parsed = candidate_from_sdp(candidate)
+    parsed.sdpMid = sdp_mid
+    parsed.sdpMLineIndex = sdp_mline_index
+    await pc.addIceCandidate(parsed)
+
+
+def _close_peer_connection(session):
+    pc = session.get('peer_connection')
+    if not pc:
+        return
+    session['peer_connection'] = None
+    if not AIORTC_AVAILABLE:
+        return
+    try:
+        _run_in_webrtc_loop(_close_peer_connection_async(pc))
+    except RuntimeError:
+        pass
+
+
 @webrtc_bp.route('/offer', methods=['POST'])
 def create_offer():
     auth, error = _ensure_authorized()
@@ -146,6 +274,8 @@ def create_offer():
     with _SESSION_LOCK:
         _cleanup_expired_sessions()
         existing = _SESSIONS.get(session_id)
+        if existing:
+            _close_peer_connection(existing)
         revision = (existing.get('revision') if existing else 0) + 1
         session_payload = {
             'session_id': session_id,
@@ -160,13 +290,38 @@ def create_offer():
                 'type': 'offer',
                 'sdp': sdp,
             },
+            'answer': None,
             'ice_candidates': existing.get('ice_candidates', []) if existing else [],
+            'peer_connection': None,
             'fallback': {
                 'transport': data.get('fallback_transport', 'mjpeg'),
                 'active': False,
                 'reason': None,
             },
         }
+
+    answer_payload = None
+    if AIORTC_AVAILABLE:
+        try:
+            answer_payload = _run_in_webrtc_loop(_create_answer_async(zone_id, offer_type, sdp))
+        except Exception as exc:
+            session_payload['status'] = 'fallback_active'
+            session_payload['fallback']['active'] = True
+            session_payload['fallback']['reason'] = f'webrtc_answer_failed: {exc}'
+    else:
+        session_payload['status'] = 'fallback_active'
+        session_payload['fallback']['active'] = True
+        session_payload['fallback']['reason'] = f'aiortc_unavailable: {AIORTC_IMPORT_ERROR}'
+
+    if answer_payload:
+        session_payload['status'] = 'answer_created'
+        session_payload['answer'] = {
+            'type': answer_payload['type'],
+            'sdp': answer_payload['sdp'],
+        }
+        session_payload['peer_connection'] = answer_payload['pc']
+
+    with _SESSION_LOCK:
         _SESSIONS[session_id] = session_payload
 
     socketio.emit('webrtc_offer_received', {
@@ -177,16 +332,19 @@ def create_offer():
 
     return jsonify({
         'session_id': session_id,
-        'status': 'offer_received',
+        'status': session_payload['status'],
         'accepted': True,
         'auth_type': auth['auth_type'],
+        'type': (session_payload.get('answer') or {}).get('type'),
+        'sdp': (session_payload.get('answer') or {}).get('sdp'),
         'next': {
             'ice_candidate_url': '/api/v1/webrtc/ice-candidate',
             'session_status_url': f'/api/v1/webrtc/session-status/{session_id}',
         },
         'fallback': {
             'transport': session_payload['fallback']['transport'],
-            'active': False,
+            'active': session_payload['fallback']['active'],
+            'reason': session_payload['fallback']['reason'],
         },
     }), 202
 
@@ -207,6 +365,7 @@ def add_ice_candidate():
 
     now = _utc_now()
     ttl = timedelta(seconds=_session_ttl_seconds())
+    peer_connection = None
     with _SESSION_LOCK:
         _cleanup_expired_sessions()
         session = _SESSIONS.get(session_id)
@@ -221,7 +380,9 @@ def add_ice_candidate():
                 'expires_at': now + ttl,
                 'revision': 0,
                 'offer': None,
+                'answer': None,
                 'ice_candidates': [],
+                'peer_connection': None,
                 'fallback': {
                     'transport': data.get('fallback_transport', 'mjpeg'),
                     'active': False,
@@ -239,7 +400,27 @@ def add_ice_candidate():
         session['status'] = 'collecting_candidates'
         session['updated_at'] = now
         session['expires_at'] = now + ttl
+        peer_connection = session.get('peer_connection')
         candidate_count = len(session['ice_candidates'])
+
+    if peer_connection and AIORTC_AVAILABLE:
+        try:
+            _run_in_webrtc_loop(
+                _add_ice_candidate_async(
+                    peer_connection,
+                    candidate,
+                    data.get('sdpMid'),
+                    data.get('sdpMLineIndex'),
+                )
+            )
+        except Exception:
+            with _SESSION_LOCK:
+                existing = _SESSIONS.get(session_id)
+                if existing:
+                    existing['status'] = 'fallback_active'
+                    existing['fallback']['active'] = True
+                    existing['fallback']['reason'] = 'ice_candidate_rejected'
+                    existing['updated_at'] = _utc_now()
 
     socketio.emit('webrtc_ice_candidate', {
         'session_id': session_id,

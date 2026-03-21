@@ -390,6 +390,7 @@ def main():
                                 track_id=det.track_id,
                                 score=score,
                                 frame=frame,
+                                bbox=det.bbox,
                                 class_label=det.class_label,
                                 yolo_confidence=float(det.confidence),
                                 pose_confidence=None,

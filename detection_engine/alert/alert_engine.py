@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -37,6 +37,7 @@ class AlertEngine:
         track_id: str,
         score: float,
         frame: np.ndarray,
+        bbox: Optional[Tuple[float, float, float, float]] = None,
         class_label: str | None = None,
         yolo_confidence: float | None = None,
         pose_confidence: float | None = None,
@@ -82,6 +83,7 @@ class AlertEngine:
             snapshot_path=snapshot_path,
             snapshot_b64=snapshot_b64,
             timestamp=timestamp,
+            bbox=bbox,
             class_label=class_label,
             yolo_confidence=yolo_confidence,
             pose_confidence=pose_confidence,
@@ -95,6 +97,7 @@ class AlertEngine:
             "score": score,
             "snapshot_path": snapshot_path,
             "timestamp": timestamp,
+            "bbox": list(bbox) if bbox is not None else None,
         }
 
         # Dispatch concurrently — daemon threads so they don't block shutdown

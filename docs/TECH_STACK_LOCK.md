@@ -12,7 +12,7 @@
 
 ## Python Version
 
-```
+```python
 Python 3.11.x  (3.11.8 recommended)
 ```
 
@@ -104,7 +104,7 @@ jupyter==1.1.1                # Jupyter notebook for benchmark.py development
 
 ## Node.js Version
 
-```
+```node
 Node.js 20.x LTS  (20.17.0 recommended)
 npm 10.x
 ```
@@ -145,12 +145,14 @@ npm 10.x
 Install via Arduino IDE Library Manager or PlatformIO:
 
 | Library | Version | Author |
+
 |---|---|---|
 | PubSubClient | 2.8.0 | Nick O'Leary |
 | ArduinoJson | 7.1.0 | Benoit Blanchon |
 | WiFi (built-in ESP32) | — | Espressif |
 
 **Arduino IDE Board Package:**
+
 - ESP32 by Espressif Systems: `2.0.17`
 - Install via: Boards Manager → search "esp32" → install Espressif ESP32
 
@@ -161,10 +163,11 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## MQTT Broker
 
 | Component | Version |
+
 |---|---|
 | Eclipse Mosquitto | 2.0.18 |
 
-**Windows install:** Download from https://mosquitto.org/download/
+**Windows install:** Download from <https://mosquitto.org/download/>
 **Ubuntu install:** `sudo apt install mosquitto mosquitto-clients`
 
 ---
@@ -172,6 +175,7 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## Docker
 
 | Component | Version |
+
 |---|---|
 | Docker Desktop / Engine | 27.x |
 | Docker Compose | 2.29.x |
@@ -184,6 +188,7 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## CUDA / GPU
 
 | Component | Version |
+
 |---|---|
 | NVIDIA Driver | ≥ 531.x (Windows) / ≥ 525.x (Linux) |
 | CUDA Toolkit | 12.1 |
@@ -233,14 +238,17 @@ python -c "import paho.mqtt; print('paho-mqtt OK')"
 - **MediaPipe 0.10.14** requires Python ≤ 3.11. On Python 3.12 use 0.10.18+ if available.
 - **Flask-SocketIO 5.x** requires `python-socketio>=5.0` and `python-engineio>=4.0` — both pinned above.
 - **Flask-SocketIO async_mode:** Always initialize with `async_mode='threading'` when using Flask's built-in dev server or Gunicorn threaded workers. Omitting this causes WebSocket connections to hang or fail silently:
+
   ```python
   socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
   ```
+
 - **MediaPipe Pose coordinate system:** All landmark x, y, z values are **normalized to [0.0, 1.0]** relative to the input image/ROI dimensions. Never compare them against pixel thresholds. Use normalized thresholds (e.g., `0.015` not `15`) or denormalize first: `px_x = landmark.x * frame_width`.
 - **torch 2.2.x + cu121** is compatible with NVIDIA driver ≥ 525. The RTX 2050 on Lenovo LOQ ships with a driver that satisfies this.
 - **ultralytics 8.3.0** includes YOLOv11 support. Do not use versions below 8.1.0 for YOLOv11.
 - **opencv-python** and **opencv-python-headless** conflict. Use `opencv-python` for development (enables GUI windows). Use `opencv-python-headless` in Docker containers.
 - **paho-mqtt 2.x** has a breaking API change from 1.x — callback signatures are different from version 1.x. Use `CallbackAPIVersion.VERSION2` AND update all callback signatures:
+
   ```python
   from paho.mqtt.enums import CallbackAPIVersion
   client = mqtt.Client(CallbackAPIVersion.VERSION2)
@@ -254,4 +262,5 @@ python -c "import paho.mqtt; print('paho-mqtt OK')"
   # on_message: unchanged — still 3 args
   def on_message(client, userdata, message): ...
   ```
+
   Using the old 3- or 4-argument signatures will raise `TypeError` at runtime with paho-mqtt 2.x.

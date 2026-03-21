@@ -28,6 +28,7 @@ is missing, stop and report to `agents/status/{your_agent_id}_blocked.md`.
 Each agent has a defined scope. Never write files outside it.
 
 | Agent | Owns | Never Touches |
+
 |---|---|---|
 | Orchestrator | `agents/queue/`, `agents/status/` | Application code |
 | Agent 1 — CV | `detection_engine/`, `config/` | `backend/`, `frontend/`, `esp32/` |
@@ -48,6 +49,7 @@ Within each agent's scope, files must be built in the exact order listed
 in `docs/TASK_BREAKDOWN.md` for that phase. Do not skip ahead.
 
 **Why this matters:**
+
 - `extensions.py` must exist before `app.py` or any route file
 - `conftest.py` must exist before any test file
 - `constants.js` must exist before any React component
@@ -63,12 +65,14 @@ If you create files out of order, import errors will cascade and waste time.
 After creating each file, immediately verify it does not have import errors:
 
 **Python:**
+
 ```bash
 .\aquaguard_env\Scripts\Activate.ps1
 python -c "import detection_engine.vision.detector"   # adjust path
 ```
 
 **React/JS:**
+
 ```bash
 cd frontend && npm run build 2>&1 | tail -20
 ```
@@ -84,6 +88,7 @@ All of the following must come from config files or environment variables.
 Never write these directly into application code:
 
 | Value | Where It Lives |
+
 |---|---|
 | Confidence thresholds (N, T, K) | `config/settings.py` |
 | MQTT topics and broker address | `config/settings.py` |
@@ -125,6 +130,7 @@ These are the exact failure points identified during design review.
 Violating any of these will cause silent bugs or runtime crashes.
 
 ### R6-A — One DrowningDetector Per Camera
+
 ```python
 # WRONG — corrupts ByteTrack state across cameras
 detector = DrowningDetector(model_path)
@@ -137,6 +143,7 @@ detectors = {zone_id: DrowningDetector(model_path)
 ```
 
 ### R6-B — MediaPipe Coordinates Are Normalized, Not Pixels
+
 ```python
 # WRONG
 if std_dev_wrist_x < 15:      # 15 pixels — MediaPipe never returns pixels
@@ -146,6 +153,7 @@ if std_dev_wrist_x < 0.015:   # 0.015 normalized units (0.0–1.0 range)
 ```
 
 ### R6-C — Flask-SocketIO Must Use async_mode='threading'
+
 ```python
 # WRONG — WebSocket connections will hang
 socketio = SocketIO()
@@ -156,6 +164,7 @@ socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
 ```
 
 ### R6-D — socketio.emit Must Come After db.session.commit()
+
 ```python
 # WRONG — emitting before commit means alert_id doesn't exist yet
 socketio.emit('alert_event', alert.to_dict())
@@ -167,6 +176,7 @@ socketio.emit('alert_event', alert.to_dict())
 ```
 
 ### R6-E — Import socketio From extensions.py in Routes
+
 ```python
 # WRONG — creates a second unconnected SocketIO instance
 from flask_socketio import SocketIO
@@ -179,6 +189,7 @@ socketio.emit('alert_event', data)
 ```
 
 ### R6-F — paho-mqtt 2.x Callback Signatures
+
 ```python
 # WRONG — old 1.x signatures raise TypeError at runtime
 def on_connect(client, userdata, flags, rc): ...
@@ -190,6 +201,7 @@ def on_disconnect(client, userdata, disconnect_flags, reason_code, properties): 
 ```
 
 ### R6-G — Snapshot Path Must Be Absolute
+
 ```python
 # WRONG — breaks when detection engine runs from a different working dir
 snapshot_path = "backend/snapshots/"
@@ -203,6 +215,7 @@ alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=SNAPSHOT_DIR)
 ```
 
 ### R6-H — Never Hardcode URLs in React Components
+
 ```javascript
 // WRONG — breaks when API URL changes
 const response = await axios.get('http://localhost:5000/api/v1/cameras');
@@ -213,6 +226,7 @@ const response = await api.get('/api/v1/cameras');
 ```
 
 ### R6-I — bcrypt Passwords Must Be Decoded to String
+
 ```python
 # WRONG — stores bytes object in DB, breaks string comparison
 password_hash = bcrypt.generate_password_hash('password')
@@ -222,7 +236,8 @@ password_hash = bcrypt.generate_password_hash('password').decode('utf-8')
 ```
 
 ### R6-J — conftest.py Must Be Created Before Any Test File
-```
+
+```text
 # WRONG order
 backend/tests/test_auth.py        ← created first, imports fixtures that don't exist
 backend/tests/conftest.py         ← created second
@@ -341,7 +356,7 @@ Task: P2-04"
 
 ### R10-C — Commit Message Format
 
-```
+```text
 type(scope): short description
 
 Optional body explaining WHY.
@@ -372,6 +387,7 @@ git push origin feature/agent{N}-{scope} --force-with-lease
 ### R10-F — Open a Pull Request for Every Phase Completion
 
 When your phase is done and all tests pass, open a PR on GitHub:
+
 - Base branch: `develop`
 - Compare branch: your `feature/agent{N}-{scope}`
 - Title format: `feat(agent{N}): complete {scope} — Phase {N}`
@@ -400,6 +416,7 @@ in the staging area, remove them with `git reset HEAD {file}`.
 
 Every PR triggers GitHub Actions CI (`.github/workflows/ci.yml`).
 All 4 jobs must be green before the Orchestrator merges:
+
 - `test-backend`
 - `test-detection-engine`
 - `test-frontend`
@@ -415,11 +432,12 @@ the Orchestrator to merge a red PR.
 If any instruction in the docs is ambiguous or contradicts another
 instruction, do NOT guess. Write the ambiguity to:
 
-```
+```text
 agents/status/{your_agent_id}_question.md
 ```
 
 Format:
+
 ```markdown
 # Question from Agent {ID}
 
@@ -443,11 +461,13 @@ trained model. Agents must:
 - Never move it from its defined path
 - Never attempt to re-download or re-train it
 - Always verify it loads correctly with:
+
   ```python
   from ultralytics import YOLO
   model = YOLO("detection_engine/models/aquaguard_yolov11s.pt")
   model.info()
   ```
+
 - If the file is missing, write to `agents/status/blocked_no_model.md`
   and stop. A human must provide the weights file.
 
@@ -456,6 +476,7 @@ trained model. Agents must:
 ## Quick Reference — Critical File Locations
 
 | What | Where |
+
 |---|---|
 | All thresholds and constants | `config/settings.py` |
 | Camera zone definitions | `config/cameras.json` |

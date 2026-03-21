@@ -83,7 +83,7 @@ npm install
 
 Download and install Eclipse Mosquitto. Place config at `mqtt/mosquitto.conf`:
 
-```
+```text
 listener 1883
 allow_anonymous true
 ```
@@ -98,7 +98,7 @@ mosquitto -c mqtt/mosquitto.conf
 
 Place the Kaggle-trained model weights at:
 
-```
+```text
 detection_engine/models/aquaguard_yolov11s.pt
 ```
 
@@ -119,6 +119,7 @@ model.info()
 **File:** `detection_engine/camera/capture.py`
 
 Implement `CameraCapture` class:
+
 - Accept RTSP URL or integer (webcam index) as input
 - Run in a dedicated thread per camera
 - Expose a `read()` method returning the latest frame and metadata
@@ -130,6 +131,7 @@ Implement `CameraCapture` class:
 **File:** `detection_engine/vision/detector.py`
 
 Implement `DrowningDetector` class:
+
 - Load `aquaguard_yolov11s.pt` on initialization, assign to `device="cuda"`
 - Expose `detect(frame)` method
 - Use `model.track(frame, persist=True, conf=0.4, device="cuda", verbose=False)` for multi-object tracking across frames
@@ -141,6 +143,7 @@ Implement `DrowningDetector` class:
 **File:** `detection_engine/vision/pose_estimator.py`
 
 Implement `PoseEstimator` class:
+
 - Initialize `mediapipe.solutions.pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)`
 - Expose `estimate(frame, bbox)` method — crops the ROI from `bbox`, runs pose on the crop
 - Return list of 33 `Landmark(x, y, z, visibility)` objects or `None` if pose not detected
@@ -154,7 +157,7 @@ Implement `BehaviorAnalyzer` class with `analyze(landmarks, yolo_class, yolo_con
 
 Five weighted indicators — return a `float` score in `[0.0, 1.0]`:
 
-```
+```text
 score = 0.0
 score += 0.30  if is_vertical_orientation(landmarks)
 score += 0.25  if are_arms_elevated(landmarks)
@@ -164,6 +167,7 @@ score += 0.10  if (yolo_class == "drowning" and yolo_confidence > 0.6)
 ```
 
 Also apply temporal consistency bonus:
+
 - Compute ratio of last 5 history entries that exceeded 0.5
 - Multiply final score by `(1.0 + 0.1 * temporal_ratio)` — capped at 1.0
 
@@ -173,6 +177,7 @@ Maintain per-`track_id` landmark history (deque maxlen=10) for the limb motion c
 MediaPipe Pose returns **normalized coordinates in [0.0, 1.0]** relative to the ROI dimensions — NOT pixel values. All threshold comparisons must use normalized units, not pixels. To convert to pixels for debug display only: `px = landmark.x * roi_width`.
 
 Indicator thresholds — all in **normalized units**:
+
 - **Vertical orientation:** angle between (shoulder_midpoint → hip_midpoint) vector and vertical axis `< 30°`
   - Use `np.arctan2(dx, dy)` where dx/dy are differences of normalized x/y coords — angle calculation is unit-independent
 - **Arms elevated:** both `wrist.y < shoulder.y` in image coordinates (smaller Y = higher in frame) — normalized comparison is valid as-is
@@ -192,6 +197,7 @@ LIMB_MOTION_STD_THRESHOLD_PX = 15   # MediaPipe does NOT return pixels
 **File:** `detection_engine/analysis/confidence_filter.py`
 
 Implement `ConfidenceFilter` class:
+
 - Maintain a `Dict[track_id, deque(maxlen=15)]` confidence buffer
 - Expose `evaluate(track_id, score) -> bool`
 - Return `True` (alert) only when:
@@ -204,6 +210,7 @@ Implement `ConfidenceFilter` class:
 **File:** `detection_engine/alert/alert_engine.py`
 
 Implement `AlertEngine` class:
+
 - Accept `MQTTClient`, `APIClient`, `snapshot_dir` as constructor dependencies
 - `snapshot_dir` is resolved by `main.py` using `__file__` — never hardcode a relative path here
 - Expose `dispatch(camera_zone_id, track_id, confidence, frame)` method
@@ -420,6 +427,7 @@ def log_event():
 **File:** `backend/models.py`
 
 Define SQLAlchemy models matching the ER diagram in the system design doc:
+
 - `User` — id, username, password_hash, role, email, created_at, last_login, is_active
 - `CameraZone` — id, zone_name, rtsp_url, location_description, frame_rate, resolution, is_active, registered_at
 - `DetectionEvent` — id, zone_id (FK), detected_at, class_label, yolo_confidence, pose_confidence, final_confidence, person_track_id, frame_snapshot_path, alert_triggered
@@ -472,6 +480,7 @@ Use `bcrypt` for password hashing. JWT expiry: access=60min, refresh=7days.
 **File:** `backend/sockets.py`
 
 Define Socket.IO event handlers:
+
 - `connect` — validate JWT from query param or handshake auth
 - `disconnect` — log session end
 - Server-emitted events: `alert_event`, `camera_status`, `system_status`
@@ -485,11 +494,13 @@ The Flask backend emits `alert_event` when `POST /api/v1/events` receives an `al
 **File:** `esp32/aquaguard_esp32/aquaguard_esp32.ino`
 
 ### Required Libraries (Arduino IDE)
+
 - `WiFi.h` (built-in)
 - `PubSubClient` by Nick O'Leary
 - `ArduinoJson` by Benoit Blanchon
 
 ### Firmware Behavior
+
 1. Connect to Wi-Fi using credentials in `config.h`
 2. Connect to MQTT broker at configured IP, port 1883
 3. Subscribe to `aquaguard/alert` (QoS 1) and `aquaguard/alert/reset`
@@ -601,7 +612,7 @@ Connect to Flask-SocketIO with JWT auth. Listen for `alert_event` and `camera_st
 
 Create `backend/.env`:
 
-```
+```env
 DATABASE_URL=sqlite:///aquaguard.db
 JWT_SECRET_KEY=generate_with_secrets_module
 MQTT_BROKER_HOST=localhost

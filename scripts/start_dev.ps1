@@ -84,6 +84,51 @@ if (-not (Test-Path $VENV_PYTHON)) {
     exit 1
 }
 
+# 1a. Bootstrap backend/.env from .env.example if it doesn't exist
+$backendEnv = "$ROOT\backend\.env"
+$backendEnvExample = "$ROOT\backend\.env.example"
+if (-not (Test-Path $backendEnv)) {
+    if (Test-Path $backendEnvExample) {
+        Copy-Item $backendEnvExample $backendEnv
+        Write-Host "==> Created backend\.env from backend\.env.example" -ForegroundColor Green
+        Write-Host "    IMPORTANT: Review and update backend\.env with your own secrets." -ForegroundColor Yellow
+    } else {
+        Write-Host "WARNING: backend\.env not found and backend\.env.example is missing." -ForegroundColor Yellow
+        Write-Host "         The backend requires SECRET_KEY and JWT_SECRET_KEY to start." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "==> backend\.env already exists (skipping copy from example)." -ForegroundColor Green
+}
+
+# 1b. Bootstrap frontend/.env if it doesn't exist
+$frontendEnv = "$ROOT\frontend\.env"
+if (-not (Test-Path $frontendEnv)) {
+    @"
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_WS_URL=http://localhost:5000
+"@ | Set-Content $frontendEnv
+    Write-Host "==> Created frontend\.env with default API URL settings." -ForegroundColor Green
+}
+
+# 1c. Initialize database (migrations + seed)
+Write-Host "==> Initializing database (migrations + seed)..." -ForegroundColor Green
+$env:FLASK_APP = "wsgi.py"
+Push-Location "$ROOT\backend"
+try {
+    $ErrorActionPreference = 'Stop'
+    & $VENV_PYTHON -m flask db upgrade
+    if ($LASTEXITCODE -ne 0) { throw "flask db upgrade exited with code $LASTEXITCODE" }
+    Write-Host "    flask db upgrade: OK" -ForegroundColor Green
+    & $VENV_PYTHON seed.py
+    if ($LASTEXITCODE -ne 0) { throw "seed.py exited with code $LASTEXITCODE" }
+    Write-Host "    seed.py: OK" -ForegroundColor Green
+} catch {
+    Write-Host "    WARNING: Database initialization failed: $($_.Exception.Message)" -ForegroundColor Yellow
+} finally {
+    $ErrorActionPreference = 'Continue'
+    Pop-Location
+}
+
 # 2. Start Mosquitto MQTT broker
 if (-not $SkipMqtt) {
     Write-Host "==> Starting Mosquitto MQTT broker..." -ForegroundColor Green

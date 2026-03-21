@@ -1,5 +1,7 @@
 """API client — HTTP client for logging detection events to the Flask backend."""
 import logging
+from collections import deque
+from threading import Lock
 import requests
 
 from detection_engine.models_data.alert_payload import AlertPayload
@@ -7,6 +9,7 @@ from detection_engine.models_data.alert_payload import AlertPayload
 logger = logging.getLogger(__name__)
 
 _REQUEST_TIMEOUT_SECONDS = 5
+_FAILED_EVENT_QUEUE_MAX = 500
 
 
 class APIClient:
@@ -20,10 +23,57 @@ class APIClient:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._session = requests.Session()
+        self._failed_event_queue = deque(maxlen=_FAILED_EVENT_QUEUE_MAX)
+        self._queue_lock = Lock()
         self._session.headers.update({
             "Content-Type": "application/json",
             "X-API-Key": api_key,
         })
+
+    def _post_event(self, url: str, data: dict) -> bool:
+        try:
+            response = self._session.post(url, json=data, timeout=_REQUEST_TIMEOUT_SECONDS)
+            if response.status_code in (200, 201):
+                return True
+            logger.error(
+                "API log_event returned %d: %s",
+                response.status_code,
+                response.text[:200],
+            )
+            return False
+        except requests.exceptions.ConnectionError as exc:
+            logger.error("API connection error (log_event): %s", exc)
+            return False
+        except requests.exceptions.Timeout:
+            logger.error("API request timed out after %ds", _REQUEST_TIMEOUT_SECONDS)
+            return False
+        except requests.exceptions.RequestException as exc:
+            logger.error("API request exception (log_event): %s", exc)
+            return False
+
+    def _enqueue_failed_event(self, data: dict) -> None:
+        with self._queue_lock:
+            queue_was_full = len(self._failed_event_queue) == self._failed_event_queue.maxlen
+            self._failed_event_queue.append(data)
+            queued_count = len(self._failed_event_queue)
+        if queue_was_full:
+            logger.error(
+                "API retry queue full (%d); oldest event payload was dropped",
+                _FAILED_EVENT_QUEUE_MAX,
+            )
+        logger.warning("Queued event for retry. pending_retries=%d", queued_count)
+
+    def _flush_failed_events(self, url: str) -> None:
+        while True:
+            with self._queue_lock:
+                if not self._failed_event_queue:
+                    return
+                candidate = self._failed_event_queue[0]
+            if not self._post_event(url, candidate):
+                return
+            with self._queue_lock:
+                if self._failed_event_queue and self._failed_event_queue[0] == candidate:
+                    self._failed_event_queue.popleft()
 
     def log_event(self, payload: AlertPayload) -> None:
         """POST alert payload to /api/v1/events.
@@ -46,20 +96,9 @@ class APIClient:
             "detected_at": payload.timestamp,
             "alert_triggered": True,
         }
-        try:
-            response = self._session.post(url, json=data, timeout=_REQUEST_TIMEOUT_SECONDS)
-            if response.status_code not in (200, 201):
-                logger.error(
-                    "API log_event returned %d: %s",
-                    response.status_code,
-                    response.text[:200],
-                )
-        except requests.exceptions.ConnectionError as exc:
-            logger.error("API connection error (log_event): %s", exc)
-        except requests.exceptions.Timeout:
-            logger.error("API request timed out after %ds", _REQUEST_TIMEOUT_SECONDS)
-        except Exception as exc:
-            logger.error("Unexpected API error (log_event): %s", exc)
+        self._flush_failed_events(url)
+        if not self._post_event(url, data):
+            self._enqueue_failed_event(data)
 
     def fetch_active_cameras(self) -> list[dict]:
         """Fetch active camera list from backend internal endpoint.

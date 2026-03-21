@@ -5,7 +5,8 @@
  */
 
 export const API_BASE_URL = process.env.REACT_APP_API_URL || '';
-export const WS_URL = process.env.REACT_APP_WS_URL;
+const RUNTIME_ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
+export const WS_URL = process.env.REACT_APP_WS_URL || API_BASE_URL || RUNTIME_ORIGIN;
 export const WEBRTC_ENABLE = (process.env.REACT_APP_WEBRTC_ENABLE || 'true').toLowerCase() !== 'false';
 export const WEBRTC_FORCE_RELAY = (process.env.REACT_APP_WEBRTC_FORCE_RELAY || 'false').toLowerCase() === 'true';
 export const WEBRTC_STUN_URLS = process.env.REACT_APP_WEBRTC_STUN_URLS || 'stun:stun.l.google.com:19302';

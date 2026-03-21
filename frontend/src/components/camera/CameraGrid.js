@@ -385,7 +385,7 @@ function CameraGrid({ reloadToken = 0 }) {
               stream_session_id: streamSessionId,
             }}
             onStreamAuthFailure={handleStreamAuthFailure}
-            onFocus={(selectedCamera) => openFocus(selectedCamera, document.activeElement)}
+            onFocus={(selectedCamera, triggerElement) => openFocus(selectedCamera, triggerElement)}
             shouldRenderStream={!focusedCamera && activeStreamZoneIds.has(camera.zone_id)}
             pausedReason={
               focusedCamera

@@ -4,6 +4,7 @@ import datetime
 import logging
 import threading
 import uuid
+import os
 from typing import TYPE_CHECKING
 
 import cv2
@@ -63,7 +64,7 @@ class AlertEngine:
 
         # Write JPEG to disk
         snapshot_filename = f"{event_id}.jpg"
-        snapshot_path = f"{self._snapshot_dir}/{snapshot_filename}"
+        snapshot_path = os.path.join(self._snapshot_dir, snapshot_filename)
         try:
             with open(snapshot_path, "wb") as fh:
                 fh.write(buf.tobytes())

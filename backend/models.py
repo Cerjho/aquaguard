@@ -68,6 +68,7 @@ class DetectionEvent(db.Model):
     final_confidence = db.Column(db.Float, nullable=True)
     confidence_score = db.Column(db.Float)
     behavior_flags   = db.Column(db.JSON)
+    bbox             = db.Column(db.JSON, nullable=True)
     alert_triggered  = db.Column(db.Boolean, default=False, index=True)
     snapshot_path    = db.Column(db.String(255))
     detected_at      = db.Column(db.DateTime, default=datetime.utcnow, index=True)
@@ -88,6 +89,7 @@ class DetectionEvent(db.Model):
             'final_confidence': self.final_confidence,
             'confidence_score': self.confidence_score,
             'behavior_flags':   self.behavior_flags,
+            'bbox':             self.bbox,
             'alert_triggered':  self.alert_triggered,
             'snapshot_path':    self.snapshot_path,
             'detected_at':      self.detected_at.isoformat() if self.detected_at else None,

@@ -25,6 +25,7 @@ frontend/.env
 # Snapshots (generated at runtime)
 backend/snapshots/*.jpg
 backend/snapshots/*.jpeg
+backend/snapshots/*.tmp
 backend/snapshots/live/*.jpg
 backend/snapshots/live/*.jpeg
 

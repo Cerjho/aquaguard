@@ -3,6 +3,7 @@
 
 param(
     [switch]$SkipMqtt,
+    [switch]$SkipTurn,
     [switch]$SkipFrontend
 )
 
@@ -50,7 +51,18 @@ if (-not $SkipMqtt) {
     }
 }
 
-# 3. Start Flask backend
+# 3. Start local TURN service via Docker (coturn)
+if (-not $SkipTurn) {
+    Write-Host "==> Starting TURN service (coturn) via docker compose..." -ForegroundColor Green
+    try {
+        docker compose up -d coturn | Out-Null
+        Write-Host "    coturn running on port 3478 (tcp/udp)" -ForegroundColor Green
+    } catch {
+        Write-Host "    WARNING: Could not start coturn. Ensure Docker Desktop is running." -ForegroundColor Yellow
+    }
+}
+
+# 4. Start Flask backend
 Write-Host "==> Starting Flask backend..." -ForegroundColor Green
 if (Test-ProcessCommandLine -Pattern 'wsgi\.py') {
     Write-Host "    Flask backend already running (skip start)" -ForegroundColor Yellow
@@ -65,7 +77,7 @@ if (Test-ProcessCommandLine -Pattern 'wsgi\.py') {
     Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green
 }
 
-# 4. Start React frontend
+# 5. Start React frontend
 if (-not $SkipFrontend) {
     Write-Host "==> Starting React dashboard..." -ForegroundColor Green
     if (Test-ProcessCommandLine -Pattern 'react-scripts\s+start') {
@@ -95,5 +107,13 @@ try {
     Write-Host "Stopping services..." -ForegroundColor Red
     if ($backendJob) { Stop-Job $backendJob -ErrorAction SilentlyContinue }
     if (-not $SkipFrontend -and $frontendJob) { Stop-Job $frontendJob -ErrorAction SilentlyContinue }
+    if (-not $SkipTurn) {
+        try {
+            docker compose stop coturn | Out-Null
+        } catch {
+            Write-Host "    WARNING: Unable to stop coturn automatically." -ForegroundColor Yellow
+        }
+    }
     Get-Process mosquitto -ErrorAction SilentlyContinue | Stop-Process
+    Write-Host "    NOTE: stop Mosquitto manually if still running." -ForegroundColor Yellow
 }

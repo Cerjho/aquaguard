@@ -11,6 +11,23 @@ services:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     restart: unless-stopped
 
+  coturn:
+    image: coturn/coturn:4.6.3
+    container_name: aquaguard-turn
+    command:
+      - -n
+      - --log-file=stdout
+      - --fingerprint
+      - --lt-cred-mech
+      - --realm=${TURN_REALM:-aquaguard.local}
+      - --user=${TURN_USERNAME:-aquaguard}:${TURN_PASSWORD:-aquaguardpass}
+      - --min-port=49152
+      - --max-port=49200
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -20,13 +37,23 @@ services:
     environment:
       - FLASK_ENV=production
       - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
+      - WEBRTC_SESSION_TTL_SECONDS=${WEBRTC_SESSION_TTL_SECONDS:-300}
+      - WEBRTC_STUN_URLS=${WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
+      - WEBRTC_TURN_URL=${WEBRTC_TURN_URL:-turn:localhost:3478?transport=udp}
+      - WEBRTC_TURN_USERNAME=${WEBRTC_TURN_USERNAME:-aquaguard}
+      - WEBRTC_TURN_CREDENTIAL=${WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
+      - WEBRTC_ICE_TRANSPORT_POLICY=${WEBRTC_ICE_TRANSPORT_POLICY:-all}
+      - WEBRTC_FORCE_RELAY=${WEBRTC_FORCE_RELAY:-false}
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-}
     volumes:
       - ./backend/snapshots:/app/snapshots
     depends_on:
       - mosquitto
+      - coturn
     restart: unless-stopped
 
   frontend:
@@ -38,8 +65,16 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:5000
       - REACT_APP_WS_URL=http://localhost:5000
+      - REACT_APP_WEBRTC_STUN_URLS=${REACT_APP_WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
+      - REACT_APP_WEBRTC_TURN_URL=${REACT_APP_WEBRTC_TURN_URL:-turn:localhost:3478?transport=udp}
+      - REACT_APP_WEBRTC_TURN_USERNAME=${REACT_APP_WEBRTC_TURN_USERNAME:-aquaguard}
+      - REACT_APP_WEBRTC_TURN_CREDENTIAL=${REACT_APP_WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
+      - REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY=${REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY:-all}
+      - REACT_APP_WEBRTC_FORCE_RELAY=${REACT_APP_WEBRTC_FORCE_RELAY:-false}
+      - REACT_APP_WEBRTC_ENABLE=${REACT_APP_WEBRTC_ENABLE:-true}
     depends_on:
       - backend
+      - coturn
     restart: unless-stopped
 
   detection_engine:

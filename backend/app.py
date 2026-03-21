@@ -4,7 +4,7 @@ from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 
-from extensions import db, jwt, socketio, bcrypt, migrate, cors
+from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 
 
@@ -56,6 +56,7 @@ def create_app():
     migrate.init_app(app, db)
     cors.init_app(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
     socketio.init_app(app)
+    limiter.init_app(app)
 
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):

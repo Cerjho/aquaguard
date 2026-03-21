@@ -5,6 +5,7 @@ flask-sqlalchemy==3.1.1
 flask-migrate==4.0.7
 flask-cors==4.0.1
 flask-bcrypt==1.0.1
+flask-limiter==3.5.0
 python-socketio==5.11.3
 python-engineio==4.9.1
 paho-mqtt==2.1.0

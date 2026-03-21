@@ -6,7 +6,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     get_jwt,
 )
-from extensions import bcrypt, db
+from extensions import bcrypt, db, limiter
 from models import User
 from token_blocklist import revoke_token
 
@@ -14,6 +14,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
 
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()

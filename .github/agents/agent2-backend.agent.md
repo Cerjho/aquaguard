@@ -59,7 +59,7 @@ Commit after each task. Push every 3–5 commits.
 
 ## Verification
 ```
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
 ```

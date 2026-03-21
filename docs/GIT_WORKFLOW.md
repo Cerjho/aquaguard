@@ -30,7 +30,7 @@ After this, the Orchestrator sets up branch protection (see Section 6).
 
 ## Branch Strategy
 
-```
+```text
 main
  └── develop
       ├── feature/agent1-cv-engine
@@ -41,6 +41,7 @@ main
 ```
 
 | Branch | Purpose | Who Pushes | Merges Into |
+
 |---|---|---|---|
 | `main` | Production-ready code only | Nobody directly | — |
 | `develop` | Integration branch | Via PR from feature | `main` (via PR) |
@@ -48,6 +49,7 @@ main
 | `fix/agent{N}-*` | Bug fixes after review | The agent | `develop` (via PR) |
 
 **Rules:**
+
 - No agent pushes directly to `main` or `develop`
 - Every merge to `develop` goes through a Pull Request
 - Every merge to `main` goes through a Pull Request from `develop`
@@ -80,7 +82,7 @@ All work is done on your feature branch. Never commit directly to `develop`.
 
 ### Format
 
-```
+```text
 type(scope): short description (max 72 chars)
 
 Optional longer body explaining WHY, not WHAT.
@@ -90,6 +92,7 @@ Reference task ID from TASK_BREAKDOWN.md.
 ### Types
 
 | Type | When to Use |
+
 |---|---|
 | `feat` | New file or new functionality |
 | `fix` | Bug fix |
@@ -101,7 +104,7 @@ Reference task ID from TASK_BREAKDOWN.md.
 
 ### Scope = the module or layer you're in
 
-```
+```text
 feat(detector): implement DrowningDetector with YOLOv11s CUDA inference
 feat(pose): add MediaPipe landmark extraction with ROI cropping
 feat(analyzer): implement 5-indicator drowning behavior scoring
@@ -143,7 +146,7 @@ Task: P2-04"
 Commit after each completed, verified task — not after each file,
 not after the entire phase.
 
-```
+```text
 P2-04 done and verified → commit
 P2-05 done and verified → commit
 P2-06 done and verified → commit
@@ -182,7 +185,8 @@ git push origin feature/agent1-cv-engine --force-with-lease
 ### Step 2 — Open Pull Request on GitHub
 
 PR title format:
-```
+
+```text
 feat(agent1): complete CV/AI detection engine — Phase 2
 ```
 
@@ -222,6 +226,7 @@ Any known limitations or follow-up items.
 ### Step 3 — Orchestrator Reviews and Merges
 
 The Orchestrator reviews the PR on GitHub:
+
 - Checks that CI passes (GitHub Actions)
 - Checks that no files outside scope were modified
 - Merges using **Squash and Merge** for clean history
@@ -381,11 +386,11 @@ The Orchestrator also creates these files during setup:
 <!-- Paste pytest or npm test output summary -->
 
 ## Critical Rules Verified
-- [ ] No hardcoded config values (Rule 4)
-- [ ] Correct conda environment used (Rule 5)
-- [ ] All relevant R6-* technical rules followed (Rule 6)
-- [ ] All I/O operations have error handling (Rule 9)
-- [ ] No files outside agent scope modified (Rule 1)
+- [x] No hardcoded config values (Rule 4)
+- [x] Correct venv environment used (Rule 5)
+- [x] All relevant R6-* technical rules followed (Rule 6)
+- [x] All I/O operations have error handling (Rule 9)
+- [x] No files outside agent scope modified (Rule 1)
 
 ## Linked Issues
 <!-- Closes #issue-number if applicable -->
@@ -393,7 +398,7 @@ The Orchestrator also creates these files during setup:
 
 ### `.github/CODEOWNERS`
 
-```
+```text
 # Global owners — Orchestrator reviews all PRs
 * @{project-lead-github-username}
 
@@ -443,6 +448,7 @@ What actually happens.
 The Orchestrator configures these on GitHub after the first push:
 
 **For `main` branch:**
+
 - Require pull request before merging ✅
 - Require 1 approving review ✅
 - Require status checks to pass (all 4 CI jobs) ✅
@@ -450,6 +456,7 @@ The Orchestrator configures these on GitHub after the first push:
 - Restrict who can push: nobody directly ✅
 
 **For `develop` branch:**
+
 - Require pull request before merging ✅
 - Require status checks to pass (all 4 CI jobs) ✅
 - Allow force push: disabled ✅
@@ -482,6 +489,7 @@ git push origin v1.0.0
 ```
 
 Then create a GitHub Release:
+
 - Tag: `v1.0.0`
 - Title: `AquaGuard v1.0.0`
 - Body: Summary of all implemented features, team credits, known limitations

@@ -59,7 +59,7 @@ git push origin feature/agent4-esp32
 
 ## Verification
 ```
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 python scripts/test_mqtt.py
 ```
 Physical ESP32 flashing is done by the human — not this agent.

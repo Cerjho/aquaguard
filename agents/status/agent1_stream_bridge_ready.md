@@ -19,7 +19,7 @@
 ## Blockers
 
 - No functional blockers for CV-side stream bridge.
-- Environment note: `conda activate aquaguard_env` was not available in this PowerShell context, but all verification commands completed successfully with the active Python runtime.
+- Environment note: `.\aquaguard_env\Scripts\Activate.ps1` was used as the venv activation method in PowerShell context.
 
 ## Dependency requests to other agents
 

@@ -64,7 +64,7 @@ After creating each file, immediately verify it does not have import errors:
 
 **Python:**
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 python -c "import detection_engine.vision.detector"   # adjust path
 ```
 
@@ -105,7 +105,7 @@ Put it in the correct config location first.
 Every Python command must run inside `aquaguard_env`.
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 ```
 
 - Do NOT create a new virtual environment

@@ -18,9 +18,9 @@ function Test-ProcessCommandLine {
         [Parameter(Mandatory = $true)][string]$Pattern
     )
 
-    $matches = Get-CimInstance Win32_Process |
+    $processMatches = Get-CimInstance Win32_Process |
         Where-Object { $_.CommandLine -and $_.CommandLine -match $Pattern }
-    return @($matches).Count -gt 0
+    return @($processMatches).Count -gt 0
 }
 
 function Stop-JobSafe {

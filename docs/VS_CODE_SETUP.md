@@ -8,7 +8,7 @@
 ## Your Setup
 
 - Machine: Lenovo LOQ 15IAX9E — RTX 2050, 8GB DDR5
-- Environment: aquaguard_env (ultralytics already installed)
+- Environment: aquaguard_env (Python venv with ultralytics installed)
 - Editor: VS Code with GitHub Copilot (Claude agent available)
 - Constraint: ~90% of monthly premium requests already used
 
@@ -37,7 +37,7 @@ check github.com/settings/copilot for your reset date.
 
 ```bash
 cd AquaGuard
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 code .
 ```
 
@@ -63,7 +63,7 @@ python -c "import torch; print(torch.cuda.is_available())"
 
 ### Every time you start an agent session:
 
-1. Open terminal → `conda activate aquaguard_env`
+1. Open terminal → `.\aquaguard_env\Scripts\Activate.ps1`
 2. Open Copilot Chat (`Ctrl+Alt+I`)
 3. Click `+` for a new conversation
 4. Click agents dropdown → select **Claude** model
@@ -236,7 +236,7 @@ develop                    → main (final release)
 Run local GPU verification on your RTX 2050:
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 python detection_engine/benchmark.py     # see actual inference ms
 python scripts/test_camera.py            # test your webcam
 python scripts/latency_test.py           # must be ≤ 3000ms
@@ -249,13 +249,13 @@ Then start all services to test the full system:
 mosquitto -c mqtt/mosquitto.conf
 
 # Terminal 2 — Flask backend
-cd backend && conda activate aquaguard_env && flask run --port=5000
+cd backend && .\..\..\aquaguard_env\Scripts\Activate.ps1 && flask run --port=5000
 
 # Terminal 3 — React dashboard
 cd frontend && npm start
 
 # Terminal 4 — Detection engine
-conda activate aquaguard_env && python detection_engine/main.py
+.\aquaguard_env\Scripts\Activate.ps1 && python detection_engine/main.py
 ```
 
 Open browser at http://localhost:3000 and verify the dashboard loads.
@@ -268,7 +268,7 @@ You still have ~10% of requests left this month.
 Use them for the two fastest sessions:
 
 **Right now:**
-1. `conda activate aquaguard_env`
+1. `.\aquaguard_env\Scripts\Activate.ps1`
 2. Open Copilot Chat → select Claude → select AquaGuard Orchestrator
 3. Run Session 1 (Orchestrator) — ~10 requests
 4. Run Session 2 (ESP32) — ~10 requests

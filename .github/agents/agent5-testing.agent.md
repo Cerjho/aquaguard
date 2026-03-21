@@ -36,7 +36,7 @@ git checkout -b feature/agent5-testing
 
 3. Run all test suites and save output:
 ```
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 cd backend && pytest tests/ -v --cov=. --cov-report=term-missing 2>&1 | tee ../agents/status/backend_test_output.txt && cd ..
 pytest detection_engine/tests/ -v --cov=detection_engine 2>&1 | tee agents/status/cv_test_output.txt
 cd frontend && npm test -- --watchAll=false --passWithNoTests 2>&1 | tee ../agents/status/frontend_test_output.txt && cd ..

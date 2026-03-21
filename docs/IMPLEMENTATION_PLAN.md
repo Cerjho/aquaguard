@@ -23,13 +23,13 @@
 
 ### 1.1 Python Environment
 
-> **Note:** A conda environment named `aquaguard_env` already exists with `ultralytics` installed.
+> **Note:** A venv (virtual environment) named `aquaguard_env` already exists with `ultralytics` installed.
 > Do NOT create a new environment or reinstall ultralytics/PyTorch — this will break the existing CUDA configuration.
 
 Activate the existing environment:
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 ```
 
 Verify CUDA is working before installing anything else:
@@ -686,31 +686,17 @@ echo "    Mosquitto running on port 1883"
 
 echo "==> Starting Flask backend..."
 cd "$ROOT_DIR/backend"
-# Activate the existing conda environment
-eval "$(conda shell.bash hook)"
-conda activate aquaguard_env
-export FLASK_APP=app.py
-export FLASK_ENV=development
-python -m flask run --port=5000 &
-FLASK_PID=$!
-echo "    Flask running on http://localhost:5000 (PID $FLASK_PID)"
-
-echo "==> Starting React dashboard..."
-cd "$ROOT_DIR/frontend"
-npm start &
-REACT_PID=$!
-echo "    React running on http://localhost:3000 (PID $REACT_PID)"
+# Activate the existing venv
+.\aquaguard_env\Scripts\Activate.ps1
+$env:FLASK_APP = "app.py"
+$env:FLASK_ENV = "development"
+python -m flask run --port=5000
 
 echo ""
-echo "All services started. Press Ctrl+C to stop."
-echo "Detection engine: run manually with: python detection_engine/main.py"
-
-# Wait and clean up on Ctrl+C
-trap "echo 'Stopping...'; kill $FLASK_PID $REACT_PID; mosquitto_ctl stop 2>/dev/null; exit 0" SIGINT
-wait
+echo "All services started. Detection engine: run manually with: python detection_engine/main.py"
 ```
 
-On Windows, run each service manually in separate terminals instead of using this script. Make sure to run `conda activate aquaguard_env` in each terminal before starting Flask or the detection engine.
+**On Windows, run each service manually in separate terminals** instead of using this script. Make sure to run `.\aquaguard_env\Scripts\Activate.ps1` in each terminal before starting Flask or the detection engine.
 
 ### 6.4 conftest.py — Pytest fixtures for backend tests
 

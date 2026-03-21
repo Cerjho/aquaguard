@@ -4,7 +4,7 @@
 > The Claude agent must use these exact versions. Do not upgrade without testing.
 > Last verified: March 2026 — compatible with RTX 2050 CUDA 12.1, Windows 11 / Ubuntu 22.04.
 >
-> **IMPORTANT:** A conda environment named `aquaguard_env` already exists with `ultralytics`
+> **IMPORTANT:** A venv (virtual environment) named `aquaguard_env` already exists with `ultralytics`
 > (and therefore PyTorch + CUDA) installed. Do NOT reinstall PyTorch or ultralytics.
 > Only install the remaining packages listed in the "Install remaining packages" section below.
 
@@ -22,18 +22,18 @@ Do not use Python 3.12+ — some MediaPipe builds are not yet stable on 3.12.
 
 ## Environment
 
-**Existing conda environment:** `aquaguard_env`
+**Existing venv:** `aquaguard_env`
 **Already installed:** `ultralytics` (includes PyTorch, torchvision, torchaudio, opencv-python, numpy, Pillow)
 
 Always activate before running any Python command:
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 ```
 
 ---
 
-## requirements.txt — Detection Engine + Backend (shared conda env)
+## requirements.txt — Detection Engine + Backend (shared venv)
 
 > This file is for **documentation only**. Do NOT run `pip install -r requirements.txt` from scratch.
 > PyTorch and ultralytics are already installed. Only run the targeted installs below.
@@ -208,7 +208,7 @@ python -c "import torch; print(torch.version.cuda)"   # Should print: 12.1
 # Step 1: SKIP — aquaguard_env with ultralytics already exists
 
 # Step 2: Activate env and install remaining packages
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 pip install mediapipe==0.10.14
 pip install flask==3.0.3 flask-socketio==5.3.6 flask-jwt-extended==4.6.0
 pip install flask-sqlalchemy==3.1.1 flask-migrate==4.0.7 flask-cors==4.0.1 flask-bcrypt==1.0.1

@@ -8,16 +8,16 @@ Install these tools before cloning the project.
 
 ### Core software
 
-- Python 3.11.x: https://www.python.org/downloads/release/python-3119/
-- Node.js 20 LTS: https://nodejs.org/en/download
-- Git for Windows: https://git-scm.com/download/win
-- Eclipse Mosquitto 2.x: https://mosquitto.org/download/
-- Arduino IDE 2.x: https://www.arduino.cc/en/software
+- Python 3.11.x: <https://www.python.org/downloads/release/python-3119/>
+- Node.js 20 LTS: <https://nodejs.org/en/download>
+- Git for Windows: <https://git-scm.com/download/win>
+- Eclipse Mosquitto 2.x: <https://mosquitto.org/download/>
+- Arduino IDE 2.x: <https://www.arduino.cc/en/software>
 
 ### GPU and build tools
 
-- NVIDIA driver (latest stable): https://www.nvidia.com/Download/index.aspx
-- Visual Studio Build Tools (Desktop development with C++ workload): https://visualstudio.microsoft.com/visual-cpp-build-tools/
+- NVIDIA driver (latest stable): <https://www.nvidia.com/Download/index.aspx>
+- Visual Studio Build Tools (Desktop development with C++ workload): <https://visualstudio.microsoft.com/visual-cpp-build-tools/>
 
 Important: Install Visual Studio C++ Build Tools before installing torch-related packages.
 
@@ -38,7 +38,7 @@ python -m venv aquaguard_env
 .\aquaguard_env\Scripts\Activate.ps1
 ```
 
-Critical: Use `aquaguard_env\Scripts\python.exe` for all Python commands in this guide. Do not use conda for this setup flow.
+Critical: Use `aquaguard_env\Scripts\python.exe` or `.\aquaguard_env\Scripts\Activate.ps1` for all Python commands in this guide. Use venv, not conda.
 
 ## 3. Python Environment
 
@@ -225,13 +225,13 @@ python .\detection_engine\main.py
 python .\scripts\verify_cuda.py
 ```
 
-2. Open dashboard in browser:
+1. Open dashboard in browser:
 
-- http://localhost:3000
+- <http://localhost:3000>
 
-3. Login with seeded user.
-4. Confirm camera list loads and WebSocket connection is established.
-5. Trigger a test detection flow and verify:
+1. Login with seeded user.
+2. Confirm camera list loads and WebSocket connection is established.
+3. Trigger a test detection flow and verify:
    - Alert appears in dashboard
    - Event appears in API results
    - ESP32 receives MQTT alert and actuates alarm

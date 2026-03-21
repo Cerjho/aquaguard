@@ -11,10 +11,12 @@
 ## Files Created
 
 ### Config (shared)
+
 - `config/cameras.json` — camera zone registry (zone_01, Main Pool East)
 - `config/settings.py` — all system-wide constants and thresholds
 
 ### Backend Core
+
 - `backend/.env` — local env vars (NOT committed — in .gitignore)
 - `backend/.env.example` — template for environment variables
 - `backend/extensions.py` — Flask extensions (db, jwt, socketio, bcrypt, migrate, cors)
@@ -26,6 +28,7 @@
 - `backend/seed.py` — DB seed script (admin + lifeguard users + camera zone)
 
 ### Routes
+
 - `backend/routes/__init__.py` — package marker
 - `backend/routes/auth.py` — POST /login, /refresh, /logout
 - `backend/routes/cameras.py` — GET/POST/PUT/DELETE /cameras + MJPEG stream
@@ -34,6 +37,7 @@
 - `backend/routes/reports.py` — GET /reports/summary
 
 ### Tests
+
 - `backend/tests/conftest.py` — pytest fixtures (app, client, db, admin_token, lifeguard_token)
 - `backend/tests/test_auth.py` — login, refresh, logout tests
 - `backend/tests/test_events.py` — POST events, GET events with filters
@@ -59,8 +63,8 @@
 
 ```bash
 cd backend
-conda activate aquaguard_env
-set FLASK_APP=wsgi.py
+.\..\..\aquaguard_env\Scripts\Activate.ps1
+$env:FLASK_APP = "wsgi.py"
 
 # First time only:
 flask db init
@@ -78,7 +82,7 @@ python seed.py
 ## Test Execution
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
 ```

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -111,7 +111,7 @@ def acknowledge_alert(alert_id):
 
     alert.status          = 'acknowledged'
     alert.acknowledged_by = user_id
-    alert.acknowledged_at = datetime.utcnow()
+    alert.acknowledged_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     data = request.get_json(silent=True) or {}
     if data.get('notes'):

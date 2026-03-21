@@ -1,3 +1,5 @@
+import os
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
@@ -7,7 +9,15 @@ from flask_cors import CORS
 
 db       = SQLAlchemy()
 jwt      = JWTManager()
-socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
+
+
+def _socketio_allowed_origins():
+    raw = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+    origins = [origin.strip() for origin in str(raw).split(',') if origin.strip()]
+    return origins or ['http://localhost:3000']
+
+
+socketio = SocketIO(async_mode='threading', cors_allowed_origins=_socketio_allowed_origins())
 bcrypt   = Bcrypt()
 migrate  = Migrate()
 cors     = CORS()

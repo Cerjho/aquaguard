@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from models import Alert
 import routes.events as events_routes
 
@@ -10,7 +10,7 @@ def _event_payload(**kwargs):
         'confidence_score': 0.85,
         'behavior_flags':   {'vertical': True},
         'alert_triggered':  False,
-        'detected_at':      datetime.utcnow().isoformat(),
+        'detected_at':      datetime.now(timezone.utc).isoformat(),
     }
     base.update(kwargs)
     return base

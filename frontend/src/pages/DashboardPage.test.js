@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from './DashboardPage';
 
 jest.mock('../components/camera/CameraGrid', () => () => <div>Mock Camera Grid</div>);
@@ -9,7 +10,11 @@ jest.mock('../components/camera/CameraManagementPanel', () => () => <div>Mock Ca
 
 describe('DashboardPage', () => {
   test('keeps dashboard focused on monitoring and excludes camera management panel', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText(/real-time pool monitoring/i)).toBeInTheDocument();
     expect(screen.getByText('Mock Camera Grid')).toBeInTheDocument();

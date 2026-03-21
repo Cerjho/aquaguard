@@ -11,6 +11,8 @@ paho-mqtt==2.1.0
 python-dotenv==1.0.1
 pymysql==1.1.1
 requests==2.32.3
+aiortc==1.9.0
+av==12.3.0
 pytest==8.3.3
 pytest-cov==5.0.0
 pytest-mock==3.14.0

@@ -7,8 +7,8 @@
  * - Green/red status indicator based on camera.is_active
  */
 
-import React, { useEffect, useState, memo } from 'react';
-import { API_BASE_URL } from '../../utils/constants';
+import React, { useEffect, useState, memo, useRef } from 'react';
+import useWebRTCStream from '../../hooks/useWebRTCStream';
 
 function CameraCard({
   camera,
@@ -18,10 +18,10 @@ function CameraCard({
   pausedReason = 'Stream paused',
 }) {
   const [imgError, setImgError] = useState(false);
+  const imgRef = useRef(null);
   const streamToken = camera.stream_token || null;
-  const streamUrl = streamToken
-    ? `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${encodeURIComponent(streamToken)}`
-    : null;
+  const streamSessionId = camera.stream_session_id || 0;
+  const videoRef = useRef(null);
   const normalizeStatus = (value) => {
     if (typeof value === 'boolean') return value ? 'online' : 'offline';
     if (!value) return 'unknown';
@@ -35,12 +35,50 @@ function CameraCard({
   const cameraOnline =
     normalizeStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
   const isActive = detectionOnline && cameraOnline;
-  const showStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
+  const { transport, webrtcState, streamUrl, videoStream } = useWebRTCStream({
+    zoneId: camera.zone_id,
+    streamToken,
+    shouldRenderStream,
+    isActive,
+  });
+  const showWebRTC = shouldRenderStream && isActive && transport === 'webrtc' && Boolean(videoStream);
+  const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
 
   useEffect(() => {
     // Reset image fallback state whenever the stream token rotates.
     setImgError(false);
   }, [streamToken]);
+
+  useEffect(() => {
+    // Resume from transient browser/network hiccups when stream rendering is re-enabled.
+    if (shouldRenderStream) {
+      setImgError(false);
+    }
+  }, [shouldRenderStream, streamSessionId]);
+
+  useEffect(() => {
+    if (shouldRenderStream) return;
+    // Explicitly clear src when stream is paused so browsers close stale MJPEG connections.
+    if (imgRef.current) {
+      imgRef.current.src = '';
+    }
+  }, [shouldRenderStream]);
+
+  useEffect(() => () => {
+    // Ensure connection is closed when navigating away from dashboard route.
+    if (imgRef.current) {
+      imgRef.current.src = '';
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (!videoStream) {
+      videoRef.current.srcObject = null;
+      return;
+    }
+    videoRef.current.srcObject = videoStream;
+  }, [videoStream]);
 
   const offlineReason = !detectionOnline
     ? 'Detection engine offline'
@@ -48,6 +86,8 @@ function CameraCard({
     ? 'Camera offline'
     : !shouldRenderStream
     ? pausedReason
+    : transport === 'webrtc' && webrtcState === 'connecting'
+    ? 'Negotiating WebRTC…'
     : !streamToken
     ? 'Authorizing stream…'
     : 'Stream unavailable';
@@ -56,11 +96,11 @@ function CameraCard({
     <article
       role="button"
       tabIndex={0}
-      onClick={() => onFocus?.(camera)}
+      onClick={(e) => onFocus?.(camera, e.currentTarget)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onFocus?.(camera);
+          onFocus?.(camera, e.currentTarget);
         }
       }}
       className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col cursor-pointer transition-all hover:shadow-md hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -68,11 +108,25 @@ function CameraCard({
     >
       {/* Stream area */}
       <div className="relative w-full bg-slate-900 aspect-video overflow-hidden">
-        {showStream ? (
+        {showWebRTC ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            aria-label={`Live feed — ${camera.zone_name}`}
+          />
+        ) : showFallbackStream ? (
           <img
+            ref={imgRef}
+            key={`${camera.zone_id}-${streamToken}-${streamSessionId}`}
             src={streamUrl}
             alt={`Live feed — ${camera.zone_name}`}
             className="w-full h-full object-cover"
+            onLoad={() => {
+              setImgError(false);
+            }}
             onError={() => {
               setImgError(true);
               if (typeof onStreamAuthFailure === 'function') {
@@ -100,8 +154,8 @@ function CameraCard({
           </div>
         )}
 
-        {/* Status pill overlaid on the stream */}
-        <div className="absolute top-2 right-2">
+        {/* Status pills overlaid on the stream */}
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
           <span
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shadow ${
               isActive
@@ -116,6 +170,11 @@ function CameraCard({
             />
             {isActive ? 'Live' : 'Offline'}
           </span>
+          {isActive && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-900/80 text-white">
+              {transport === 'webrtc' ? 'WebRTC' : 'MJPEG fallback'}
+            </span>
+          )}
         </div>
       </div>
 

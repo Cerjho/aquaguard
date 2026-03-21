@@ -7,6 +7,7 @@ Real-time drowning detection using YOLOv11 + MediaPipe Pose, ESP32 physical alar
 ## Team
 
 | Role | Member |
+
 |------|--------|
 | Project Manager / Requirements Analyst | Jarvy Joy Longenos |
 | System Designer / Architect | Joshua Gutierrez |
@@ -24,6 +25,7 @@ AquaGuard processes live RTSP or webcam video on an edge server using YOLOv11s f
 ## Tech Stack
 
 | Layer | Technology |
+
 |-------|------------|
 | Detection | YOLOv11s + MediaPipe Pose |
 | Backend | Python Flask + Flask-SocketIO |
@@ -184,6 +186,7 @@ See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 ## Performance
 
 | Metric | Value |
+
 |--------|-------|
 | Mean detection latency | 2623ms |
 | P95 latency | 1932ms |

@@ -3,7 +3,7 @@
 This is the AquaGuard IoT drowning detection system.
 Always read docs/AGENT_RULES.md before taking any action.
 Always read docs/GIT_WORKFLOW.md before making any commits.
-The conda environment is aquaguard_env — always use it for Python commands.
+The venv (virtual environment) is aquaguard_env — always use it for Python commands.
 Never reinstall torch, ultralytics, or opencv — they are already installed.
 Never commit: *.pt files, .env files, __pycache__, node_modules, snapshots/*.jpg.
 MediaPipe landmark coordinates are normalized 0.0–1.0 — never use pixel thresholds.

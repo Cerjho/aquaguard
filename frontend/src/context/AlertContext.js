@@ -123,6 +123,7 @@ function normalizeAlertPayload(payload = {}) {
 
 export function AlertProvider({ children }) {
   const [activeAlert, setActiveAlert] = useState(null);
+  const [activeAlerts, setActiveAlerts] = useState([]);
   const [alertHistory, setAlertHistory] = useState([]);
   const [unacknowledgedCount, setUnacknowledgedCount] = useState(0);
   const [acknowledgingAlertId, setAcknowledgingAlertId] = useState(null);
@@ -161,6 +162,12 @@ export function AlertProvider({ children }) {
   const onAlert = useCallback((payload) => {
     const normalizedPayload = normalizeAlertPayload(payload);
     setActiveAlert(normalizedPayload);
+    setActiveAlerts((prev) => {
+      const alertId = resolveAlertId(normalizedPayload);
+      if (!alertId) return [normalizedPayload, ...prev];
+      const filtered = prev.filter((item) => resolveAlertId(item) !== alertId);
+      return [normalizedPayload, ...filtered];
+    });
     setAlertHistory((prev) => [normalizedPayload, ...prev]);
     setUnacknowledgedCount((c) => c + 1);
   }, []);
@@ -338,7 +345,11 @@ export function AlertProvider({ children }) {
    */
   const acknowledge = useCallback(async (alertId) => {
     // Prefer active alert canonical ID to avoid legacy id vs alert_id mismatch.
-    const canonicalAlertId = resolveAlertId(activeAlert) || resolveAlertId(alertId);
+    const canonicalAlertId = (
+      alertId && typeof alertId === 'object'
+        ? resolveAlertId(alertId)
+        : null
+    ) || resolveAlertId(activeAlert) || resolveAlertId(alertId);
 
     if (!canonicalAlertId) {
       console.error('[AlertContext] Missing canonical alert_id for acknowledge.');
@@ -352,10 +363,14 @@ export function AlertProvider({ children }) {
 
     try {
       await api.post(`/api/v1/alerts/${canonicalAlertId}/acknowledge`);
-      setActiveAlert((prev) => {
-        const prevId = resolveAlertId(prev);
-        if (!prevId || prevId === canonicalAlertId) return null;
-        return prev;
+      setActiveAlerts((prev) => {
+        const next = prev.filter((item) => resolveAlertId(item) !== canonicalAlertId);
+        setActiveAlert((current) => {
+          const currentId = resolveAlertId(current);
+          if (!currentId || currentId === canonicalAlertId) return next[0] || null;
+          return current;
+        });
+        return next;
       });
       setUnacknowledgedCount((c) => Math.max(0, c - 1));
     } catch (error) {
@@ -373,11 +388,18 @@ export function AlertProvider({ children }) {
    * Used when the alert has already been acknowledged externally.
    */
   const dismissActive = useCallback(() => {
+    const currentId = resolveAlertId(activeAlert);
+    if (!currentId) {
+      setActiveAlert(null);
+      return;
+    }
+    setActiveAlerts((prev) => prev.filter((item) => resolveAlertId(item) !== currentId));
     setActiveAlert(null);
-  }, []);
+  }, [activeAlert]);
 
   const value = useMemo(() => ({
     activeAlert,
+    activeAlerts,
     alertHistory,
     unacknowledgedCount,
     acknowledgingAlertId,
@@ -396,6 +418,7 @@ export function AlertProvider({ children }) {
     refreshSystemStatus,
   }), [
     activeAlert,
+    activeAlerts,
     alertHistory,
     unacknowledgedCount,
     acknowledgingAlertId,

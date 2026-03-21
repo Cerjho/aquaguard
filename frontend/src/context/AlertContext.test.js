@@ -15,6 +15,7 @@ let socketCallbacks = {};
 function TestConsumer() {
   const {
     activeAlert,
+    activeAlerts,
     alertHistory,
     acknowledge,
     detectionEvents,
@@ -28,6 +29,7 @@ function TestConsumer() {
       <span data-testid="active-alerted-at">{activeAlert?.alerted_at || ''}</span>
       <span data-testid="active-snapshot">{activeAlert?.frame_snapshot_path || ''}</span>
       <span data-testid="history-size">{String(alertHistory.length)}</span>
+      <span data-testid="active-alerts-size">{String(activeAlerts.length)}</span>
       <span data-testid="detection-history-size">{String(detectionEvents.length)}</span>
       <span data-testid="socket-connected">{String(socketConnected)}</span>
       <button onClick={() => acknowledge('legacy-param-id')}>Ack</button>
@@ -90,6 +92,28 @@ describe('AlertContext payload normalization and acknowledge contract', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('active-alert-id')).toHaveTextContent('');
+    });
+  });
+
+  test('maintains multiple active alerts and acknowledges selected alert object', async () => {
+    api.post.mockResolvedValue({});
+    renderWithProvider();
+
+    act(() => {
+      socketCallbacks.onAlert({ id: 'alert-a', zone_id: 'zone_a' });
+      socketCallbacks.onAlert({ id: 'alert-b', zone_id: 'zone_b' });
+    });
+
+    expect(screen.getByTestId('active-alerts-size')).toHaveTextContent('2');
+
+    act(() => {
+      socketCallbacks.onAlert({ id: 'alert-c', zone_id: 'zone_c' });
+    });
+
+    fireEvent.click(screen.getByText('Ack'));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith('/api/v1/alerts/alert-c/acknowledge');
     });
   });
 

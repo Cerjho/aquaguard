@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db, socketio
 from models import DetectionEvent, Alert
@@ -66,7 +67,11 @@ def _parse_iso_datetime(raw_value):
     if not raw_value:
         return None
     try:
-        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+        parsed = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+        # DB columns are naive UTC datetimes; normalize aware inputs from API queries.
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     except (TypeError, ValueError):
         return None
 
@@ -78,6 +83,19 @@ def _parse_event_id(raw_value):
         return str(uuid.UUID(str(raw_value))), None
     except (TypeError, ValueError, AttributeError):
         return None, jsonify({'error': 'event_id must be a valid UUID'})
+
+
+def _parse_int_query(name, default, min_value=1, max_value=None):
+    raw = request.args.get(name, default)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None, jsonify({'error': f'{name} must be an integer'})
+    if value < min_value:
+        return None, jsonify({'error': f'{name} must be >= {min_value}'})
+    if max_value is not None and value > max_value:
+        return max_value, None
+    return value, None
 
 
 @events_bp.route('/events', methods=['POST'])
@@ -146,13 +164,16 @@ def create_event():
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
         return jsonify({'error': 'Database error'}), 500
-    socketio.emit('detection_event', _serialize_detection_event_payload(event))
-    socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
-    socketio.emit('system_status', {
-        'component': 'detection_engine',
-        'status': 'online',
-        'message': f'Event received from {event.zone_id}',
-    })
+    try:
+        socketio.emit('detection_event', _serialize_detection_event_payload(event))
+        socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
+        socketio.emit('system_status', {
+            'component': 'detection_engine',
+            'status': 'online',
+            'message': f'Event received from {event.zone_id}',
+        })
+    except Exception as exc:
+        current_app.logger.error('SocketIO emit failed for detection event %s: %s', event_id, exc)
 
     alert_dict = None
     if event.alert_triggered:
@@ -172,7 +193,14 @@ def create_event():
         else:
             # emit AFTER commit so alert_id exists in DB
             alert_dict = _serialize_alert_event_payload(alert, event)
-            socketio.emit('alert_event', alert_dict)
+            try:
+                socketio.emit('alert_event', alert_dict)
+            except Exception as exc:
+                current_app.logger.error(
+                    'SocketIO emit failed for alert event %s: %s',
+                    event_id,
+                    exc,
+                )
 
     result = event.to_dict()
     if alert_dict:
@@ -192,8 +220,12 @@ def list_events():
     status          = request.args.get('status')
     min_confidence  = request.args.get('min_confidence')
     max_confidence  = request.args.get('max_confidence')
-    page            = int(request.args.get('page', 1))
-    limit           = min(int(request.args.get('limit', 20)), 100)
+    page, page_error = _parse_int_query('page', 1, min_value=1)
+    if page_error is not None:
+        return page_error, 400
+    limit, limit_error = _parse_int_query('limit', 20, min_value=1, max_value=100)
+    if limit_error is not None:
+        return limit_error, 400
 
     query = DetectionEvent.query
 
@@ -229,8 +261,18 @@ def list_events():
                 Alert.status == normalized_status
             )
 
-    query = query.order_by(DetectionEvent.detected_at.desc())
-    pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    try:
+        query = query.order_by(DetectionEvent.detected_at.desc())
+        pagination = query.paginate(page=page, per_page=limit, error_out=False)
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        current_app.logger.error('Failed to fetch events: %s', exc)
+        return jsonify({
+            'total': 0,
+            'page': page,
+            'limit': limit,
+            'events': [],
+        }), 200
 
     return jsonify({
         'total': pagination.total,

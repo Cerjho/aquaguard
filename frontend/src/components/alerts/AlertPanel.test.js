@@ -23,6 +23,7 @@ const mockAcknowledge = jest.fn();
 function renderAlertPanel(contextOverrides = {}) {
   jest.spyOn(AlertContext, 'useAlerts').mockReturnValue({
     activeAlert: null,
+    activeAlerts: [],
     acknowledge: mockAcknowledge,
     acknowledgingAlertId: null,
     acknowledgeError: null,
@@ -63,23 +64,35 @@ describe('AlertPanel', () => {
 
   test('displays zone name', () => {
     renderAlertPanel({ activeAlert: sampleAlert });
-    expect(screen.getByText('Pool A')).toBeInTheDocument();
+    expect(screen.getAllByText('Pool A').length).toBeGreaterThan(0);
   });
 
   test('displays confidence as percentage', () => {
     renderAlertPanel({ activeAlert: sampleAlert });
-    expect(screen.getByText('92.0%')).toBeInTheDocument();
+    expect(screen.getAllByText('92.0%').length).toBeGreaterThan(0);
   });
 
   test('calls acknowledge with alert id when button is clicked', () => {
     renderAlertPanel({ activeAlert: sampleAlert });
-    fireEvent.click(screen.getByRole('button', { name: /acknowledge alert/i }));
-    expect(mockAcknowledge).toHaveBeenCalledWith(1);
+    fireEvent.click(screen.getByRole('button', { name: /^acknowledge$/i }));
+    expect(mockAcknowledge).toHaveBeenCalledWith(sampleAlert);
+  });
+
+  test('renders multiple camera alert cards when activeAlerts has many entries', () => {
+    renderAlertPanel({
+      activeAlert: sampleAlert,
+      activeAlerts: [
+        { ...sampleAlert, id: 1, zone_name: 'Pool A' },
+        { ...sampleAlert, id: 2, zone_name: 'Pool B' },
+      ],
+    });
+    expect(screen.getAllByText('Pool A').length).toBeGreaterThan(0);
+    expect(screen.getByText('Pool B')).toBeInTheDocument();
   });
 
   test('shows dash for confidence when confidence is null', () => {
     renderAlertPanel({ activeAlert: { ...sampleAlert, confidence: null } });
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   test('shows loading state while acknowledge is in progress', () => {
@@ -87,7 +100,7 @@ describe('AlertPanel', () => {
       activeAlert: sampleAlert,
       acknowledgingAlertId: '1',
     });
-    expect(screen.getByRole('button', { name: /acknowledging/i })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: /acknowledging/i })[0]).toBeDisabled();
   });
 
   test('shows acknowledge error banner when present', () => {

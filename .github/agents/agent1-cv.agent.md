@@ -57,7 +57,7 @@ Push every 3–5 commits: `git push origin feature/agent1-cv-engine`
 
 ## Verification
 ```
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 pytest detection_engine/tests/ -v
 python detection_engine/benchmark.py
 ```

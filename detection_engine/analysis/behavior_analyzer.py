@@ -144,6 +144,4 @@ class BehaviorAnalyzer:
         """Return weighted YOLO class contribution."""
         if yolo_class == "drowning" and yolo_conf >= YOLO_DROWNING_CONF_BOOST:
             return 1.0
-        elif yolo_class == "drowning":
-            return yolo_conf
         return 0.0

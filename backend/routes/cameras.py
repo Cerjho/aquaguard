@@ -207,11 +207,17 @@ def stream_camera(zone_id):
     frame_path = os.path.join(LIVE_DIR, f'{zone_id}_latest.jpg')
 
     def generate():
+        cached_frame = None
+        cached_mtime = None
         while True:
             if os.path.exists(frame_path):
                 try:
-                    with open(frame_path, 'rb') as f:
-                        frame_bytes = f.read()
+                    frame_mtime = os.path.getmtime(frame_path)
+                    if cached_frame is None or frame_mtime != cached_mtime:
+                        with open(frame_path, 'rb') as f:
+                            cached_frame = f.read()
+                        cached_mtime = frame_mtime
+                    frame_bytes = cached_frame
                     yield (
                         b'--frame\r\n'
                         b'Content-Type: image/jpeg\r\n\r\n'

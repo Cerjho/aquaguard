@@ -1,0 +1,12 @@
+{
+  "cameras": [
+    {
+      "zone_id": "zone_dev",
+      "zone_name": "Dev Webcam",
+      "rtsp_url": 0,
+      "location_description": "Local webcam for development testing",
+      "frame_rate": 30,
+      "resolution": "1280x720"
+    }
+  ]
+}

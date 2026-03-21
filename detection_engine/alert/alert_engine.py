@@ -4,7 +4,8 @@ import datetime
 import logging
 import threading
 import uuid
-from typing import TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -36,6 +37,7 @@ class AlertEngine:
         track_id: str,
         score: float,
         frame: np.ndarray,
+        bbox: Optional[Tuple[float, float, float, float]] = None,
         class_label: str | None = None,
         yolo_confidence: float | None = None,
         pose_confidence: float | None = None,
@@ -63,7 +65,7 @@ class AlertEngine:
 
         # Write JPEG to disk
         snapshot_filename = f"{event_id}.jpg"
-        snapshot_path = f"{self._snapshot_dir}/{snapshot_filename}"
+        snapshot_path = os.path.join(self._snapshot_dir, snapshot_filename)
         try:
             with open(snapshot_path, "wb") as fh:
                 fh.write(buf.tobytes())
@@ -81,6 +83,7 @@ class AlertEngine:
             snapshot_path=snapshot_path,
             snapshot_b64=snapshot_b64,
             timestamp=timestamp,
+            bbox=bbox,
             class_label=class_label,
             yolo_confidence=yolo_confidence,
             pose_confidence=pose_confidence,
@@ -94,6 +97,7 @@ class AlertEngine:
             "score": score,
             "snapshot_path": snapshot_path,
             "timestamp": timestamp,
+            "bbox": list(bbox) if bbox is not None else None,
         }
 
         # Dispatch concurrently — daemon threads so they don't block shutdown

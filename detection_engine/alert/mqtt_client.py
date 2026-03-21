@@ -7,8 +7,6 @@ import threading
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config.settings import MQTT_TOPIC_ALERT, MQTT_TOPIC_DETECTION
 
 logger = logging.getLogger(__name__)

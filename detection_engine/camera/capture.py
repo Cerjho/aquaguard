@@ -9,9 +9,6 @@ import cv2
 import platform
 import numpy as np
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config.settings import RECONNECT_BACKOFF_SECONDS, RECONNECT_MAX_CONSECUTIVE_FAILURES
 
 logger = logging.getLogger(__name__)

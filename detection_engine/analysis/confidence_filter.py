@@ -1,12 +1,10 @@
 """Confidence filter — rolling window alert confirmation (N, T, K parameters)."""
 import logging
 from collections import deque
-from typing import Dict
+from typing import Dict, Iterable
 
 import numpy as np
 
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config.settings import (
     CONFIDENCE_WINDOW_SIZE,
     CONFIDENCE_THRESHOLD,
@@ -71,3 +69,10 @@ class ConfidenceFilter:
     def remove_track(self, track_id: str) -> None:
         """Remove stale track buffer when person leaves the scene."""
         self._buffers.pop(track_id, None)
+
+    def cleanup_stale_tracks(self, active_track_ids: Iterable[str]) -> None:
+        """Drop buffers for tracks not present in current frame."""
+        active = set(active_track_ids)
+        stale_ids = [track_id for track_id in self._buffers if track_id not in active]
+        for track_id in stale_ids:
+            self._buffers.pop(track_id, None)

@@ -60,6 +60,7 @@ jobs:
           pip install ultralytics==8.3.0 mediapipe==0.10.14 opencv-python-headless==4.10.0.84
           pip install numpy==1.26.4 paho-mqtt==2.1.0 requests==2.32.3
           pip install pytest==8.3.3 pytest-cov==5.0.0 pytest-mock==3.14.0
+          pip install -e ./detection_engine
 
       - name: Run detection engine tests (CPU mode)
         run: |

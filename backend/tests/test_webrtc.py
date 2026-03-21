@@ -40,14 +40,17 @@ def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
                         })
     session_id = offer.get_json()['session_id']
 
-    candidate = client.post('/api/v1/webrtc/ice-candidate',
-                            headers=_auth_headers(admin_token),
-                            json={
-                                'session_id': session_id,
-                                'candidate': 'candidate:0 1 UDP 2122252543 192.168.1.2 54400 typ host',
-                                'sdpMid': '0',
-                                'sdpMLineIndex': 0,
-                            })
+    candidate_payload = {
+        'session_id': session_id,
+        'candidate': 'candidate:0 1 UDP 2122252543 192.168.1.2 54400 typ host',
+        'sdpMid': '0',
+        'sdpMLineIndex': 0,
+    }
+    candidate = client.post(
+        '/api/v1/webrtc/ice-candidate',
+        headers=_auth_headers(admin_token),
+        json=candidate_payload,
+    )
     assert candidate.status_code == 202
     candidate_payload = candidate.get_json()
     assert candidate_payload['status'] == 'collecting_candidates'

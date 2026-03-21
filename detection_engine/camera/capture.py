@@ -55,12 +55,12 @@ class CameraCapture:
         Returns:
             (frame, metadata) where frame may be None if no frame yet received.
         """
-        import datetime
+        from datetime import datetime, timezone
         with self._frame_lock:
             frame = self._latest_frame.copy() if self._latest_frame is not None else None
         metadata = {
             "zone_id": self.zone_id,
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         return frame, metadata
 

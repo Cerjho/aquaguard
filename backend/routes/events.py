@@ -140,7 +140,7 @@ def create_event():
     try:
         detected_at = datetime.fromisoformat(data['detected_at'])
     except (ValueError, TypeError):
-        detected_at = datetime.utcnow()
+        detected_at = datetime.now(timezone.utc)
 
     event = DetectionEvent(
         event_id         = event_id,
@@ -184,7 +184,7 @@ def create_event():
             event_id     = event_id,
             zone_id      = event.zone_id,
             status       = 'unacknowledged',
-            triggered_at = datetime.utcnow(),
+            triggered_at = datetime.now(timezone.utc),
         )
         db.session.add(alert)
         try:

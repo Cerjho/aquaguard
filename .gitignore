@@ -17,6 +17,8 @@ detection_engine/models/*.onnx
 .env
 backend/.env
 frontend/.env
+.env.local
+.env.production.local
 
 # Database
 *.db
@@ -62,6 +64,7 @@ backend/migrations/versions/__pycache__/
 backend/snapshots/live/*
 backend/snapshots/live/*.json
 backend/snapshots/live/*.tmp
+*.tmp
 agents/runtime_logs/*
 agents/runtime_logs/**
 agents/logs/*

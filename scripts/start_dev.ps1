@@ -23,6 +23,16 @@ function Test-ProcessCommandLine {
     return @($matches).Count -gt 0
 }
 
+function Stop-JobSafe {
+    param(
+        [Parameter(Mandatory = $true)]$Job
+    )
+    if ($null -ne $Job) {
+        Stop-Job $Job -ErrorAction SilentlyContinue | Out-Null
+        Remove-Job $Job -ErrorAction SilentlyContinue | Out-Null
+    }
+}
+
 Write-Host "==> AquaGuard Dev Environment Starting..." -ForegroundColor Cyan
 
 # 1. Verify venv exists
@@ -105,8 +115,8 @@ try {
     while ($true) { Start-Sleep -Seconds 5 }
 } finally {
     Write-Host "Stopping services..." -ForegroundColor Red
-    if ($backendJob) { Stop-Job $backendJob -ErrorAction SilentlyContinue }
-    if (-not $SkipFrontend -and $frontendJob) { Stop-Job $frontendJob -ErrorAction SilentlyContinue }
+    Stop-JobSafe -Job $backendJob
+    if (-not $SkipFrontend) { Stop-JobSafe -Job $frontendJob }
     if (-not $SkipTurn) {
         try {
             docker compose stop coturn | Out-Null

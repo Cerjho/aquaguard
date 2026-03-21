@@ -196,7 +196,11 @@ def create_event():
             try:
                 socketio.emit('alert_event', alert_dict)
             except Exception as exc:
-                current_app.logger.error('SocketIO emit failed for alert event %s: %s', event_id, exc)
+                current_app.logger.error(
+                    'SocketIO emit failed for alert event %s: %s',
+                    event_id,
+                    exc,
+                )
 
     result = event.to_dict()
     if alert_dict:

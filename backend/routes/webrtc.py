@@ -68,16 +68,16 @@ if AIORTC_AVAILABLE:
 
         async def recv(self):
             pts, time_base = await self.next_timestamp()
-            
+
             # Check if cache is stale
             now = time.time()
             if now - self._frame_timestamp > self._cache_interval:
                 await self._read_latest_frame_async()
-            
+
             frame = self._cached_frame
             if frame is None:
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
-            
+
             video_frame = VideoFrame.from_ndarray(frame, format='bgr24')
             video_frame.pts = pts
             video_frame.time_base = time_base
@@ -261,10 +261,16 @@ async def _create_answer_async(zone_id, offer_type, offer_sdp):
         ice_timeout = _ice_gathering_timeout_seconds()
         if pc.iceGatheringState != 'complete':
             try:
-                await asyncio.wait_for(_wait_for_ice_gathering_complete(pc), timeout=ice_timeout)
+                await asyncio.wait_for(
+                    _wait_for_ice_gathering_complete(pc),
+                    timeout=ice_timeout,
+                )
             except asyncio.TimeoutError:
                 LOGGER.warning(
-                    'WebRTC ICE gathering timeout for zone %s after %.2fs; continuing with partial candidates',
+                    (
+                        'WebRTC ICE gathering timeout for zone %s after %.2fs; '
+                        'continuing with partial candidates'
+                    ),
                     zone_id,
                     ice_timeout,
                 )

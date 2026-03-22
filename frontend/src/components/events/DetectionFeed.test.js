@@ -16,6 +16,12 @@ jest.mock('../../context/AlertContext', () => ({
   useSocketState: jest.fn(),
 }));
 
+async function renderFeed() {
+  await act(async () => {
+    render(<DetectionFeed />);
+  });
+}
+
 describe('DetectionFeed mapping resilience', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,7 +50,7 @@ describe('DetectionFeed mapping resilience', () => {
       },
     });
 
-    render(<DetectionFeed />);
+    await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/88% confidence/)).toBeInTheDocument();
@@ -75,7 +81,7 @@ describe('DetectionFeed mapping resilience', () => {
     });
     api.get.mockResolvedValue({ data: { events: [] } });
 
-    render(<DetectionFeed />);
+    await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/Live \(socket\)/)).toBeInTheDocument();
@@ -92,7 +98,7 @@ describe('DetectionFeed mapping resilience', () => {
     api.get.mockResolvedValue({ data: { events: [] } });
 
     Object.defineProperty(document, 'hidden', { configurable: true, value: true });
-    render(<DetectionFeed />);
+    await renderFeed();
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledTimes(1);
@@ -101,6 +107,7 @@ describe('DetectionFeed mapping resilience', () => {
     act(() => {
       jest.advanceTimersByTime(20000);
     });
+    await act(async () => {});
     expect(api.get).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
   });

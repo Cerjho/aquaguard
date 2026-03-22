@@ -47,26 +47,26 @@ Always activate before running any Python command:
 # ultralytics==8.3.0
 # opencv-python==4.10.0.84
 # numpy==1.26.4
-# Pillow==10.4.0
+# Pillow==12.1.1
 
 mediapipe==0.10.14            # MediaPipe Pose landmark estimation
 opencv-python==4.10.0.84      # OpenCV for frame capture and processing
 numpy==1.26.4                 # Numerical operations (deque analysis, landmark math)
-Pillow==10.4.0                # Image encoding for snapshot JPEG export
+Pillow==12.1.1                # Image encoding for snapshot JPEG export
 
 # ── IoT / MQTT ─────────────────────────────────────────────────────────────
 paho-mqtt==2.1.0              # MQTT client for publishing alerts to Mosquitto
 
 # ── Flask Backend ──────────────────────────────────────────────────────────
-Flask==3.0.3
+Flask==3.1.3
 Flask-SocketIO==5.3.6         # WebSocket server for real-time dashboard push
 Flask-JWT-Extended==4.6.0     # JWT authentication
 Flask-SQLAlchemy==3.1.1       # ORM
 Flask-Migrate==4.0.7          # Alembic-based DB migrations
-Flask-CORS==4.0.1             # CORS for React dev server
+Flask-CORS==6.0.0             # CORS for React dev server
 flask-bcrypt==1.0.1           # Password hashing
-python-socketio==5.11.3       # Socket.IO dependency for Flask-SocketIO
-python-engineio==4.9.1        # Engine.IO dependency
+python-socketio==5.14.0       # Socket.IO dependency for Flask-SocketIO
+python-engineio==4.12.3       # Engine.IO dependency
 
 # ── Database ───────────────────────────────────────────────────────────────
 SQLAlchemy==2.0.35
@@ -76,7 +76,7 @@ PyMySQL==1.1.1                # MySQL driver for production
 
 # ── Utilities ──────────────────────────────────────────────────────────────
 python-dotenv==1.0.1          # Load .env files
-requests==2.32.3              # HTTP client for internal API calls from detection engine
+requests==2.32.4              # HTTP client for internal API calls from detection engine
 python-dateutil==2.9.0
 uuid==1.30                    # UUID generation for event IDs
 
@@ -215,11 +215,11 @@ python -c "import torch; print(torch.version.cuda)"   # Should print: 12.1
 # Step 2: Activate env and install remaining packages
 .\aquaguard_env\Scripts\Activate.ps1
 pip install mediapipe==0.10.14
-pip install flask==3.0.3 flask-socketio==5.3.6 flask-jwt-extended==4.6.0
-pip install flask-sqlalchemy==3.1.1 flask-migrate==4.0.7 flask-cors==4.0.1 flask-bcrypt==1.0.1
-pip install python-socketio==5.11.3 python-engineio==4.9.1
+pip install flask==3.1.3 flask-socketio==5.3.6 flask-jwt-extended==4.6.0
+pip install flask-sqlalchemy==3.1.1 flask-migrate==4.0.7 flask-cors==6.0.0 flask-bcrypt==1.0.1
+pip install python-socketio==5.14.0 python-engineio==4.12.3
 pip install paho-mqtt==2.1.0
-pip install python-dotenv==1.0.1 pymysql==1.1.1 requests==2.32.3
+pip install python-dotenv==1.0.1 pymysql==1.1.1 requests==2.32.4
 pip install pytest==8.3.3 pytest-cov==5.0.0 pytest-mock==3.14.0 httpx==0.27.2
 
 # Step 3: Verify all key packages

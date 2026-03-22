@@ -189,6 +189,14 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
+## Production Deployment
+
+See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
+
+## Security Guide
+
+See [docs/SECURITY.md](docs/SECURITY.md)
+
 ---
 
 ## Performance

@@ -1,5 +1,10 @@
 # AquaGuard Architecture Reference
 
+Related artifacts:
+
+- See [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) for additional visual diagrams.
+- See [THREAT_MODEL.md](THREAT_MODEL.md) for security-oriented architecture risks and mitigations.
+
 ## 1. System Overview Diagram
 
 AquaGuard is a layered edge-AI + IoT system. Video is processed locally on the detection server, then distributed to physical and dashboard alert channels.

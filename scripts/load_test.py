@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import json
 import statistics
 import threading
 import time
@@ -59,6 +60,26 @@ def run_load(url: str, total_requests: int, concurrency: int, timeout: float):
     }
 
 
+def run_rounds(url: str, total_requests: int, concurrency: int, timeout: float, rounds: int):
+    series = []
+    for index in range(max(rounds, 1)):
+        item = run_load(url, total_requests, concurrency, timeout)
+        item["round"] = index + 1
+        series.append(item)
+
+    avg_success = statistics.mean(item["success_rate"] for item in series)
+    avg_p95 = statistics.mean(item["latency_ms_p95"] for item in series)
+    return {
+        "rounds": series,
+        "aggregate": {
+            "round_count": len(series),
+            "avg_success_rate": avg_success,
+            "avg_latency_ms_p95": avg_p95,
+            "max_latency_ms_p95": max(item["latency_ms_p95"] for item in series),
+        },
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run a lightweight API load probe")
     parser.add_argument(
@@ -69,15 +90,22 @@ def main():
     parser.add_argument("--requests", type=int, default=100, help="Total request count")
     parser.add_argument("--concurrency", type=int, default=10, help="Concurrent workers")
     parser.add_argument("--timeout", type=float, default=3.0, help="Per-request timeout seconds")
+    parser.add_argument("--rounds", type=int, default=1, help="How many rounds to execute")
+    parser.add_argument("--output", default="", help="Optional JSON output path")
     args = parser.parse_args()
 
-    summary = run_load(args.url, args.requests, args.concurrency, args.timeout)
+    summary = run_rounds(args.url, args.requests, args.concurrency, args.timeout, args.rounds)
     print("AquaGuard load probe summary")
-    for key, value in summary.items():
-        if isinstance(value, float):
-            print(f"- {key}: {value:.2f}")
-        else:
-            print(f"- {key}: {value}")
+    aggregate = summary["aggregate"]
+    print(f"- rounds: {aggregate['round_count']}")
+    print(f"- avg_success_rate: {aggregate['avg_success_rate']:.2f}")
+    print(f"- avg_latency_ms_p95: {aggregate['avg_latency_ms_p95']:.2f}")
+    print(f"- max_latency_ms_p95: {aggregate['max_latency_ms_p95']:.2f}")
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as handle:
+            json.dump(summary, handle, indent=2)
+        print(f"- output_written: {args.output}")
 
 
 if __name__ == "__main__":

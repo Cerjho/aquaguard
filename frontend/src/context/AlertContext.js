@@ -20,99 +20,22 @@ import React, {
 import useAlertSocket from '../hooks/useAlertSocket';
 import api from '../hooks/useApi';
 import { normalizeServiceStatus } from '../utils/statusHelpers';
+import {
+  DEFAULT_TRIAGE_FILTERS,
+  DETECTION_EVENT_BATCH_MS,
+  MAX_ALERT_HISTORY,
+  MAX_DETECTION_EVENTS,
+  STATUS_POLL_BASE_INTERVAL_MS,
+  STATUS_POLL_HIDDEN_INTERVAL_MS,
+  STATUS_POLL_MAX_INTERVAL_MS,
+} from './alertConfig';
+import { normalizeAlertPayload, resolveAlertId } from './alertUtils';
 
 const AlertContext = createContext(null);
 const AlertStateContext = createContext(null);
 const SystemStateContext = createContext(null);
 const FilterStateContext = createContext(null);
 const SocketStateContext = createContext(null);
-const MAX_DETECTION_EVENTS = 50;
-const MAX_ALERT_HISTORY = 1000;
-const STATUS_POLL_BASE_INTERVAL_MS = 15000;
-const STATUS_POLL_MAX_INTERVAL_MS = 120000;
-const STATUS_POLL_HIDDEN_INTERVAL_MS = 60000;
-const DETECTION_EVENT_BATCH_MS = 250;
-
-const DEFAULT_TRIAGE_FILTERS = {
-  zone_id: '',
-  status: '',
-  min_confidence: '',
-  from: '',
-  to: '',
-};
-
-/**
- * Resolve alert ID from multiple legacy/new payload shapes.
- * Canonical ID in the app is always `alert_id`.
- */
-function resolveAlertId(payloadOrId) {
-  if (payloadOrId == null) return null;
-
-  if (typeof payloadOrId === 'string' || typeof payloadOrId === 'number') {
-    return String(payloadOrId);
-  }
-
-  if (typeof payloadOrId !== 'object') return null;
-
-  return (
-    payloadOrId.alert_id
-    || payloadOrId.id
-    || payloadOrId.alert?.alert_id
-    || payloadOrId.alert?.id
-    || null
-  );
-}
-
-/**
- * Normalize incoming socket payload into one frontend contract.
- * Keeps backward-compatible aliases while guaranteeing canonical fields.
- */
-function normalizeAlertPayload(payload = {}) {
-  const normalized = { ...payload };
-  const canonicalAlertId = resolveAlertId(payload);
-
-  const confidence = (
-    payload.confidence
-    ?? payload.final_confidence
-    ?? payload.confidence_score
-    ?? payload.alert?.confidence
-    ?? payload.alert?.final_confidence
-    ?? payload.alert?.confidence_score
-    ?? null
-  );
-
-  const alertedAt = (
-    payload.alerted_at
-    ?? payload.triggered_at
-    ?? payload.timestamp
-    ?? payload.detected_at
-    ?? payload.alert?.alerted_at
-    ?? payload.alert?.triggered_at
-    ?? payload.alert?.timestamp
-    ?? payload.alert?.detected_at
-    ?? null
-  );
-
-  const snapshotPath = (
-    payload.snapshot_url
-    ?? payload.alert?.snapshot_url
-    ?? payload.frame_snapshot_path
-    ?? payload.snapshot_path
-    ?? payload.alert?.frame_snapshot_path
-    ?? payload.alert?.snapshot_path
-    ?? null
-  );
-
-  return {
-    ...normalized,
-    alert_id: canonicalAlertId,
-    // Keep `id` available for legacy component assumptions, but align it with canonical ID.
-    id: canonicalAlertId || normalized.id,
-    confidence,
-    alerted_at: alertedAt,
-    frame_snapshot_path: snapshotPath,
-  };
-}
 
 export function AlertProvider({ children }) {
   const [activeAlert, setActiveAlert] = useState(null);

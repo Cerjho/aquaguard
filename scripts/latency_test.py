@@ -5,7 +5,7 @@ Task: P6-04 — Measure full AquaGuard pipeline latency.
 
 What is measured
 ────────────────
-  1. Frame pre-processing (resize + normalise)
+  1. Frame preparation (resize + normalise)
   2. YOLO object detection inference
   3. Pose estimation (MediaPipe)
   4. Behaviour analysis (5-indicator scoring)
@@ -39,24 +39,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 # ── optional imports — use stubs if modules are not yet implemented ───────────
-MODULES_STATUS: dict[str, str] = {}
+MODULES_STATUS: dict[str, str] = {
+    'frame_prepare': 'builtin',
+}
 
 
-def _try_import_preprocessor():
-    try:
-        from detection_engine.vision.preprocessor import preprocess
-        MODULES_STATUS['preprocessor'] = 'real'
-        return preprocess
-    except (ImportError, AttributeError):
-        MODULES_STATUS['preprocessor'] = 'stub'
+def _prepare_frame(frame: np.ndarray) -> np.ndarray:
+    import cv2
 
-        def _stub_preprocess(frame: np.ndarray) -> np.ndarray:
-            import cv2
-            resized = cv2.resize(frame, (640, 640))
-            rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-            return (rgb / 255.0).astype(np.float32)
-
-        return _stub_preprocess
+    resized = cv2.resize(frame, (640, 640))
+    rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+    return (rgb / 255.0).astype(np.float32)
 
 
 def _try_import_detector():
@@ -181,14 +174,14 @@ def _sim_alert_dispatch(zone_id: str, score: float, iteration: int) -> float:
             _sim_alert_dispatch._client = _app.test_client()
             os.chdir(ROOT)
 
-        from datetime import datetime
+        from datetime import datetime, timezone
         payload = {
             'zone_id':          zone_id,
             'track_id':         1,
             'confidence_score': round(score, 4),
             'behavior_flags':   {'vertical': True, 'arms_elevated': True},
             'alert_triggered':  True,
-            'detected_at':      datetime.utcnow().isoformat(),
+            'detected_at':      datetime.now(timezone.utc).isoformat(),
         }
         with _sim_alert_dispatch._app.app_context():
             _sim_alert_dispatch._client.post(
@@ -259,7 +252,7 @@ def run_benchmark(iterations: int, source=None, zone_id: str = 'zone_01'):
     print(f'{"=" * 65}\n')
 
     # Load pipeline modules (real or stub)
-    preprocess   = _try_import_preprocessor()
+    preprocess   = _prepare_frame
     DetectorCls  = _try_import_detector()
     PoseCls      = _try_import_pose()
     AnalyzerCls  = _try_import_analyzer()
@@ -344,7 +337,7 @@ def run_benchmark(iterations: int, source=None, zone_id: str = 'zone_01'):
 
         # 2. Preprocessing
         t0 = time.perf_counter()
-        processed = preprocess(frame)
+        processed = _prepare_frame(frame)
         t_prep = (time.perf_counter() - t0) * 1000
 
         # 3. Detection

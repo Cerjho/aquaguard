@@ -114,6 +114,18 @@ Set-Location ..
 & ".\aquaguard_env\Scripts\python.exe" .\detection_engine\main.py
 ```
 
+### 8. Production backend startup (Gunicorn)
+
+```powershell
+Set-Location .\backend
+& "..\aquaguard_env\Scripts\gunicorn.exe" -w 1 -b 0.0.0.0:5000 wsgi:app
+Set-Location ..
+```
+
+Backend Socket.IO is configured with `async_mode='threading'`, so use the default
+sync/threaded Gunicorn worker command above (do not pass `-k gevent` unless you also
+switch backend async mode accordingly).
+
 ---
 
 ## Dashboard Features

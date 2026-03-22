@@ -29,7 +29,7 @@ import json
 import os
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ── project root on sys.path ──────────────────────────────────────────────────
 ROOT  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -112,7 +112,6 @@ def test_detection_engine_imports():
     section('2. Detection Engine Module Imports')
 
     de_modules = [
-        'detection_engine.vision.preprocessor',
         'detection_engine.vision.detector',
         'detection_engine.vision.pose_estimator',
         'detection_engine.analysis.behavior_analyzer',
@@ -340,7 +339,7 @@ def test_api_endpoints():
                 'confidence_score': 0.91,
                 'behavior_flags':   {'vertical': True},
                 'alert_triggered':  False,
-                'detected_at':      datetime.utcnow().isoformat(),
+                'detected_at':      datetime.now(timezone.utc).isoformat(),
             }
             r = client.post('/api/v1/events', json=payload)
             assert r.status_code == 201, f'status={r.status_code}'
@@ -361,7 +360,7 @@ def test_api_endpoints():
                 'confidence_score': 0.95,
                 'behavior_flags':   {'vertical': True, 'arms_elevated': True},
                 'alert_triggered':  True,
-                'detected_at':      datetime.utcnow().isoformat(),
+                'detected_at':      datetime.now(timezone.utc).isoformat(),
             }
             r = client.post('/api/v1/events', json=payload)
             assert r.status_code == 201, f'status={r.status_code}'

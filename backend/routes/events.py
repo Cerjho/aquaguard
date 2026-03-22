@@ -12,7 +12,7 @@ from PIL import Image, UnidentifiedImageError
 
 from extensions import db, socketio
 from models import DetectionEvent, Alert
-from utils.date_utils import parse_iso_datetime
+from services.events_service import apply_event_filters, parse_detected_at
 
 events_bp = Blueprint('events', __name__, url_prefix='/api/v1')
 
@@ -131,15 +131,11 @@ def create_event():
             return jsonify({'error': 'Invalid snapshot encoding'}), 400
         except UnidentifiedImageError:
             return jsonify({'error': 'Invalid image data'}), 400
-        except Exception as exc:
+        except OSError as exc:
             current_app.logger.warning(f'Failed to save snapshot: {exc}')
             snapshot_path = None
 
-    # Parse detected_at
-    try:
-        detected_at = datetime.fromisoformat(data['detected_at'])
-    except (ValueError, TypeError):
-        detected_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    detected_at = parse_detected_at(data.get('detected_at'))
 
     event = DetectionEvent(
         event_id         = event_id,
@@ -183,7 +179,7 @@ def create_event():
             event_id     = event_id,
             zone_id      = event.zone_id,
             status       = 'unacknowledged',
-            triggered_at = datetime.now(timezone.utc).replace(tzinfo=None),
+            triggered_at = parse_detected_at(None),
         )
         db.session.add(alert)
         try:
@@ -228,19 +224,14 @@ def list_events():
     if limit_error is not None:
         return limit_error, 400
 
-    query = DetectionEvent.query
-
-    if zone_id:
-        query = query.filter_by(zone_id=zone_id)
-    parsed_from = parse_iso_datetime(from_dt)
-    if parsed_from:
-        query = query.filter(DetectionEvent.detected_at >= parsed_from)
-    parsed_to = parse_iso_datetime(to_dt)
-    if parsed_to:
-        query = query.filter(DetectionEvent.detected_at <= parsed_to)
-    if alert_triggered is not None:
-        flag = alert_triggered.lower() == 'true'
-        query = query.filter_by(alert_triggered=flag)
+    query = apply_event_filters(
+        DetectionEvent.query,
+        zone_id=zone_id,
+        from_dt=from_dt,
+        to_dt=to_dt,
+        alert_triggered=alert_triggered,
+        status=status,
+    )
     if min_confidence is not None:
         try:
             query = query.filter(DetectionEvent.confidence_score >= float(min_confidence))
@@ -251,17 +242,6 @@ def list_events():
             query = query.filter(DetectionEvent.confidence_score <= float(max_confidence))
         except (TypeError, ValueError):
             pass
-    if status:
-        normalized_status = status.strip().lower()
-        if normalized_status == 'alerted':
-            query = query.filter_by(alert_triggered=True)
-        elif normalized_status in {'normal', 'clear'}:
-            query = query.filter_by(alert_triggered=False)
-        elif normalized_status in {'unacknowledged', 'acknowledged'}:
-            query = query.join(Alert, Alert.event_id == DetectionEvent.event_id).filter(
-                Alert.status == normalized_status
-            )
-
     try:
         query = query.order_by(DetectionEvent.detected_at.desc())
         pagination = query.paginate(page=page, per_page=limit, error_out=False)

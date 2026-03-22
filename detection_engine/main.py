@@ -160,7 +160,11 @@ def _atomic_write_jpeg(path: str, frame) -> None:
             try:
                 os.remove(tmp_path)
             except OSError as cleanup_exc:
-                logger.debug("Temporary live artifact cleanup failed for %s: %s", tmp_path, cleanup_exc)
+                logger.debug(
+                    "Temporary live artifact cleanup failed for %s: %s",
+                    tmp_path,
+                    cleanup_exc,
+                )
 
 
 def _atomic_write_json(path: str, payload: dict) -> None:
@@ -221,6 +225,117 @@ def _send_zone_heartbeat_if_due(
     mqtt_client.publish_detection(heartbeat_payload)
     last_heartbeat_at[zone_id] = now_epoch_s
     return True
+
+
+def _process_zone_frame(
+    *,
+    zone_id: str,
+    camera,
+    detector,
+    pose_estimator,
+    behavior_analyzer,
+    confidence_filter,
+    alert_engine,
+    mqtt_client,
+    live_dir: str,
+    last_heartbeat_at: dict,
+) -> None:
+    frame, metadata = camera.read()
+    if frame is None:
+        return
+
+    detections = detector.detect(frame)
+    logger.debug("Zone %s: %d detections", zone_id, len(detections))
+    if not detections:
+        logger.info("Zone %s: no tracked detections on this frame", zone_id)
+    if detections:
+        logger.debug(
+            "Zone %s raw detections: %s",
+            zone_id,
+            [
+                {
+                    "track_id": det.track_id,
+                    "class_label": det.class_label,
+                    "confidence": round(float(det.confidence), 4),
+                }
+                for det in detections
+            ],
+        )
+    active_track_ids = {str(det.track_id) for det in detections}
+
+    frame_timestamp = metadata.get("timestamp") or _utc_now_iso()
+    status_payload = {
+        "component": "detection_engine",
+        "zone_id": zone_id,
+        "status": "online",
+        "heartbeat_source": "annotated_feed",
+        "feed_mode": "annotated_snapshot_mjpeg",
+        "feed_status": "online",
+        "detection_count": len(detections),
+        "latest_frame_at": frame_timestamp,
+        "updated_at": _utc_now_iso(),
+    }
+    try:
+        annotated = _annotate_live_frame(frame, detections, zone_id, frame_timestamp)
+        _write_live_zone_artifacts(live_dir, zone_id, annotated, status_payload)
+    except (OSError, ValueError) as artifact_exc:
+        logger.warning("Live artifact update failed for zone %s: %s", zone_id, artifact_exc)
+
+    now_ts = time.time()
+    try:
+        _send_zone_heartbeat_if_due(
+            mqtt_client=mqtt_client,
+            zone_id=zone_id,
+            detection_count=len(detections),
+            now_epoch_s=now_ts,
+            last_heartbeat_at=last_heartbeat_at,
+        )
+    except (OSError, RuntimeError, ValueError) as hb_exc:
+        logger.warning("Heartbeat publish failed for zone %s: %s", zone_id, hb_exc)
+
+    for det in detections:
+        landmarks = pose_estimator.estimate(frame, det.bbox)
+        if landmarks is None:
+            logger.info(
+                "Zone %s track %s: pose estimation failed (no landmarks)",
+                zone_id,
+                det.track_id,
+            )
+            continue
+
+        score = behavior_analyzer.analyze(
+            landmarks,
+            det.class_label,
+            det.confidence,
+            det.track_id,
+        )
+
+        should_alert = confidence_filter.evaluate(det.track_id, score)
+        logger.info(
+            "Zone %s track %s: class=%s yolo=%.3f score=%.3f alert=%s",
+            zone_id,
+            det.track_id,
+            det.class_label,
+            float(det.confidence),
+            float(score),
+            should_alert,
+        )
+        if should_alert:
+            alert_engine.dispatch(
+                zone_id=zone_id,
+                track_id=det.track_id,
+                score=score,
+                frame=frame,
+                bbox=det.bbox,
+                class_label=det.class_label,
+                yolo_confidence=float(det.confidence),
+                pose_confidence=None,
+                final_confidence=float(score),
+            )
+            logger.info("Zone %s track %s: alert dispatched", zone_id, det.track_id)
+
+    behavior_analyzer.cleanup_stale_tracks(active_track_ids)
+    confidence_filter.cleanup_stale_tracks(active_track_ids)
 
 
 def main():
@@ -284,7 +399,7 @@ def main():
 
     try:
         mqtt_client.connect()
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         logger.warning("MQTT broker unavailable at startup: %s — continuing without MQTT", exc)
 
     # ── Start camera threads ──────────────────────────────────────────────────
@@ -297,111 +412,18 @@ def main():
         while True:
             for zone_id, camera in registry.cameras.items():
                 try:
-                    frame, metadata = camera.read()
-                    if frame is None:
-                        continue
-
-                    detector = detectors[zone_id]
-                    detections = detector.detect(frame)
-                    logger.debug("Zone %s: %d detections", zone_id, len(detections))
-                    if not detections:
-                        logger.info("Zone %s: no tracked detections on this frame", zone_id)
-                    if detections:
-                        logger.debug(
-                            "Zone %s raw detections: %s",
-                            zone_id,
-                            [
-                                {
-                                    "track_id": det.track_id,
-                                    "class_label": det.class_label,
-                                    "confidence": round(float(det.confidence), 4),
-                                }
-                                for det in detections
-                            ],
-                        )
-                    active_track_ids = {str(det.track_id) for det in detections}
-
-                    frame_timestamp = metadata.get("timestamp") or _utc_now_iso()
-                    status_payload = {
-                        "component": "detection_engine",
-                        "zone_id": zone_id,
-                        "status": "online",
-                        "heartbeat_source": "annotated_feed",
-                        "feed_mode": "annotated_snapshot_mjpeg",
-                        "feed_status": "online",
-                        "detection_count": len(detections),
-                        "latest_frame_at": frame_timestamp,
-                        "updated_at": _utc_now_iso(),
-                    }
-                    try:
-                        annotated = _annotate_live_frame(
-                            frame,
-                            detections,
-                            zone_id,
-                            frame_timestamp,
-                        )
-                        _write_live_zone_artifacts(_LIVE_DIR, zone_id, annotated, status_payload)
-                    except Exception as artifact_exc:
-                        logger.warning(
-                            "Live artifact update failed for zone %s: %s", zone_id, artifact_exc
-                        )
-
-                    now_ts = time.time()
-                    try:
-                        _send_zone_heartbeat_if_due(
-                            mqtt_client=mqtt_client,
-                            zone_id=zone_id,
-                            detection_count=len(detections),
-                            now_epoch_s=now_ts,
-                            last_heartbeat_at=last_heartbeat_at,
-                        )
-                    except Exception as hb_exc:
-                        logger.warning("Heartbeat publish failed for zone %s: %s", zone_id, hb_exc)
-
-                    for det in detections:
-                        landmarks = pose_estimator.estimate(frame, det.bbox)
-                        if landmarks is None:
-                            logger.info(
-                                "Zone %s track %s: pose estimation failed (no landmarks)",
-                                zone_id,
-                                det.track_id,
-                            )
-                            continue
-
-                        score = behavior_analyzers[zone_id].analyze(
-                            landmarks, det.class_label, det.confidence, det.track_id
-                        )
-
-                        should_alert = confidence_filters[zone_id].evaluate(det.track_id, score)
-                        logger.info(
-                            "Zone %s track %s: class=%s yolo=%.3f score=%.3f alert=%s",
-                            zone_id,
-                            det.track_id,
-                            det.class_label,
-                            float(det.confidence),
-                            float(score),
-                            should_alert,
-                        )
-                        if should_alert:
-                            alert_engine.dispatch(
-                                zone_id=zone_id,
-                                track_id=det.track_id,
-                                score=score,
-                                frame=frame,
-                                bbox=det.bbox,
-                                class_label=det.class_label,
-                                yolo_confidence=float(det.confidence),
-                                pose_confidence=None,
-                                final_confidence=float(score),
-                            )
-                            logger.info(
-                                "Zone %s track %s: alert dispatched",
-                                zone_id,
-                                det.track_id,
-                            )
-
-                    behavior_analyzers[zone_id].cleanup_stale_tracks(active_track_ids)
-                    confidence_filters[zone_id].cleanup_stale_tracks(active_track_ids)
+                    _process_zone_frame(
+                        zone_id=zone_id,
+                        camera=camera,
+                        detector=detectors[zone_id],
+                        pose_estimator=pose_estimator,
+                        behavior_analyzer=behavior_analyzers[zone_id],
+                        confidence_filter=confidence_filters[zone_id],
+                        alert_engine=alert_engine,
+                        mqtt_client=mqtt_client,
+                        live_dir=_LIVE_DIR,
+                        last_heartbeat_at=last_heartbeat_at,
+                    )
                 except Exception as exc:
                     logger.exception("Processing error in zone %s: %s", zone_id, exc)
                     continue
@@ -412,7 +434,7 @@ def main():
         registry.stop_all()
         try:
             mqtt_client.close()
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("MQTT shutdown encountered an error: %s", exc)
         logger.info("All camera threads stopped. Goodbye.")
 

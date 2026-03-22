@@ -6,12 +6,14 @@ from werkzeug.exceptions import HTTPException
 
 from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
+from utils.logging_utils import configure_app_logging
 
 
 def create_app():
     load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
     app = Flask(__name__)
+    configure_app_logging(app)
 
     secret_key = os.environ.get('SECRET_KEY')
     jwt_secret_key = os.environ.get('JWT_SECRET_KEY')

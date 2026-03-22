@@ -127,13 +127,13 @@ class AlertEngine:
     def _send_mqtt(self, payload_dict: dict) -> None:
         try:
             self._mqtt.publish_alert(payload_dict)
-        except Exception as exc:
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
             logger.error("AlertEngine MQTT dispatch failed: %s", exc)
 
     def _send_api(self, payload: AlertPayload) -> None:
         try:
             self._api.log_event(payload)
-        except Exception as exc:
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
             logger.error("AlertEngine API dispatch failed: %s", exc)
 
     def _log_alert(

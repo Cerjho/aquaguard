@@ -59,7 +59,12 @@ class DetectionEvent(db.Model):
     __tablename__ = 'detection_events'
     __table_args__ = (
         db.Index('ix_detection_events_zone_detected_at', 'zone_id', 'detected_at'),
-        db.Index('ix_detection_events_zone_alert_detected_at', 'zone_id', 'alert_triggered', 'detected_at'),
+        db.Index(
+            'ix_detection_events_zone_alert_detected_at',
+            'zone_id',
+            'alert_triggered',
+            'detected_at',
+        ),
     )
 
     id               = db.Column(db.Integer, primary_key=True)

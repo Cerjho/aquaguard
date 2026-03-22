@@ -1,8 +1,14 @@
 import os
+import sys
 from datetime import timedelta
 from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
+
+# Allow imports from project-root modules (e.g., config/) when running from backend/.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from config.secrets import get_secret
 from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter

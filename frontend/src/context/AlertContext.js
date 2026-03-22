@@ -23,6 +23,7 @@ import { normalizeServiceStatus } from '../utils/statusHelpers';
 
 const AlertContext = createContext(null);
 const MAX_DETECTION_EVENTS = 50;
+const MAX_ALERT_HISTORY = 1000;
 const STATUS_POLL_BASE_INTERVAL_MS = 15000;
 const STATUS_POLL_MAX_INTERVAL_MS = 120000;
 const STATUS_POLL_HIDDEN_INTERVAL_MS = 60000;
@@ -156,7 +157,7 @@ export function AlertProvider({ children }) {
       const filtered = prev.filter((item) => resolveAlertId(item) !== alertId);
       return [normalizedPayload, ...filtered];
     });
-    setAlertHistory((prev) => [normalizedPayload, ...prev]);
+    setAlertHistory((prev) => [normalizedPayload, ...prev].slice(0, MAX_ALERT_HISTORY));
     setUnacknowledgedCount((c) => c + 1);
   }, []);
 

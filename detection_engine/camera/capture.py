@@ -50,14 +50,17 @@ class CameraCapture:
         )
         self._thread.start()
 
-    def read(self) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
+    def read(self, copy_frame: bool = False) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
         """Return the most recent frame and metadata.
 
         Returns:
             (frame, metadata) where frame may be None if no frame yet received.
         """
         with self._frame_lock:
-            frame = self._latest_frame.copy() if self._latest_frame is not None else None
+            if self._latest_frame is None:
+                frame = None
+            else:
+                frame = self._latest_frame.copy() if copy_frame else self._latest_frame
         metadata = {
             "zone_id": self.zone_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),

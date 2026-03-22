@@ -18,6 +18,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            detection_engine/requirements.txt
 
       - name: Install backend dependencies
         run: |
@@ -54,6 +58,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            detection_engine/requirements.txt
 
       - name: Install detection engine dependencies
         run: |
@@ -116,6 +124,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            detection_engine/requirements.txt
 
       - name: Install linters
         run: pip install flake8==7.1.1
@@ -125,3 +137,42 @@ jobs:
 
       - name: Lint Python (detection engine)
         run: flake8 detection_engine/
+
+  security-scan:
+    name: Security Scan (Non-Blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            detection_engine/requirements.txt
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install security scanners
+        run: |
+          pip install pip-audit==2.8.0
+          cd frontend
+          npm ci
+
+      - name: Python dependency audit
+        run: |
+          pip-audit -r backend/requirements.txt
+          pip-audit -r detection_engine/requirements.txt
+
+      - name: Frontend dependency audit
+        run: |
+          cd frontend
+          npm audit --omit=dev --audit-level=high

@@ -197,6 +197,10 @@ See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
 
 See [docs/SECURITY.md](docs/SECURITY.md)
 
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
 ---
 
 ## Performance

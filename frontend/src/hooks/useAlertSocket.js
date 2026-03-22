@@ -18,6 +18,7 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { WS_URL } from '../utils/constants';
+import logger from '../utils/logger';
 
 /**
  * @param {Object} options
@@ -50,14 +51,14 @@ function useAlertSocket({
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.info('[AquaGuard WS] Connected — socket id:', socket.id);
+      logger.info('[AquaGuard WS] Connected - socket id:', socket.id);
       if (typeof onConnectionChange === 'function') {
         onConnectionChange(true, { at: new Date().toISOString(), socketId: socket.id });
       }
     });
 
     socket.on('connect_error', (err) => {
-      console.warn('[AquaGuard WS] Connection error:', err.message);
+      logger.warn('[AquaGuard WS] Connection error:', err.message);
       if (typeof onConnectionChange === 'function') {
         onConnectionChange(false, {
           at: new Date().toISOString(),
@@ -68,7 +69,7 @@ function useAlertSocket({
     });
 
     socket.on('disconnect', (reason) => {
-      console.info('[AquaGuard WS] Disconnected:', reason);
+      logger.info('[AquaGuard WS] Disconnected:', reason);
       if (typeof onConnectionChange === 'function') {
         onConnectionChange(false, {
           at: new Date().toISOString(),
@@ -80,7 +81,7 @@ function useAlertSocket({
 
     if (typeof onAlert === 'function') {
       socket.on('alert_event', (payload) => {
-        console.info('[AquaGuard WS] alert_event received:', payload);
+        logger.info('[AquaGuard WS] alert_event received:', payload);
         onAlert(payload);
       });
     }

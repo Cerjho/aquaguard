@@ -11,16 +11,28 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from config.secrets import get_secret
+from config.settings import (
+    build_backend_runtime_values,
+    get_backend_config,
+    resolve_backend_environment,
+    validate_runtime_settings,
+)
 from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 from utils.logging_utils import configure_app_logging
+from utils.error_reporting import init_error_reporting
 
 
 def create_app():
     load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+    validate_runtime_settings()
 
     app = Flask(__name__)
     configure_app_logging(app)
+    env_name = resolve_backend_environment()
+    app.config.from_object(get_backend_config(env_name))
+    app.config.update(build_backend_runtime_values())
+    init_error_reporting(app)
 
     secret_key = get_secret('SECRET_KEY')
     jwt_secret_key = get_secret('JWT_SECRET_KEY')
@@ -37,40 +49,8 @@ def create_app():
     app.config['AQUAGUARD_API_KEY'] = api_key
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=60)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
-    app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
-    app.config['JWT_COOKIE_SECURE'] = os.environ.get('JWT_COOKIE_SECURE', 'false').lower() in {
-        '1', 'true', 'yes'
-    }
-    app.config['JWT_COOKIE_SAMESITE'] = os.environ.get('JWT_COOKIE_SAMESITE', 'Lax')
-    app.config['JWT_COOKIE_CSRF_PROTECT'] = True
-    app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
-    app.config['JWT_REFRESH_COOKIE_PATH'] = '/api/v1/auth/refresh'
-    app.config['JWT_CSRF_METHODS'] = ['POST', 'PUT', 'PATCH', 'DELETE']
-    app.config['RATELIMIT_ENABLED'] = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in {
-        '1', 'true', 'yes'
-    }
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL', 'sqlite:///aquaguard.db'
-    )
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['WEBRTC_SESSION_TTL_SECONDS'] = os.environ.get('WEBRTC_SESSION_TTL_SECONDS', 300)
-    app.config['WEBRTC_STUN_URLS'] = os.environ.get(
-        'WEBRTC_STUN_URLS', 'stun:stun.l.google.com:19302'
-    )
-    app.config['WEBRTC_TURN_URL'] = os.environ.get('WEBRTC_TURN_URL')
-    app.config['WEBRTC_TURN_USERNAME'] = os.environ.get('WEBRTC_TURN_USERNAME')
-    app.config['WEBRTC_TURN_CREDENTIAL'] = os.environ.get(
-        'WEBRTC_TURN_CREDENTIAL'
-    ) or os.environ.get('WEBRTC_TURN_PASSWORD')
-    app.config['WEBRTC_ICE_TRANSPORT_POLICY'] = os.environ.get(
-        'WEBRTC_ICE_TRANSPORT_POLICY', 'all'
-    )
-    app.config['WEBRTC_FORCE_RELAY'] = os.environ.get('WEBRTC_FORCE_RELAY', 'false')
-    app.config['WEBRTC_FUTURE_TIMEOUT_SECONDS'] = os.environ.get(
-        'WEBRTC_FUTURE_TIMEOUT_SECONDS', 20
-    )
-    app.config['WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS'] = os.environ.get(
-        'WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS', 3
     )
 
     # Init extensions
@@ -79,7 +59,7 @@ def create_app():
     bcrypt.init_app(app)
     migrate.init_app(app, db)
     limiter.init_app(app)
-    allowed_origins_raw = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+    allowed_origins_raw = app.config.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
     allowed_origins = [
         origin.strip() for origin in allowed_origins_raw.split(',') if origin.strip()
     ] or ['http://localhost:3000']

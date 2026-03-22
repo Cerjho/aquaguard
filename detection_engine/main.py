@@ -45,6 +45,7 @@ from config.settings import (
     LIVE_SNAPSHOT_JPEG_QUALITY,
     LIVE_ARTIFACT_REPLACE_RETRIES,
     LIVE_ARTIFACT_RETRY_DELAY_SECONDS,
+    validate_runtime_settings,
 )
 from config.secrets import get_secret
 
@@ -349,6 +350,7 @@ def main():
     from detection_engine.alert.api_client import APIClient
     from detection_engine.alert.alert_engine import AlertEngine
 
+    validate_runtime_settings()
     _LIVE_DIR = os.path.join(_BASE_DIR, "backend", "snapshots", "live")
     os.makedirs(_LIVE_DIR, exist_ok=True)
 

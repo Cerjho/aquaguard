@@ -827,6 +827,207 @@ Notes:
 
 ---
 
+### GET /internal/cameras
+
+- Auth required: No JWT header required
+- Role required: Internal API key
+
+Headers:
+
+```http
+X-API-Key: <AQUAGUARD_API_KEY>
+```
+
+Responses:
+
+- `200 OK`
+
+```json
+{
+  "cameras": [
+    {
+      "zone_id": "zone_01",
+      "rtsp_url": "rtsp://192.168.1.10/stream1",
+      "frame_rate": 30,
+      "zone_name": "Main Pool - East",
+      "location_description": "East side",
+      "resolution": "1280x720",
+      "is_active": true
+    }
+  ]
+}
+```
+
+- `401 Unauthorized`
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+---
+
+### GET /system/status
+
+- Auth required: Yes
+- Role required: Any authenticated role
+
+Responses:
+
+- `200 OK`
+
+```json
+{
+  "detection_engine": {
+    "status": "online",
+    "message": "ok"
+  },
+  "camera_status": [],
+  "generated_at": "2026-03-23T10:00:00+00:00"
+}
+```
+
+---
+
+### POST /system/heartbeat
+
+- Auth required: No JWT header required
+- Role required: Internal API key
+
+Headers:
+
+```http
+X-API-Key: <AQUAGUARD_API_KEY>
+```
+
+Request body schema:
+
+```json
+{
+  "device_id": "esp32-zone-01",
+  "status": "online",
+  "uptime_ms": 12345,
+  "timestamp": "2026-03-23T10:00:00+00:00"
+}
+```
+
+Responses:
+
+- `200 OK`
+
+```json
+{
+  "message": "heartbeat accepted"
+}
+```
+
+- `400 Bad Request`
+
+```json
+{
+  "error": "device_id is required"
+}
+```
+
+- `401 Unauthorized`
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+---
+
+### POST /webrtc/offer
+
+- Auth required: Yes (JWT or internal API key)
+- Role required: Any authenticated role for JWT
+
+Request body schema:
+
+```json
+{
+  "zone_id": "zone_01",
+  "type": "offer",
+  "sdp": "v=0...",
+  "session_id": "optional-uuid"
+}
+```
+
+Responses:
+
+- `202 Accepted` with answer/fallback metadata
+- `400 Bad Request` if `zone_id`, `sdp`, or `session_id` is invalid
+- `401 Unauthorized` if auth is missing/invalid
+
+---
+
+### POST /webrtc/ice-candidate
+
+- Auth required: Yes (JWT or internal API key)
+- Role required: Any authenticated role for JWT
+
+Request body schema:
+
+```json
+{
+  "session_id": "uuid",
+  "candidate": "candidate:...",
+  "sdpMid": "0",
+  "sdpMLineIndex": 0
+}
+```
+
+Responses:
+
+- `202 Accepted`
+- `400 Bad Request` if `session_id` or `candidate` is invalid
+- `401 Unauthorized`
+
+---
+
+### GET /webrtc/session-status and GET /webrtc/session-status/{session_id}
+
+- Auth required: Yes (JWT or internal API key)
+- Role required: Any authenticated role for JWT
+
+Query params:
+
+- `session_id` (required in query variant)
+- `force_fallback` (optional boolean)
+
+Responses:
+
+- `200 OK`
+- `404 Not Found` if session does not exist
+- `400 Bad Request` if `session_id` is invalid
+
+---
+
+### GET /webrtc/ice-config
+
+- Auth required: Yes (JWT or internal API key)
+- Role required: Any authenticated role for JWT
+
+Responses:
+
+- `200 OK`
+
+```json
+{
+  "ice_servers": [
+    {"urls": "stun:stun.l.google.com:19302"}
+  ],
+  "ice_transport_policy": "all",
+  "force_relay": false,
+  "auth_type": "jwt"
+}
+```
+
+---
+
 ## WebSocket Events
 
 Connection:

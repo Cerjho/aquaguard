@@ -20,6 +20,7 @@ import React, {
 import useAlertSocket from '../hooks/useAlertSocket';
 import api from '../hooks/useApi';
 import { normalizeServiceStatus } from '../utils/statusHelpers';
+import logger from '../utils/logger';
 import {
   DEFAULT_TRIAGE_FILTERS,
   DETECTION_EVENT_BATCH_MS,
@@ -268,7 +269,7 @@ export function AlertProvider({ children }) {
     ) || resolveAlertId(activeAlert) || resolveAlertId(alertId);
 
     if (!canonicalAlertId) {
-      console.error('[AlertContext] Missing canonical alert_id for acknowledge.');
+      logger.error('[AlertContext] Missing canonical alert_id for acknowledge.');
       setActiveAlert(null);
       setUnacknowledgedCount((c) => Math.max(0, c - 1));
       return;
@@ -290,9 +291,11 @@ export function AlertProvider({ children }) {
       });
       setUnacknowledgedCount((c) => Math.max(0, c - 1));
     } catch (error) {
-      console.error('[AlertContext] Acknowledge failed:', error.message);
+      logger.error('[AlertContext] Acknowledge failed:', error.message);
       setAcknowledgeError(
-        error.response?.data?.error || error.response?.data?.message || 'Acknowledge failed.'
+        error.response?.data?.error
+        || error.response?.data?.message
+        || 'Acknowledge failed. Check your network connection and try again.'
       );
     } finally {
       setAcknowledgingAlertId(null);

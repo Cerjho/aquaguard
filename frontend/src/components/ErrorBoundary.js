@@ -1,4 +1,5 @@
 import React from 'react';
+import logger from '../utils/logger';
 
 function ErrorFallback({ error }) {
   return (
@@ -37,8 +38,7 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     if (process.env.NODE_ENV !== 'production') {
       // Keep stack details visible in development builds.
-      // eslint-disable-next-line no-console
-      console.error('React Error Boundary:', error, errorInfo);
+      logger.error('React Error Boundary:', error, errorInfo);
     }
   }
 

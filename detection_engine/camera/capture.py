@@ -18,6 +18,9 @@ class CameraCapture:
     """Threaded camera reader with automatic reconnect on failure."""
 
     def __init__(self, zone_id: str, rtsp_url, frame_rate: int = 30):
+        if frame_rate <= 0:
+            raise ValueError("frame_rate must be positive")
+
         self.zone_id = zone_id
         self.rtsp_url = rtsp_url
         self.frame_rate = frame_rate

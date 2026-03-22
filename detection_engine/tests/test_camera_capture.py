@@ -3,8 +3,17 @@ import threading
 import time
 
 import numpy as np
+import pytest
 
 from detection_engine.camera.capture import CameraCapture
+
+
+def test_constructor_rejects_non_positive_frame_rate():
+    with pytest.raises(ValueError, match="frame_rate must be positive"):
+        CameraCapture(zone_id="zone_bad", rtsp_url=0, frame_rate=0)
+
+    with pytest.raises(ValueError, match="frame_rate must be positive"):
+        CameraCapture(zone_id="zone_bad", rtsp_url=0, frame_rate=-5)
 
 
 class _RaceAwareCapture:

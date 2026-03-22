@@ -102,3 +102,39 @@ def test_webrtc_ice_config_contract(client, admin_token):
     assert 'ice_servers' in payload
     assert 'ice_transport_policy' in payload
     assert 'force_relay' in payload
+
+
+def test_webrtc_offer_rejects_invalid_session_id(client, admin_token):
+    resp = client.post('/api/v1/webrtc/offer',
+                       headers=_auth_headers(admin_token),
+                       json={
+                           'zone_id': 'zone_01',
+                           'type': 'offer',
+                           'sdp': 'v=0\r\no=- 1 2 IN IP4 127.0.0.1',
+                           'session_id': 'not-a-uuid',
+                       })
+    assert resp.status_code == 400
+    assert resp.get_json()['error'] == 'session_id must be a valid UUID'
+
+
+def test_webrtc_ice_candidate_rejects_invalid_session_id(client, admin_token):
+    resp = client.post('/api/v1/webrtc/ice-candidate',
+                       headers=_auth_headers(admin_token),
+                       json={
+                           'session_id': 'invalid-id',
+                           'candidate': 'candidate:0 1 UDP 2122252543 192.168.1.2 54400 typ host',
+                       })
+    assert resp.status_code == 400
+    assert resp.get_json()['error'] == 'session_id must be a valid UUID'
+
+
+def test_webrtc_session_status_rejects_invalid_session_id(client, admin_token):
+    query_resp = client.get('/api/v1/webrtc/session-status?session_id=bad-id',
+                            headers=_auth_headers(admin_token))
+    assert query_resp.status_code == 400
+    assert query_resp.get_json()['error'] == 'session_id must be a valid UUID'
+
+    path_resp = client.get('/api/v1/webrtc/session-status/not-a-uuid',
+                           headers=_auth_headers(admin_token))
+    assert path_resp.status_code == 400
+    assert path_resp.get_json()['error'] == 'session_id must be a valid UUID'

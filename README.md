@@ -118,9 +118,13 @@ Set-Location ..
 
 ```powershell
 Set-Location .\backend
-& "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
+& "..\aquaguard_env\Scripts\gunicorn.exe" -w 1 -b 0.0.0.0:5000 wsgi:app
 Set-Location ..
 ```
+
+Backend Socket.IO is configured with `async_mode='threading'`, so use the default
+sync/threaded Gunicorn worker command above (do not pass `-k gevent` unless you also
+switch backend async mode accordingly).
 
 ---
 

@@ -116,16 +116,19 @@ def create_event():
                 return jsonify({'error': 'Snapshot too large'}), 413
             image_obj = Image.open(io.BytesIO(img_data))
             image_obj.verify()
-            snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
-            with tempfile.NamedTemporaryFile(
-                mode='wb',
-                dir=SNAPSHOTS_DIR,
-                prefix=f'{event_id}_',
-                suffix='.tmp',
-                delete=False,
-            ) as temp_file:
-                temp_file.write(img_data)
-                temp_path = temp_file.name
+            with Image.open(io.BytesIO(img_data)) as normalized_image:
+                if normalized_image.mode not in ('RGB', 'L'):
+                    normalized_image = normalized_image.convert('RGB')
+                snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
+                with tempfile.NamedTemporaryFile(
+                    mode='wb',
+                    dir=SNAPSHOTS_DIR,
+                    prefix=f'{event_id}_',
+                    suffix='.tmp',
+                    delete=False,
+                ) as temp_file:
+                    normalized_image.save(temp_file, format='JPEG')
+                    temp_path = temp_file.name
             os.replace(temp_path, snapshot_path)
         except (base64.binascii.Error, ValueError):
             return jsonify({'error': 'Invalid snapshot encoding'}), 400
@@ -137,7 +140,9 @@ def create_event():
 
     # Parse detected_at
     try:
-        detected_at = datetime.fromisoformat(data['detected_at'])
+        detected_at = parse_iso_datetime(data['detected_at'])
+        if detected_at is None:
+            raise ValueError('invalid detected_at')
     except (ValueError, TypeError):
         detected_at = datetime.now(timezone.utc).replace(tzinfo=None)
 

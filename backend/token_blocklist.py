@@ -10,6 +10,9 @@ _REVOKED_JTIS_LOCK = Lock()
 _redis_client = redis.Redis.from_url(
     os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
     decode_responses=True,
+    socket_connect_timeout=1.0,
+    socket_timeout=2.0,
+    health_check_interval=30,
 )
 
 

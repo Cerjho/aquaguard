@@ -27,6 +27,7 @@ def app():
         'SQLALCHEMY_DATABASE_URI':   f'sqlite:///{_db_path}',
         'JWT_SECRET_KEY':            'test-jwt-secret-key-32-bytes-long!!',
         'WTF_CSRF_ENABLED':          False,
+        'AUTH_RETURN_TOKENS_IN_BODY': True,
     })
     with app.app_context():
         _db.create_all()

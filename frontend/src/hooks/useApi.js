@@ -1,7 +1,9 @@
 /**
- * AquaGuard — Axios instance with automatic JWT injection.
+ * AquaGuard — Axios instance for cookie-based auth + CSRF headers.
  *
  * ALL HTTP calls in the application must use this instance.
+ * Auth is handled by backend-set httpOnly JWT cookies (`withCredentials: true`),
+ * and mutating requests include `X-CSRF-TOKEN` from the corresponding CSRF cookie.
  * Never use raw axios.create() or fetch() with hardcoded URLs (Rule R6-H).
  *
  * Usage:

@@ -34,6 +34,9 @@ def create_app():
     app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
     app.config['JWT_REFRESH_COOKIE_PATH'] = '/api/v1/auth/refresh'
     app.config['JWT_CSRF_METHODS'] = ['POST', 'PUT', 'PATCH', 'DELETE']
+    app.config['AUTH_RETURN_TOKENS_IN_BODY'] = (
+        os.environ.get('AUTH_RETURN_TOKENS_IN_BODY', 'false').lower() in {'1', 'true', 'yes'}
+    )
     app.config['RATELIMIT_ENABLED'] = os.environ.get('RATELIMIT_ENABLED', 'true').lower() in {
         '1', 'true', 'yes'
     }

@@ -8,6 +8,7 @@ afterEach(() => {
   mock.reset();
   document.cookie = 'csrf_access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   document.cookie = 'csrf_refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'csrf_refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/v1/auth/refresh';
 });
 
 describe('useApi (axios instance)', () => {

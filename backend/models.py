@@ -1,5 +1,5 @@
-from datetime import datetime
 from extensions import db
+from utils.date_utils import utcnow_naive
 
 
 class User(db.Model):
@@ -9,7 +9,7 @@ class User(db.Model):
     username      = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role          = db.Column(db.String(20), nullable=False, default='lifeguard')
-    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at    = db.Column(db.DateTime, default=utcnow_naive)
     is_active     = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
@@ -36,7 +36,7 @@ class CameraZone(db.Model):
     frame_rate           = db.Column(db.Integer, default=30)
     resolution           = db.Column(db.String(20), default='1280x720')
     is_active            = db.Column(db.Boolean, default=True)
-    created_at           = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at           = db.Column(db.DateTime, default=utcnow_naive)
 
     def __repr__(self):
         return f'<CameraZone {self.zone_id}: {self.zone_name}>'
@@ -57,6 +57,10 @@ class CameraZone(db.Model):
 
 class DetectionEvent(db.Model):
     __tablename__ = 'detection_events'
+    __table_args__ = (
+        db.Index('ix_detection_events_zone_detected_at', 'zone_id', 'detected_at'),
+        db.Index('ix_detection_events_zone_alert_detected_at', 'zone_id', 'alert_triggered', 'detected_at'),
+    )
 
     id               = db.Column(db.Integer, primary_key=True)
     event_id         = db.Column(db.String(36), unique=True, nullable=False)
@@ -71,7 +75,7 @@ class DetectionEvent(db.Model):
     bbox             = db.Column(db.JSON, nullable=True)
     alert_triggered  = db.Column(db.Boolean, default=False, index=True)
     snapshot_path    = db.Column(db.String(255))
-    detected_at      = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    detected_at      = db.Column(db.DateTime, default=utcnow_naive, index=True)
     raw_payload      = db.Column(db.JSON)
 
     def __repr__(self):
@@ -98,6 +102,9 @@ class DetectionEvent(db.Model):
 
 class Alert(db.Model):
     __tablename__ = 'alerts'
+    __table_args__ = (
+        db.Index('ix_alerts_zone_status_triggered_at', 'zone_id', 'status', 'triggered_at'),
+    )
 
     id              = db.Column(db.Integer, primary_key=True)
     alert_id        = db.Column(db.String(36), unique=True, nullable=False)
@@ -106,7 +113,7 @@ class Alert(db.Model):
     )
     zone_id         = db.Column(db.String(50), nullable=False, index=True)
     status          = db.Column(db.String(30), default='unacknowledged', index=True)
-    triggered_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    triggered_at    = db.Column(db.DateTime, default=utcnow_naive)
     acknowledged_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     acknowledged_at = db.Column(db.DateTime, nullable=True)
     notes           = db.Column(db.Text, nullable=True)
@@ -135,7 +142,7 @@ class SystemLog(db.Model):
     level     = db.Column(db.String(10), nullable=False)
     component = db.Column(db.String(50))
     message   = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=utcnow_naive)
 
     def __repr__(self):
         return f'<SystemLog [{self.level}] {self.component}: {self.message[:40]}>'

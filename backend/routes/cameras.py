@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, current_app, Response
 from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import CameraZone
@@ -75,7 +76,7 @@ def create_camera():
     db.session.add(camera)
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error creating camera: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -101,7 +102,7 @@ def update_camera(zone_id):
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error updating camera: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -117,7 +118,7 @@ def delete_camera(zone_id):
     camera.is_active = False
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error deleting camera: {exc}')
         return jsonify({'error': 'Database error'}), 500

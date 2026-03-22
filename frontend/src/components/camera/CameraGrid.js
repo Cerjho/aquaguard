@@ -36,6 +36,7 @@ function CameraGrid({ reloadToken = 0 }) {
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
   const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);
+  const tokenRefreshInFlightRef = useRef(new Set());
 
   const bumpStreamSession = useCallback(() => {
     setStreamSessionId(Date.now());
@@ -171,12 +172,20 @@ function CameraGrid({ reloadToken = 0 }) {
   }, []);
 
   const refreshSingleToken = useCallback(async (zoneId) => {
-    const tokenMeta = await mintStreamToken(zoneId);
-    if (!tokenMeta?.token) return;
-    setStreamTokens((prev) => ({
-      ...prev,
-      [zoneId]: tokenMeta,
-    }));
+    if (!zoneId) return;
+    if (tokenRefreshInFlightRef.current.has(zoneId)) return;
+
+    tokenRefreshInFlightRef.current.add(zoneId);
+    try {
+      const tokenMeta = await mintStreamToken(zoneId);
+      if (!tokenMeta?.token) return;
+      setStreamTokens((prev) => ({
+        ...prev,
+        [zoneId]: tokenMeta,
+      }));
+    } finally {
+      tokenRefreshInFlightRef.current.delete(zoneId);
+    }
   }, [mintStreamToken]);
 
   useEffect(() => {

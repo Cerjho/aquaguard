@@ -161,7 +161,7 @@ def create_event():
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -188,7 +188,7 @@ def create_event():
         db.session.add(alert)
         try:
             db.session.commit()
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             db.session.rollback()
             current_app.logger.error(f'DB error saving alert: {exc}')
         else:

@@ -11,3 +11,7 @@ def parse_iso_datetime(raw_value):
         return parsed
     except (TypeError, ValueError):
         return None
+
+
+def utcnow_naive():
+    return datetime.now(timezone.utc).replace(tzinfo=None)

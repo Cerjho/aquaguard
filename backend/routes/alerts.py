@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import Alert, DetectionEvent
@@ -111,7 +112,7 @@ def acknowledge_alert(alert_id):
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error acknowledging alert: {exc}')
         return jsonify({'error': 'Database error'}), 500

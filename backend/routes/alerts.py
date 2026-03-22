@@ -1,23 +1,16 @@
 import logging
-from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from models import Alert, DetectionEvent
+from models import Alert
+from services.alerts_service import build_alerts_query, apply_alert_filters
+from utils.date_utils import utcnow_naive
 
 alerts_bp = Blueprint('alerts', __name__, url_prefix='/api/v1')
 logger = logging.getLogger(__name__)
-
-
-def _parse_iso_datetime(raw_value):
-    if not raw_value:
-        return None
-    try:
-        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
-    except (TypeError, ValueError):
-        return None
 
 
 def _parse_positive_int(raw_value, default_value):
@@ -48,34 +41,19 @@ def list_alerts():
     max_confidence = request.args.get('max_confidence')
     page_raw = request.args.get('page')
     limit_raw = request.args.get('limit')
-    query = (
-        db.session.query(Alert, DetectionEvent.confidence_score)
-        .outerjoin(DetectionEvent, DetectionEvent.event_id == Alert.event_id)
-    )
-
-    if status:
-        query = query.filter(Alert.status == status)
-    if zone_id:
-        query = query.filter(Alert.zone_id == zone_id)
-
-    parsed_from = _parse_iso_datetime(from_dt)
-    if parsed_from:
-        query = query.filter(Alert.triggered_at >= parsed_from)
-
-    parsed_to = _parse_iso_datetime(to_dt)
-    if parsed_to:
-        query = query.filter(Alert.triggered_at <= parsed_to)
-
-    if min_confidence is not None:
-        try:
-            query = query.filter(DetectionEvent.confidence_score >= float(min_confidence))
-        except (TypeError, ValueError):
-            pass
-    if max_confidence is not None:
-        try:
-            query = query.filter(DetectionEvent.confidence_score <= float(max_confidence))
-        except (TypeError, ValueError):
-            pass
+    query = build_alerts_query(db.session)
+    try:
+        query = apply_alert_filters(
+            query,
+            status=status,
+            zone_id=zone_id,
+            from_dt=from_dt,
+            to_dt=to_dt,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+        )
+    except ValueError:
+        return jsonify({'error': 'min_confidence and max_confidence must be numeric'}), 400
 
     ordered_query = query.order_by(Alert.triggered_at.desc())
     if page_raw is not None or limit_raw is not None:
@@ -111,7 +89,7 @@ def acknowledge_alert(alert_id):
 
     alert.status          = 'acknowledged'
     alert.acknowledged_by = user_id
-    alert.acknowledged_at = datetime.utcnow()
+    alert.acknowledged_at = utcnow_naive()
 
     data = request.get_json(silent=True) or {}
     if data.get('notes'):
@@ -119,7 +97,7 @@ def acknowledge_alert(alert_id):
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error acknowledging alert: {exc}')
         return jsonify({'error': 'Database error'}), 500

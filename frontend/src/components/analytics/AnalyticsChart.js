@@ -23,11 +23,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import api from '../../hooks/useApi';
-import { useAlerts } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext';
 
 function AnalyticsChart() {
   const navigate = useNavigate();
-  const { setTriageFilters } = useAlerts();
+  const { setTriageFilters } = useFilterState();
   const [rangeDays, setRangeDays] = useState('7');
   const [groupBy, setGroupBy] = useState('zone');
   const [zoneData, setZoneData] = useState([]);

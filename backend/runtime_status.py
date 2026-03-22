@@ -1,6 +1,9 @@
 import os
 from datetime import datetime, timezone
+from threading import Lock
+from sqlalchemy.exc import SQLAlchemyError
 
+from extensions import db
 from models import CameraZone
 
 
@@ -59,6 +62,7 @@ _ESP32_HEARTBEAT = {
     'uptime_ms': None,
     'last_heartbeat_at': None,
 }
+_ESP32_HEARTBEAT_LOCK = Lock()
 
 
 def update_esp32_heartbeat(device_id, status='online', uptime_ms=None, timestamp=None):
@@ -71,12 +75,13 @@ def update_esp32_heartbeat(device_id, status='online', uptime_ms=None, timestamp
     if heartbeat_time.tzinfo is None:
         heartbeat_time = heartbeat_time.replace(tzinfo=timezone.utc)
 
-    _ESP32_HEARTBEAT.update({
-        'device_id': device_id,
-        'status': status or 'online',
-        'uptime_ms': uptime_ms,
-        'last_heartbeat_at': heartbeat_time.isoformat(),
-    })
+    with _ESP32_HEARTBEAT_LOCK:
+        _ESP32_HEARTBEAT.update({
+            'device_id': device_id,
+            'status': status or 'online',
+            'uptime_ms': uptime_ms,
+            'last_heartbeat_at': heartbeat_time.isoformat(),
+        })
 
 
 def get_esp32_status():
@@ -86,12 +91,15 @@ def get_esp32_status():
     except (TypeError, ValueError):
         threshold = 90.0
 
-    last = _ESP32_HEARTBEAT.get('last_heartbeat_at')
+    with _ESP32_HEARTBEAT_LOCK:
+        heartbeat_snapshot = dict(_ESP32_HEARTBEAT)
+
+    last = heartbeat_snapshot.get('last_heartbeat_at')
     if not last:
         return {
-            'device_id': _ESP32_HEARTBEAT.get('device_id'),
+            'device_id': heartbeat_snapshot.get('device_id'),
             'status': 'offline',
-            'uptime_ms': _ESP32_HEARTBEAT.get('uptime_ms'),
+            'uptime_ms': heartbeat_snapshot.get('uptime_ms'),
             'last_heartbeat_at': None,
             'heartbeat_age_seconds': None,
             'stale_threshold_seconds': threshold,
@@ -108,9 +116,9 @@ def get_esp32_status():
     resolved_status = 'online' if age_seconds <= threshold else 'offline'
 
     return {
-        'device_id': _ESP32_HEARTBEAT.get('device_id'),
+        'device_id': heartbeat_snapshot.get('device_id'),
         'status': resolved_status,
-        'uptime_ms': _ESP32_HEARTBEAT.get('uptime_ms'),
+        'uptime_ms': heartbeat_snapshot.get('uptime_ms'),
         'last_heartbeat_at': last_dt.isoformat(),
         'heartbeat_age_seconds': round(age_seconds, 3),
         'stale_threshold_seconds': threshold,
@@ -124,7 +132,8 @@ def get_runtime_status():
 
     try:
         cameras = CameraZone.query.filter_by(is_active=True).all()
-    except Exception:
+    except SQLAlchemyError:
+        db.session.rollback()
         cameras = []
 
     for camera in cameras:

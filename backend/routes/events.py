@@ -2,20 +2,24 @@ import os
 import base64
 import uuid
 import tempfile
+import io
 from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
+from PIL import Image, UnidentifiedImageError
 
 from extensions import db, socketio
 from models import DetectionEvent, Alert
+from services.events_service import apply_event_filters, parse_detected_at
 
 events_bp = Blueprint('events', __name__, url_prefix='/api/v1')
 
 SNAPSHOTS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'snapshots'
 )
+MAX_SNAPSHOT_BYTES = 10 * 1024 * 1024
 
 
 def _serialize_alert_event_payload(alert, event):
@@ -64,19 +68,6 @@ def _serialize_detection_event_payload(event):
     return payload
 
 
-def _parse_iso_datetime(raw_value):
-    if not raw_value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
-        # DB columns are naive UTC datetimes; normalize aware inputs from API queries.
-        if parsed.tzinfo is not None:
-            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed
-    except (TypeError, ValueError):
-        return None
-
-
 def _parse_event_id(raw_value):
     if raw_value is None:
         return str(uuid.uuid4()), None
@@ -120,7 +111,11 @@ def create_event():
     if snapshot_b64:
         try:
             os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
-            img_data = base64.b64decode(snapshot_b64)
+            img_data = base64.b64decode(snapshot_b64, validate=True)
+            if len(img_data) > MAX_SNAPSHOT_BYTES:
+                return jsonify({'error': 'Snapshot too large'}), 413
+            image_obj = Image.open(io.BytesIO(img_data))
+            image_obj.verify()
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
             with tempfile.NamedTemporaryFile(
                 mode='wb',
@@ -132,15 +127,15 @@ def create_event():
                 temp_file.write(img_data)
                 temp_path = temp_file.name
             os.replace(temp_path, snapshot_path)
-        except Exception as exc:
+        except (base64.binascii.Error, ValueError):
+            return jsonify({'error': 'Invalid snapshot encoding'}), 400
+        except UnidentifiedImageError:
+            return jsonify({'error': 'Invalid image data'}), 400
+        except OSError as exc:
             current_app.logger.warning(f'Failed to save snapshot: {exc}')
             snapshot_path = None
 
-    # Parse detected_at
-    try:
-        detected_at = datetime.fromisoformat(data['detected_at'])
-    except (ValueError, TypeError):
-        detected_at = datetime.utcnow()
+    detected_at = parse_detected_at(data.get('detected_at'))
 
     event = DetectionEvent(
         event_id         = event_id,
@@ -162,7 +157,7 @@ def create_event():
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -174,7 +169,7 @@ def create_event():
             'status': 'online',
             'message': f'Event received from {event.zone_id}',
         })
-    except Exception as exc:
+    except (RuntimeError, ValueError, OSError) as exc:
         current_app.logger.error('SocketIO emit failed for detection event %s: %s', event_id, exc)
 
     alert_dict = None
@@ -184,12 +179,12 @@ def create_event():
             event_id     = event_id,
             zone_id      = event.zone_id,
             status       = 'unacknowledged',
-            triggered_at = datetime.utcnow(),
+            triggered_at = parse_detected_at(None),
         )
         db.session.add(alert)
         try:
             db.session.commit()
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             db.session.rollback()
             current_app.logger.error(f'DB error saving alert: {exc}')
         else:
@@ -197,7 +192,7 @@ def create_event():
             alert_dict = _serialize_alert_event_payload(alert, event)
             try:
                 socketio.emit('alert_event', alert_dict)
-            except Exception as exc:
+            except (RuntimeError, ValueError, OSError) as exc:
                 current_app.logger.error(
                     'SocketIO emit failed for alert event %s: %s',
                     event_id,
@@ -229,19 +224,14 @@ def list_events():
     if limit_error is not None:
         return limit_error, 400
 
-    query = DetectionEvent.query
-
-    if zone_id:
-        query = query.filter_by(zone_id=zone_id)
-    parsed_from = _parse_iso_datetime(from_dt)
-    if parsed_from:
-        query = query.filter(DetectionEvent.detected_at >= parsed_from)
-    parsed_to = _parse_iso_datetime(to_dt)
-    if parsed_to:
-        query = query.filter(DetectionEvent.detected_at <= parsed_to)
-    if alert_triggered is not None:
-        flag = alert_triggered.lower() == 'true'
-        query = query.filter_by(alert_triggered=flag)
+    query = apply_event_filters(
+        DetectionEvent.query,
+        zone_id=zone_id,
+        from_dt=from_dt,
+        to_dt=to_dt,
+        alert_triggered=alert_triggered,
+        status=status,
+    )
     if min_confidence is not None:
         try:
             query = query.filter(DetectionEvent.confidence_score >= float(min_confidence))
@@ -252,17 +242,6 @@ def list_events():
             query = query.filter(DetectionEvent.confidence_score <= float(max_confidence))
         except (TypeError, ValueError):
             pass
-    if status:
-        normalized_status = status.strip().lower()
-        if normalized_status == 'alerted':
-            query = query.filter_by(alert_triggered=True)
-        elif normalized_status in {'normal', 'clear'}:
-            query = query.filter_by(alert_triggered=False)
-        elif normalized_status in {'unacknowledged', 'acknowledged'}:
-            query = query.join(Alert, Alert.event_id == DetectionEvent.event_id).filter(
-                Alert.status == normalized_status
-            )
-
     try:
         query = query.order_by(DetectionEvent.detected_at.desc())
         pagination = query.paginate(page=page, per_page=limit, error_out=False)

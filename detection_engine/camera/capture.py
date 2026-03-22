@@ -2,15 +2,13 @@
 import logging
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Optional, Tuple, Dict, Any
 
 import cv2
 import platform
 import numpy as np
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config.settings import RECONNECT_BACKOFF_SECONDS, RECONNECT_MAX_CONSECUTIVE_FAILURES
 
 logger = logging.getLogger(__name__)
@@ -20,6 +18,9 @@ class CameraCapture:
     """Threaded camera reader with automatic reconnect on failure."""
 
     def __init__(self, zone_id: str, rtsp_url, frame_rate: int = 30):
+        if frame_rate <= 0:
+            raise ValueError("frame_rate must be positive")
+
         self.zone_id = zone_id
         self.rtsp_url = rtsp_url
         self.frame_rate = frame_rate
@@ -49,18 +50,20 @@ class CameraCapture:
         )
         self._thread.start()
 
-    def read(self) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
+    def read(self, copy_frame: bool = False) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
         """Return the most recent frame and metadata.
 
         Returns:
             (frame, metadata) where frame may be None if no frame yet received.
         """
-        import datetime
         with self._frame_lock:
-            frame = self._latest_frame.copy() if self._latest_frame is not None else None
+            if self._latest_frame is None:
+                frame = None
+            else:
+                frame = self._latest_frame.copy() if copy_frame else self._latest_frame
         metadata = {
             "zone_id": self.zone_id,
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         return frame, metadata
 
@@ -91,7 +94,7 @@ class CameraCapture:
                 else:
                     try:
                         ret, frame = cap.read()
-                    except Exception as exc:
+                    except (cv2.error, OSError, RuntimeError, ValueError) as exc:
                         logger.warning("[%s] Exception while reading frame: %s", self.zone_id, exc)
                         ret, frame = False, None
 

@@ -1,16 +1,20 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import SystemStatus from './SystemStatus';
-import { useAlerts } from '../../context/AlertContext';
+import { useSocketState, useSystemState } from '../../context/AlertContext';
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useSocketState: jest.fn(),
+  useSystemState: jest.fn(),
 }));
 
 describe('SystemStatus', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useAlerts.mockReturnValue({
+    useSocketState.mockReturnValue({
+      socketConnected: true,
+    });
+    useSystemState.mockReturnValue({
       socketConnected: true,
       cameraStatuses: {
         zone_01: {
@@ -55,8 +59,10 @@ describe('SystemStatus', () => {
   });
 
   test('marks stale detection freshness as warning', async () => {
-    useAlerts.mockReturnValue({
+    useSocketState.mockReturnValue({
       socketConnected: false,
+    });
+    useSystemState.mockReturnValue({
       cameraStatuses: {},
       systemStatus: {
         detection_engine: {
@@ -79,8 +85,10 @@ describe('SystemStatus', () => {
   });
 
   test('uses esp32 last_heartbeat_at field for heartbeat detail', async () => {
-    useAlerts.mockReturnValue({
+    useSocketState.mockReturnValue({
       socketConnected: true,
+    });
+    useSystemState.mockReturnValue({
       cameraStatuses: {},
       systemStatus: {
         esp32: {

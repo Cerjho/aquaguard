@@ -75,7 +75,7 @@ class TestPoseEstimatorEstimate:
         from detection_engine.vision.pose_estimator import PoseEstimator
         estimator = PoseEstimator.__new__(PoseEstimator)
         mock_pose = MagicMock()
-        mock_pose.process.side_effect = Exception("MediaPipe crash")
+        mock_pose.process.side_effect = RuntimeError("MediaPipe crash")
         estimator._pose = mock_pose
         bbox = (50.0, 50.0, 300.0, 400.0)
         assert estimator.estimate(blank_frame, bbox) is None

@@ -8,46 +8,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
-import { useAlerts } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext';
+import {
+  mapEventClassLabel,
+  mapEventConfidence,
+  mapEventTimestamp,
+} from '../../utils/eventMappers';
 
 const PAGE_SIZE = 10;
 
-function mapEventClassLabel(event = {}) {
-  return (
-    event.class_label
-    || event.class_name
-    || event.detected_class
-    || event.alert_class
-    || '—'
-  );
-}
-
-function mapEventConfidence(event = {}) {
-  const value = (
-    event.final_confidence
-    ?? event.confidence_score
-    ?? event.confidence
-    ?? event.yolo_confidence
-    ?? event.pose_confidence
-    ?? null
-  );
-  if (value == null || Number.isNaN(Number(value))) return null;
-  return Number(value);
-}
-
-function mapEventTimestamp(event = {}) {
-  return (
-    event.detected_at
-    || event.timestamp
-    || event.alerted_at
-    || event.created_at
-    || event.event_time
-    || null
-  );
-}
-
 function IncidentHistory() {
-  const { triageFilters, setTriageFilters, resetTriageFilters } = useAlerts();
+  const { triageFilters, setTriageFilters, resetTriageFilters } = useFilterState();
   const [events, setEvents] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -256,7 +227,7 @@ function IncidentHistory() {
                       {ev.zone_name || ev.zone_id || '—'}
                     </td>
                     <td className="px-4 py-3 text-slate-700 capitalize">
-                      {mapEventClassLabel(ev)}
+                      {mapEventClassLabel(ev, '—')}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {confidence != null ? `${(confidence * 100).toFixed(1)}%` : '—'}

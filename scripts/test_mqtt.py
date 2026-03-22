@@ -155,7 +155,7 @@ if __name__ == "__main__":
         device_id  = heartbeat_payload.get("device_id", "unknown")
         status     = heartbeat_payload.get("status",    "unknown")
         uptime_ms  = heartbeat_payload.get("uptime_ms", "unknown")
-        print(f"  RESULT : PASS")
+        print("  RESULT : PASS")
         print(f"  Device : {device_id}")
         print(f"  Status : {status}")
         print(f"  Uptime : {uptime_ms} ms")

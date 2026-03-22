@@ -15,29 +15,39 @@ import { API_BASE_URL } from '../utils/constants';
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
+  withCredentials: true,
 });
 
-// Attach JWT Bearer token to every outgoing request
+function getCookieValue(name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+// Attach CSRF token for cookie-authenticated mutating requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const method = (config.method || 'get').toLowerCase();
+    const isMutating = ['post', 'put', 'patch', 'delete'].includes(method);
+    if (isMutating) {
+      const csrfCookieName = config.url?.includes('/api/v1/auth/refresh')
+        ? 'csrf_refresh_token'
+        : 'csrf_access_token';
+      const csrfToken = getCookieValue(csrfCookieName);
+      if (csrfToken) {
+        config.headers['X-CSRF-TOKEN'] = csrfToken;
+      }
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Global response error handler — clears invalid tokens
+// Global response error handler — redirect to login on auth failure
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      // Token expired or invalid — clear storage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-
       // Force auth boundary reset so protected pages do not keep firing requests.
       if (window.location.pathname !== '/login') {
         window.location.assign('/login');

@@ -1,52 +1,56 @@
 import os
+import sys
 from datetime import timedelta
 from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 
-from extensions import db, jwt, socketio, bcrypt, migrate, cors
+# Allow imports from project-root modules (e.g., config/) when running from backend/.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from config.secrets import get_secret
+from config.settings import (
+    build_backend_runtime_values,
+    get_backend_config,
+    resolve_backend_environment,
+    validate_runtime_settings,
+)
+from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
+from utils.logging_utils import configure_app_logging
+from utils.error_reporting import init_error_reporting
 
 
 def create_app():
     load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+    validate_runtime_settings()
 
     app = Flask(__name__)
+    configure_app_logging(app)
+    env_name = resolve_backend_environment()
+    app.config.from_object(get_backend_config(env_name))
+    app.config.update(build_backend_runtime_values())
+    init_error_reporting(app)
 
-    secret_key = os.environ.get('SECRET_KEY')
-    jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
+    secret_key = get_secret('SECRET_KEY')
+    jwt_secret_key = get_secret('JWT_SECRET_KEY')
+    api_key = get_secret('AQUAGUARD_API_KEY')
     if not secret_key:
-        raise RuntimeError('SECRET_KEY environment variable is required')
+        raise RuntimeError('SECRET_KEY or SECRET_KEY_FILE is required')
     if not jwt_secret_key:
-        raise RuntimeError('JWT_SECRET_KEY environment variable is required')
+        raise RuntimeError('JWT_SECRET_KEY or JWT_SECRET_KEY_FILE is required')
+    if not api_key:
+        raise RuntimeError('AQUAGUARD_API_KEY or AQUAGUARD_API_KEY_FILE is required')
 
     app.config['SECRET_KEY'] = secret_key
     app.config['JWT_SECRET_KEY'] = jwt_secret_key
-    app.config['AQUAGUARD_API_KEY'] = os.environ.get('AQUAGUARD_API_KEY')
+    app.config['AQUAGUARD_API_KEY'] = api_key
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=60)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
         'DATABASE_URL', 'sqlite:///aquaguard.db'
-    )
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['WEBRTC_SESSION_TTL_SECONDS'] = os.environ.get('WEBRTC_SESSION_TTL_SECONDS', 300)
-    app.config['WEBRTC_STUN_URLS'] = os.environ.get(
-        'WEBRTC_STUN_URLS', 'stun:stun.l.google.com:19302'
-    )
-    app.config['WEBRTC_TURN_URL'] = os.environ.get('WEBRTC_TURN_URL')
-    app.config['WEBRTC_TURN_USERNAME'] = os.environ.get('WEBRTC_TURN_USERNAME')
-    app.config['WEBRTC_TURN_CREDENTIAL'] = os.environ.get(
-        'WEBRTC_TURN_CREDENTIAL'
-    ) or os.environ.get('WEBRTC_TURN_PASSWORD')
-    app.config['WEBRTC_ICE_TRANSPORT_POLICY'] = os.environ.get(
-        'WEBRTC_ICE_TRANSPORT_POLICY', 'all'
-    )
-    app.config['WEBRTC_FORCE_RELAY'] = os.environ.get('WEBRTC_FORCE_RELAY', 'false')
-    app.config['WEBRTC_FUTURE_TIMEOUT_SECONDS'] = os.environ.get(
-        'WEBRTC_FUTURE_TIMEOUT_SECONDS', 20
-    )
-    app.config['WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS'] = os.environ.get(
-        'WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS', 3
     )
 
     # Init extensions
@@ -54,8 +58,17 @@ def create_app():
     jwt.init_app(app)
     bcrypt.init_app(app)
     migrate.init_app(app, db)
-    cors.init_app(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
-    socketio.init_app(app)
+    limiter.init_app(app)
+    allowed_origins_raw = app.config.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+    allowed_origins = [
+        origin.strip() for origin in allowed_origins_raw.split(',') if origin.strip()
+    ] or ['http://localhost:3000']
+    cors.init_app(
+        app,
+        resources={r"/api/*": {"origins": allowed_origins}},
+        supports_credentials=True,
+    )
+    socketio.init_app(app, cors_allowed_origins=allowed_origins)
 
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):

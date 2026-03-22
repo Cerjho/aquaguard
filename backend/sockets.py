@@ -2,6 +2,7 @@ import logging
 from extensions import socketio
 from runtime_status import get_runtime_status
 from flask import request
+from flask_jwt_extended.exceptions import JWTExtendedException
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ def handle_connect(auth):
             decoded = decode_token(token)
             user_id = decoded.get('sub')
             logger.info(f'WebSocket connect: user_id={user_id}')
-        except Exception as exc:
+        except JWTExtendedException as exc:
             logger.warning(f'WebSocket connect with invalid token: {exc}')
             return False  # reject connection
     else:

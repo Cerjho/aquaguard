@@ -8,9 +8,10 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '../../hooks/useApi';
 import CameraCard from './CameraCard';
-import { useAlerts } from '../../context/AlertContext';
+import { useSystemState } from '../../context/AlertContext';
 import { formatDateTime } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../utils/constants';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
@@ -31,10 +32,11 @@ function CameraGrid({ reloadToken = 0 }) {
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     typeof document === 'undefined' ? true : !document.hidden
   );
-  const { cameraStatuses, systemStatus } = useAlerts();
+  const { cameraStatuses, systemStatus } = useSystemState();
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
   const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);
+  const tokenRefreshInFlightRef = useRef(new Set());
 
   const bumpStreamSession = useCallback(() => {
     setStreamSessionId(Date.now());
@@ -73,15 +75,6 @@ function CameraGrid({ reloadToken = 0 }) {
       window.removeEventListener('pageshow', handlePageShow);
     };
   }, [bumpStreamSession]);
-
-  const normalizeStatus = (value) => {
-    if (typeof value === 'boolean') return value ? 'online' : 'offline';
-    if (!value) return 'unknown';
-    const lowered = String(value).toLowerCase();
-    if (['online', 'active', 'running', 'healthy'].includes(lowered)) return 'online';
-    if (['offline', 'inactive', 'stopped', 'down'].includes(lowered)) return 'offline';
-    return lowered;
-  };
 
   const fetchCameras = useCallback(async () => {
     setLoading(true);
@@ -160,14 +153,14 @@ function CameraGrid({ reloadToken = 0 }) {
       const res = await api.get('/api/v1/system/status');
       const payload = res.data || {};
       const engine = payload.detection_engine || {};
-      setDetectionEngineStatus(normalizeStatus(engine.status));
+      setDetectionEngineStatus(normalizeServiceStatus(engine.status));
 
       const runtimeCameras = payload.camera_status || payload.cameras || [];
       const runtimeMap = {};
       if (Array.isArray(runtimeCameras)) {
         runtimeCameras.forEach((camera) => {
           if (camera?.zone_id) {
-            runtimeMap[camera.zone_id] = normalizeStatus(camera.status);
+            runtimeMap[camera.zone_id] = normalizeServiceStatus(camera.status);
           }
         });
       }
@@ -179,12 +172,20 @@ function CameraGrid({ reloadToken = 0 }) {
   }, []);
 
   const refreshSingleToken = useCallback(async (zoneId) => {
-    const tokenMeta = await mintStreamToken(zoneId);
-    if (!tokenMeta?.token) return;
-    setStreamTokens((prev) => ({
-      ...prev,
-      [zoneId]: tokenMeta,
-    }));
+    if (!zoneId) return;
+    if (tokenRefreshInFlightRef.current.has(zoneId)) return;
+
+    tokenRefreshInFlightRef.current.add(zoneId);
+    try {
+      const tokenMeta = await mintStreamToken(zoneId);
+      if (!tokenMeta?.token) return;
+      setStreamTokens((prev) => ({
+        ...prev,
+        [zoneId]: tokenMeta,
+      }));
+    } finally {
+      tokenRefreshInFlightRef.current.delete(zoneId);
+    }
   }, [mintStreamToken]);
 
   useEffect(() => {
@@ -198,7 +199,9 @@ function CameraGrid({ reloadToken = 0 }) {
     if (!isDocumentVisible) return new Set();
     const prioritized = cameras
       .filter((camera) => {
-        const runtime = normalizeStatus(cameraRuntimeMap[camera.zone_id] ?? camera.is_active);
+        const runtime = normalizeServiceStatus(
+          cameraRuntimeMap[camera.zone_id] ?? camera.is_active
+        );
         return runtime === 'online';
       })
       .slice(0, MAX_GRID_STREAMS)
@@ -237,7 +240,7 @@ function CameraGrid({ reloadToken = 0 }) {
 
   useEffect(() => {
     if (systemStatus?.detection_engine?.status) {
-      setDetectionEngineStatus(normalizeStatus(systemStatus.detection_engine.status));
+      setDetectionEngineStatus(normalizeServiceStatus(systemStatus.detection_engine.status));
     }
   }, [systemStatus]);
 
@@ -245,7 +248,7 @@ function CameraGrid({ reloadToken = 0 }) {
     const runtimeMap = {};
     Object.values(cameraStatuses || {}).forEach((camera) => {
       if (camera?.zone_id) {
-        runtimeMap[camera.zone_id] = normalizeStatus(camera.status);
+        runtimeMap[camera.zone_id] = normalizeServiceStatus(camera.status);
       }
     });
     if (Object.keys(runtimeMap).length > 0) {

@@ -123,6 +123,23 @@ class TestBehaviorAnalyzerIndicators:
         assert self.analyzer._no_limb_motion("track_static", lms) is True
 
 
+def test_cleanup_stale_tracks_removes_inactive_histories(dummy_landmarks):
+    analyzer = BehaviorAnalyzer()
+    analyzer.analyze(dummy_landmarks, "drowning", 0.9, "keep")
+    analyzer.analyze(dummy_landmarks, "drowning", 0.9, "stale")
+    analyzer._no_limb_motion("keep", dummy_landmarks)
+    analyzer._no_limb_motion("stale", dummy_landmarks)
+
+    analyzer.cleanup_stale_tracks({"keep"})
+
+    assert "keep" in analyzer._score_history
+    assert "keep" in analyzer._wrist_history
+    assert "keep" in analyzer._ankle_history
+    assert "stale" not in analyzer._score_history
+    assert "stale" not in analyzer._wrist_history
+    assert "stale" not in analyzer._ankle_history
+
+
 def test_same_track_id_is_isolated_when_analyzers_are_per_zone(dummy_landmarks):
     """Same ByteTrack ID in different zones must not share temporal history."""
     zone_a_analyzer = BehaviorAnalyzer()

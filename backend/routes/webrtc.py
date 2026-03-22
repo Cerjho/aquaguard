@@ -5,7 +5,7 @@ import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import datetime, timedelta, timezone
 from threading import Lock, Thread
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import verify_jwt_in_request
@@ -174,6 +174,18 @@ def _parse_bool(value, default=False):
     return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
+def _normalize_session_id(raw_session_id):
+    if raw_session_id is None:
+        return None, None
+    value = str(raw_session_id).strip()
+    if not value:
+        return None, 'session_id is required'
+    try:
+        return str(UUID(value)), None
+    except (ValueError, TypeError, AttributeError):
+        return None, 'session_id must be a valid UUID'
+
+
 def _ice_servers_from_config():
     stun_raw = current_app.config.get('WEBRTC_STUN_URLS', '')
     turn_url = current_app.config.get('WEBRTC_TURN_URL')
@@ -338,7 +350,13 @@ def create_offer():
     if offer_type != 'offer':
         return jsonify({'error': 'type must be offer'}), 400
 
-    session_id = str(data.get('session_id') or uuid4())
+    provided_session_id = data.get('session_id')
+    if provided_session_id is None:
+        session_id = str(uuid4())
+    else:
+        session_id, session_id_error = _normalize_session_id(provided_session_id)
+        if session_id_error:
+            return jsonify({'error': session_id_error}), 400
     now = _utc_now()
     ttl = timedelta(seconds=_session_ttl_seconds())
     with _SESSION_LOCK:
@@ -427,10 +445,10 @@ def add_ice_candidate():
         return error
 
     data = request.get_json(silent=True) or {}
-    session_id = data.get('session_id')
+    session_id, session_id_error = _normalize_session_id(data.get('session_id'))
     candidate = data.get('candidate')
-    if not session_id:
-        return jsonify({'error': 'session_id is required'}), 400
+    if session_id_error:
+        return jsonify({'error': session_id_error}), 400
     if candidate is None:
         return jsonify({'error': 'candidate is required'}), 400
 
@@ -517,9 +535,9 @@ def get_session_status_query():
     if error:
         return error
 
-    session_id = request.args.get('session_id')
-    if not session_id:
-        return jsonify({'error': 'session_id is required'}), 400
+    session_id, session_id_error = _normalize_session_id(request.args.get('session_id'))
+    if session_id_error:
+        return jsonify({'error': session_id_error}), 400
     return _get_session_status(session_id, auth['auth_type'])
 
 
@@ -528,6 +546,9 @@ def get_session_status_path(session_id):
     auth, error = _ensure_authorized()
     if error:
         return error
+    session_id, session_id_error = _normalize_session_id(session_id)
+    if session_id_error:
+        return jsonify({'error': session_id_error}), 400
     return _get_session_status(session_id, auth['auth_type'])
 
 

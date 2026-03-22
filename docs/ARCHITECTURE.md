@@ -1,5 +1,10 @@
 # AquaGuard Architecture Reference
 
+Related artifacts:
+
+- See [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) for additional visual diagrams.
+- See [THREAT_MODEL.md](THREAT_MODEL.md) for security-oriented architecture risks and mitigations.
+
 ## 1. System Overview Diagram
 
 AquaGuard is a layered edge-AI + IoT system. Video is processed locally on the detection server, then distributed to physical and dashboard alert channels.
@@ -23,10 +28,28 @@ BehaviorAnalyzer (5-indicator weighted score)
 ConfidenceFilter (deque N=15, T=0.75, K=10)
       | alert_triggered: bool
       v
-AlertEngine (3 parallel daemon threads)
+AlertEngine (bounded worker pool)
    +-- MQTTClient --> ESP32 GPIO alarm
    +-- APIClient  --> Flask POST /events --> DB + SocketIO --> React dashboard
    +-- Logger     --> system logs
+```
+
+```mermaid
+flowchart TD
+      cam[Camera RTSP/USB] --> cap[CameraCapture per zone]
+      cap --> det[DrowningDetector YOLO + Track]
+      det --> pose[PoseEstimator MediaPipe]
+      pose --> beh[BehaviorAnalyzer]
+      beh --> filter[ConfidenceFilter N/T/K]
+      filter --> alert[AlertEngine ThreadPoolExecutor]
+      alert --> mqtt[MQTTClient]
+      alert --> api[APIClient]
+      alert --> log[System Logger]
+      mqtt --> esp[ESP32 Alarm]
+      api --> backend[Flask Backend]
+      backend --> db[(PostgreSQL/SQLite)]
+      backend --> ws[Socket.IO]
+      ws --> ui[React Dashboard]
 ```
 
 ## 2. Component Descriptions
@@ -65,7 +88,7 @@ AlertEngine (3 parallel daemon threads)
 
 - Encodes snapshot image.
 - Saves JPEG to backend snapshots directory.
-- Dispatches to MQTT, API, and logging in parallel daemon threads.
+- Dispatches to MQTT, API, and logging via a bounded `ThreadPoolExecutor`.
 
 ### Flask Backend and Socket.IO
 
@@ -93,7 +116,7 @@ AlertEngine (3 parallel daemon threads)
 3. Person ROI is processed by MediaPipe to extract landmarks.
 4. Behavior analyzer computes confidence score per tracked person.
 5. Confidence filter evaluates N/T/K window conditions.
-6. When confirmed, AlertEngine dispatches event in parallel:
+6. When confirmed, AlertEngine dispatches event in parallel using a bounded worker pool:
    - MQTT message to ESP32 alarm
    - REST `POST /api/v1/events` to backend
    - Local log line for observability
@@ -158,13 +181,13 @@ AlertEngine assembles payload, writes snapshot, and dispatches concurrently.
 
 ## 5. Alert Dispatch Threads
 
-Alert dispatch uses three parallel daemon threads:
+Alert dispatch uses a bounded `ThreadPoolExecutor` with three workers:
 
-1. MQTT dispatch thread
+1. MQTT dispatch task
    - Publishes alert payload to `aquaguard/alert` (QoS 1).
-2. API dispatch thread
+2. API dispatch task
    - Sends detection/alert payload to Flask `POST /api/v1/events`.
-3. Logger thread
+3. Logger dispatch task
    - Writes audit/observability logs.
 
 This design prevents slow API or broker operations from blocking the detection loop.

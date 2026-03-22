@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import CameraGrid from './CameraGrid';
 import api from '../../hooks/useApi';
-import { useAlerts } from '../../context/AlertContext';
+import { useSystemState } from '../../context/AlertContext';
 
 jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
@@ -13,13 +13,13 @@ jest.mock('../../hooks/useApi', () => ({
 }));
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useSystemState: jest.fn(),
 }));
 
 describe('CameraGrid stream token auth flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useAlerts.mockReturnValue({
+    useSystemState.mockReturnValue({
       cameraStatuses: {
         zone_01: { zone_id: 'zone_01', status: 'online', zone_name: 'Main Pool' },
       },
@@ -285,5 +285,65 @@ describe('CameraGrid stream token auth flow', () => {
       const nextSrc = nextImage.getAttribute('src');
       expect(nextSrc).toBe(firstSrc);
     });
+  });
+
+  test('deduplicates in-flight stream token refresh per zone', async () => {
+    jest.useFakeTimers();
+    let refreshResolve;
+
+    try {
+      api.get.mockImplementation((url) => {
+        if (url === '/api/v1/cameras') {
+          return Promise.resolve({
+            data: [{ zone_id: 'zone_01', zone_name: 'Main Pool', location_description: 'North side', is_active: true }],
+          });
+        }
+        if (url === '/api/v1/system/status') {
+          return Promise.resolve({
+            data: { detection_engine: { status: 'online' }, camera_status: [{ zone_id: 'zone_01', status: 'online' }] },
+          });
+        }
+        return Promise.reject(new Error(`Unexpected GET URL ${url}`));
+      });
+
+      api.post
+        .mockResolvedValueOnce({
+          data: {
+            stream_token: 'initial-token',
+            ttl_seconds: 1,
+            expires_at: new Date(Date.now() + 1000).toISOString(),
+          },
+        })
+        .mockImplementation(() => new Promise((resolve) => {
+          refreshResolve = resolve;
+        }));
+
+      render(<CameraGrid />);
+
+      await waitFor(() => {
+        expect(api.post).toHaveBeenCalledTimes(1);
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(11000);
+        await Promise.resolve();
+      });
+
+      // 1 initial mint + 1 refresh request, even after multiple interval ticks.
+      expect(api.post).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        refreshResolve({
+          data: {
+            stream_token: 'refreshed-token',
+            ttl_seconds: 30,
+            expires_at: new Date(Date.now() + 30000).toISOString(),
+          },
+        });
+        await Promise.resolve();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

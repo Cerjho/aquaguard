@@ -8,9 +8,12 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useAlerts } from '../../context/AlertContext';
+import { useAlertState } from '../../context/AlertContext';
 import { API_BASE_URL } from '../../utils/constants';
 import { formatDateTime } from '../../utils/dateFormat';
+import logger from '../../utils/logger';
+
+const ALERT_ELAPSED_TICK_MS = 1000;
 
 export function resolveSnapshotUrl(snapshotPath, apiBaseUrl = API_BASE_URL) {
   const rawPath = typeof snapshotPath === 'string' ? snapshotPath.trim() : '';
@@ -40,7 +43,7 @@ function AlertPanel() {
     acknowledgingAlertId,
     acknowledgeError,
     dismissActive,
-  } = useAlerts();
+  } = useAlertState();
   const audioRef = useRef(null);
   const [nowMs, setNowMs] = useState(Date.now());
 
@@ -55,12 +58,12 @@ function AlertPanel() {
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
             // Autoplay may be blocked by browser policy — log but don't crash
-            console.warn('[AlertPanel] Audio autoplay blocked:', err.message);
+            logger.warn('[AlertPanel] Audio autoplay blocked:', err.message);
           });
         }
         audioRef.current = audio;
       } catch (err) {
-        console.warn('[AlertPanel] Could not play alert audio:', err.message);
+        logger.warn('[AlertPanel] Could not play alert audio:', err.message);
       }
     }
 
@@ -74,7 +77,7 @@ function AlertPanel() {
 
   useEffect(() => {
     if (!activeAlert) return undefined;
-    const intervalId = setInterval(() => setNowMs(Date.now()), 1000);
+    const intervalId = setInterval(() => setNowMs(Date.now()), ALERT_ELAPSED_TICK_MS);
     return () => clearInterval(intervalId);
   }, [activeAlert]);
 

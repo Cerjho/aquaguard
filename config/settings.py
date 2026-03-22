@@ -1,15 +1,13 @@
-# AquaGuard system-wide constants and thresholds
-# All values come from this file — never hardcode in application code
+"""AquaGuard system-wide constants and runtime profile helpers."""
+
+import os
 
 # ── Confidence Filter (Rolling Window) ────────────────────────────────────────
 CONFIDENCE_WINDOW_SIZE = 15         # N — rolling window size
 CONFIDENCE_THRESHOLD = 0.75         # T — mean ratio threshold to trigger alert
 CONFIDENCE_MIN_HITS = 10            # K — minimum positive frames in window
-CONSECUTIVE_FRAMES_REQUIRED = 10    # K — alias used by confidence_filter.py
-CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.65  # low threshold for consecutive frame check
-# Aliases used by confidence_filter.py
-CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS          # 10
-CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.65                     # score threshold for K-hit check
+CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS
+CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.65
 
 # ── Behavior Analyzer Weights ─────────────────────────────────────────────────
 WEIGHT_VERTICAL_ORIENTATION = 0.30
@@ -21,25 +19,21 @@ WEIGHT_YOLO_CLASS = 0.10
 # ── Behavior Analyzer Thresholds ─────────────────────────────────────────────
 VERTICAL_ANGLE_THRESHOLD_DEG = 30
 # CRITICAL: MediaPipe returns normalized coords [0.0, 1.0] — NOT pixels
-LIMB_MOTION_STD_THRESHOLD = 0.015   # normalized units (NOT pixels)
+LIMB_MOTION_STD_THRESHOLD = 0.015
 FACE_VISIBILITY_THRESHOLD = 0.4
 YOLO_DROWNING_CONF_BOOST = 0.6
 
 # ── MQTT ──────────────────────────────────────────────────────────────────────
 MQTT_BROKER = "localhost"
-MQTT_BROKER_HOST = "localhost"      # alias used by main.py
+MQTT_BROKER_HOST = MQTT_BROKER
 MQTT_PORT = 1883
-MQTT_BROKER_PORT = 1883             # alias used by main.py
+MQTT_BROKER_PORT = MQTT_PORT
 MQTT_ALERT_TOPIC = "aquaguard/alert"
-MQTT_TOPIC_ALERT = "aquaguard/alert"           # alias used by mqtt_client.py
+MQTT_TOPIC_ALERT = MQTT_ALERT_TOPIC
 MQTT_RESET_TOPIC = "aquaguard/alert/reset"
-MQTT_TOPIC_RESET = "aquaguard/alert/reset"     # alias used by mqtt_client.py
+MQTT_TOPIC_RESET = MQTT_RESET_TOPIC
 MQTT_TOPIC_DETECTION = "aquaguard/detection"
 MQTT_TOPIC_DEVICE_STATUS = "aquaguard/device/status"
-
-# Aliases used by mqtt_client.py
-MQTT_TOPIC_ALERT = MQTT_ALERT_TOPIC
-MQTT_TOPIC_DETECTION = "aquaguard/detection"
 
 # ── Camera Reconnect ──────────────────────────────────────────────────────────
 RECONNECT_BACKOFF_SECONDS = [1, 2, 4, 8, 30]
@@ -52,8 +46,107 @@ ALARM_DURATION_SECONDS = 30
 SNAPSHOT_FORMAT = "jpg"
 SNAPSHOT_QUALITY = 85
 
-# ── Live feed + heartbeat ──────────────────────────────────────────────────────
+# ── Live feed + heartbeat ─────────────────────────────────────────────────────
 LIVE_SNAPSHOT_JPEG_QUALITY = 75
 DETECTION_ENGINE_HEARTBEAT_INTERVAL_SECONDS = 5
 LIVE_ARTIFACT_REPLACE_RETRIES = 8
 LIVE_ARTIFACT_RETRY_DELAY_SECONDS = 0.01
+
+
+class BaseConfig:
+	"""Shared Flask defaults."""
+
+	SQLALCHEMY_TRACK_MODIFICATIONS = False
+	JWT_TOKEN_LOCATION = ['headers', 'cookies']
+	JWT_COOKIE_SAMESITE = 'Lax'
+	JWT_COOKIE_CSRF_PROTECT = True
+	JWT_ACCESS_COOKIE_PATH = '/'
+	JWT_REFRESH_COOKIE_PATH = '/api/v1/auth/refresh'
+	JWT_CSRF_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
+	CORS_ALLOWED_ORIGINS = 'http://localhost:3000'
+	RATELIMIT_ENABLED = True
+
+
+class DevelopmentConfig(BaseConfig):
+	APP_ENV = 'development'
+	JWT_COOKIE_SECURE = False
+	DEBUG = True
+
+
+class ProductionConfig(BaseConfig):
+	APP_ENV = 'production'
+	JWT_COOKIE_SECURE = True
+	DEBUG = False
+
+
+def resolve_backend_environment(environ=None):
+	"""Resolve backend env profile from APP_ENV/FLASK_ENV."""
+	source = environ or os.environ
+	value = str(source.get('APP_ENV') or source.get('FLASK_ENV') or 'development').strip().lower()
+	return 'production' if value == 'production' else 'development'
+
+
+def get_backend_config(env_name):
+	"""Return config class for the requested environment."""
+	return ProductionConfig if env_name == 'production' else DevelopmentConfig
+
+
+def _to_bool(value, default=False):
+	if value is None:
+		return default
+	return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _to_int(value, default):
+	if value is None or str(value).strip() == '':
+		return default
+	return int(value)
+
+
+def validate_runtime_settings():
+	"""Validate cross-module configuration invariants early at startup."""
+	if CONFIDENCE_WINDOW_SIZE <= 0:
+		raise ValueError('CONFIDENCE_WINDOW_SIZE must be > 0')
+	if CONFIDENCE_MIN_HITS <= 0 or CONFIDENCE_MIN_HITS > CONFIDENCE_WINDOW_SIZE:
+		raise ValueError('CONFIDENCE_MIN_HITS must be in range 1..CONFIDENCE_WINDOW_SIZE')
+	if not 0 < CONFIDENCE_THRESHOLD <= 1:
+		raise ValueError('CONFIDENCE_THRESHOLD must be in range (0, 1]')
+	if not 0 < CONSECUTIVE_FRAME_LOW_THRESHOLD <= 1:
+		raise ValueError('CONSECUTIVE_FRAME_LOW_THRESHOLD must be in range (0, 1]')
+	if not 0 <= LIMB_MOTION_STD_THRESHOLD <= 1:
+		raise ValueError('LIMB_MOTION_STD_THRESHOLD must be in range [0, 1]')
+	if RECONNECT_MAX_CONSECUTIVE_FAILURES < 1:
+		raise ValueError('RECONNECT_MAX_CONSECUTIVE_FAILURES must be >= 1')
+	if not RECONNECT_BACKOFF_SECONDS or any(delay <= 0 for delay in RECONNECT_BACKOFF_SECONDS):
+		raise ValueError('RECONNECT_BACKOFF_SECONDS must contain positive values')
+
+
+def build_backend_runtime_values(environ=None):
+	"""Build environment-sensitive runtime values for Flask app config."""
+	source = environ or os.environ
+	env_name = resolve_backend_environment(source)
+	config_cls = get_backend_config(env_name)
+
+	return {
+		'APP_ENV': env_name,
+		'JWT_COOKIE_SECURE': _to_bool(source.get('JWT_COOKIE_SECURE'), config_cls.JWT_COOKIE_SECURE),
+		'JWT_COOKIE_SAMESITE': source.get('JWT_COOKIE_SAMESITE', config_cls.JWT_COOKIE_SAMESITE),
+		'JWT_COOKIE_CSRF_PROTECT': _to_bool(
+			source.get('JWT_COOKIE_CSRF_PROTECT'),
+			config_cls.JWT_COOKIE_CSRF_PROTECT,
+		),
+		'RATELIMIT_ENABLED': _to_bool(source.get('RATELIMIT_ENABLED'), config_cls.RATELIMIT_ENABLED),
+		'CORS_ALLOWED_ORIGINS': source.get('CORS_ALLOWED_ORIGINS', config_cls.CORS_ALLOWED_ORIGINS),
+		'WEBRTC_SESSION_TTL_SECONDS': _to_int(source.get('WEBRTC_SESSION_TTL_SECONDS'), 300),
+		'WEBRTC_STUN_URLS': source.get('WEBRTC_STUN_URLS', 'stun:stun.l.google.com:19302'),
+		'WEBRTC_TURN_URL': source.get('WEBRTC_TURN_URL'),
+		'WEBRTC_TURN_USERNAME': source.get('WEBRTC_TURN_USERNAME'),
+		'WEBRTC_TURN_CREDENTIAL': source.get('WEBRTC_TURN_CREDENTIAL') or source.get('WEBRTC_TURN_PASSWORD'),
+		'WEBRTC_ICE_TRANSPORT_POLICY': source.get('WEBRTC_ICE_TRANSPORT_POLICY', 'all'),
+		'WEBRTC_FORCE_RELAY': _to_bool(source.get('WEBRTC_FORCE_RELAY'), False),
+		'WEBRTC_FUTURE_TIMEOUT_SECONDS': _to_int(source.get('WEBRTC_FUTURE_TIMEOUT_SECONDS'), 20),
+		'WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS': _to_int(
+			source.get('WEBRTC_ICE_GATHERING_TIMEOUT_SECONDS'),
+			3,
+		),
+	}

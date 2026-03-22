@@ -11,23 +11,10 @@
 
 import React, { useMemo } from 'react';
 import { timeAgo } from '../../utils/dateFormat';
-import { useAlerts } from '../../context/AlertContext';
+import { useSocketState, useSystemState } from '../../context/AlertContext';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const ESP32_ONLINE_THRESHOLD_SECONDS = 90;
-
-function normalizeServiceStatus(rawStatus) {
-  if (typeof rawStatus === 'boolean') return rawStatus ? 'online' : 'offline';
-  if (!rawStatus) return 'unknown';
-
-  const value = String(rawStatus).toLowerCase();
-  if (['online', 'active', 'running', 'healthy', 'ok', 'connected'].includes(value)) {
-    return 'online';
-  }
-  if (['offline', 'inactive', 'stopped', 'down', 'disconnected'].includes(value)) {
-    return 'offline';
-  }
-  return value;
-}
 
 function normalizeDetectionEnginePayload(payload) {
   if (!payload || typeof payload !== 'object') {
@@ -118,11 +105,8 @@ function StatusIndicator({ label, status, detail }) {
 }
 
 function SystemStatus() {
-  const {
-    cameraStatuses,
-    systemStatus,
-    socketConnected,
-  } = useAlerts();
+  const { cameraStatuses, systemStatus } = useSystemState();
+  const { socketConnected } = useSocketState();
 
   const detection = useMemo(
     () => normalizeDetectionEnginePayload(systemStatus || {}),

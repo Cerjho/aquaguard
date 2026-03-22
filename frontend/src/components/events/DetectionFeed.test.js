@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import DetectionFeed from './DetectionFeed';
 import api from '../../hooks/useApi';
-import { useAlerts } from '../../context/AlertContext';
+import { useAlertState, useSocketState } from '../../context/AlertContext';
 
 jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
@@ -12,14 +12,23 @@ jest.mock('../../hooks/useApi', () => ({
 }));
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useAlertState: jest.fn(),
+  useSocketState: jest.fn(),
 }));
+
+async function renderFeed() {
+  await act(async () => {
+    render(<DetectionFeed />);
+  });
+}
 
 describe('DetectionFeed mapping resilience', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useAlerts.mockReturnValue({
+    useAlertState.mockReturnValue({
       detectionEvents: [],
+    });
+    useSocketState.mockReturnValue({
       socketConnected: false,
     });
     Object.defineProperty(document, 'hidden', { configurable: true, value: false });
@@ -41,7 +50,7 @@ describe('DetectionFeed mapping resilience', () => {
       },
     });
 
-    render(<DetectionFeed />);
+    await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/88% confidence/)).toBeInTheDocument();
@@ -55,7 +64,7 @@ describe('DetectionFeed mapping resilience', () => {
   });
 
   test('prefers realtime detection events from socket context', async () => {
-    useAlerts.mockReturnValue({
+    useAlertState.mockReturnValue({
       detectionEvents: [
         {
           event_id: 'ws-1',
@@ -66,11 +75,13 @@ describe('DetectionFeed mapping resilience', () => {
           alert_triggered: true,
         },
       ],
+    });
+    useSocketState.mockReturnValue({
       socketConnected: true,
     });
     api.get.mockResolvedValue({ data: { events: [] } });
 
-    render(<DetectionFeed />);
+    await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/Live \(socket\)/)).toBeInTheDocument();
@@ -87,13 +98,16 @@ describe('DetectionFeed mapping resilience', () => {
     api.get.mockResolvedValue({ data: { events: [] } });
 
     Object.defineProperty(document, 'hidden', { configurable: true, value: true });
-    render(<DetectionFeed />);
+    await renderFeed();
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledTimes(1);
     });
 
-    jest.advanceTimersByTime(20000);
+    act(() => {
+      jest.advanceTimersByTime(20000);
+    });
+    await act(async () => {});
     expect(api.get).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
   });

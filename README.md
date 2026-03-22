@@ -114,6 +114,14 @@ Set-Location ..
 & ".\aquaguard_env\Scripts\python.exe" .\detection_engine\main.py
 ```
 
+### 8. Production backend startup (Gunicorn)
+
+```powershell
+Set-Location .\backend
+& "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
+Set-Location ..
+```
+
 ---
 
 ## Dashboard Features
@@ -180,6 +188,18 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 ## Setup Guide
 
 See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
+
+## Production Deployment
+
+See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
+
+## Security Guide
+
+See [docs/SECURITY.md](docs/SECURITY.md)
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 ---
 

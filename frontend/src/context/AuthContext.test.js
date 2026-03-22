@@ -30,7 +30,6 @@ function renderWithProvider() {
 }
 
 beforeEach(() => {
-  localStorage.clear();
   jest.clearAllMocks();
 });
 
@@ -45,7 +44,7 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('currentUser')).toHaveTextContent('null');
   });
 
-  test('login sets currentUser and stores token on success', async () => {
+  test('login sets currentUser and authenticated state on success', async () => {
     api.post.mockResolvedValue({
       data: { access_token: 'jwt123', user: { id: 1, username: 'admin' } },
     });
@@ -57,8 +56,8 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('currentUser')).toHaveTextContent('admin');
+      expect(screen.getByTestId('isAuthenticated')).toHaveTextContent('true');
     });
-    expect(localStorage.getItem('token')).toBe('jwt123');
   });
 
   test('login sets authError on failure', async () => {
@@ -77,9 +76,7 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('currentUser')).toHaveTextContent('null');
   });
 
-  test('logout clears currentUser and localStorage', async () => {
-    localStorage.setItem('token', 'jwt123');
-    localStorage.setItem('user', JSON.stringify({ id: 1, username: 'admin' }));
+  test('logout clears currentUser state', async () => {
     api.post.mockResolvedValue({});
 
     renderWithProvider();
@@ -89,8 +86,8 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('currentUser')).toHaveTextContent('null');
+      expect(screen.getByTestId('isAuthenticated')).toHaveTextContent('false');
     });
-    expect(localStorage.getItem('token')).toBeNull();
   });
 
   test('throws if useAuth is used outside AuthProvider', () => {

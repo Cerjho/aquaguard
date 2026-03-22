@@ -3,6 +3,7 @@ import logging
 from collections import deque
 from threading import Lock
 import requests
+from requests.adapters import HTTPAdapter
 
 from detection_engine.models_data.alert_payload import AlertPayload
 
@@ -10,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 _REQUEST_TIMEOUT_SECONDS = 5
 _FAILED_EVENT_QUEUE_MAX = 500
+_POOL_CONNECTIONS = 10
+_POOL_MAXSIZE = 20
 
 
 class APIClient:
@@ -23,6 +26,9 @@ class APIClient:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=_POOL_CONNECTIONS, pool_maxsize=_POOL_MAXSIZE)
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
         self._failed_event_queue = deque(maxlen=_FAILED_EVENT_QUEUE_MAX)
         self._queue_lock = Lock()
         self._session.headers.update({

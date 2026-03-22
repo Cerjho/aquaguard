@@ -1,8 +1,9 @@
 """Alert engine — dispatches confirmed drowning alerts via MQTT, API, and logger."""
+import atexit
 import base64
-import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 import logging
-import threading
 import uuid
 import os
 from typing import TYPE_CHECKING, Optional, Tuple
@@ -26,10 +27,22 @@ class AlertEngine:
     os.path.abspath(__file__) — never passed as a relative path.
     """
 
-    def __init__(self, mqtt_client: "MQTTClient", api_client: "APIClient", snapshot_dir: str):
+    def __init__(
+        self,
+        mqtt_client: "MQTTClient",
+        api_client: "APIClient",
+        snapshot_dir: str,
+        max_workers: int = 6,
+    ):
         self._mqtt = mqtt_client
         self._api = api_client
         self._snapshot_dir = snapshot_dir
+        self._executor = ThreadPoolExecutor(
+            max_workers=max(int(max_workers), 3),
+            thread_name_prefix="alert-dispatch",
+        )
+        self._closed = False
+        atexit.register(self.close)
 
     def dispatch(
         self,
@@ -55,7 +68,7 @@ class AlertEngine:
             frame:    Latest BGR frame at time of alert.
         """
         event_id = str(uuid.uuid4())
-        timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         # Encode frame to JPEG bytes
         success, buf = cv2.imencode(".jpg", frame)
@@ -100,31 +113,27 @@ class AlertEngine:
             "bbox": list(bbox) if bbox is not None else None,
         }
 
-        # Dispatch concurrently — daemon threads so they don't block shutdown
-        t1 = threading.Thread(
-            target=self._send_mqtt, args=(payload_dict,), daemon=True, name=f"mqtt-{event_id[:8]}"
-        )
-        t2 = threading.Thread(
-            target=self._send_api, args=(payload,), daemon=True, name=f"api-{event_id[:8]}"
-        )
-        t3 = threading.Thread(
-            target=self._log_alert, args=(zone_id, track_id, score, event_id, timestamp),
-            daemon=True, name=f"log-{event_id[:8]}",
-        )
-        t1.start()
-        t2.start()
-        t3.start()
+        # Dispatch asynchronously through a bounded pool to avoid unbounded thread growth.
+        self._executor.submit(self._send_mqtt, payload_dict)
+        self._executor.submit(self._send_api, payload)
+        self._executor.submit(self._log_alert, zone_id, track_id, score, event_id, timestamp)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self._executor.shutdown(wait=False, cancel_futures=True)
 
     def _send_mqtt(self, payload_dict: dict) -> None:
         try:
             self._mqtt.publish_alert(payload_dict)
-        except Exception as exc:
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
             logger.error("AlertEngine MQTT dispatch failed: %s", exc)
 
     def _send_api(self, payload: AlertPayload) -> None:
         try:
             self._api.log_event(payload)
-        except Exception as exc:
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
             logger.error("AlertEngine API dispatch failed: %s", exc)
 
     def _log_alert(

@@ -4,23 +4,18 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, current_app, Response
 from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import CameraZone
-from auth_helpers import role_required
+from auth_helpers import role_required, validate_internal_api_key
 
 cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 
 
-def _validate_internal_api_key():
-    expected_key = current_app.config.get('AQUAGUARD_API_KEY')
-    provided_key = request.headers.get('X-API-Key')
-    return bool(expected_key and provided_key and expected_key == provided_key)
-
-
 @cameras_bp.route('/internal/cameras', methods=['GET'])
 def list_internal_cameras():
-    if not _validate_internal_api_key():
+    if not validate_internal_api_key():
         return jsonify({'error': 'Unauthorized'}), 401
 
     cameras = CameraZone.query.filter_by(is_active=True).all()
@@ -81,7 +76,7 @@ def create_camera():
     db.session.add(camera)
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error creating camera: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -107,7 +102,7 @@ def update_camera(zone_id):
 
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error updating camera: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -123,7 +118,7 @@ def delete_camera(zone_id):
     camera.is_active = False
     try:
         db.session.commit()
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error deleting camera: {exc}')
         return jsonify({'error': 'Database error'}), 500
@@ -224,7 +219,7 @@ def stream_camera(zone_id):
                         + frame_bytes
                         + b'\r\n'
                     )
-                except Exception:
+                except OSError:
                     pass
             time.sleep(0.033)
 

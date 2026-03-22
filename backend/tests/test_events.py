@@ -1,4 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
+import base64
+import io
+
+from PIL import Image
 from models import Alert
 import routes.events as events_routes
 
@@ -10,7 +14,7 @@ def _event_payload(**kwargs):
         'confidence_score': 0.85,
         'behavior_flags':   {'vertical': True},
         'alert_triggered':  False,
-        'detected_at':      datetime.utcnow().isoformat(),
+        'detected_at':      datetime.now(timezone.utc).isoformat(),
     }
     base.update(kwargs)
     return base
@@ -190,10 +194,40 @@ def test_snapshot_write_uses_atomic_replace(client, monkeypatch):
 
     monkeypatch.setattr(events_routes.os, 'replace', fake_replace)
 
-    resp = client.post('/api/v1/events', json=_event_payload(
-        snapshot_base64='aGVsbG8=',
-    ))
+    img_buffer = io.BytesIO()
+    Image.new('RGB', (1, 1), color=(0, 0, 0)).save(img_buffer, format='PNG')
+    tiny_png_b64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+    resp = client.post(
+        '/api/v1/events',
+        json=_event_payload(snapshot_base64=tiny_png_b64),
+    )
     assert resp.status_code == 201
     assert replaced.get('src')
     assert replaced.get('dst')
     assert replaced['dst'].endswith('.jpg')
+
+
+def test_create_event_rejects_invalid_snapshot_encoding(client):
+    resp = client.post('/api/v1/events', json=_event_payload(
+        snapshot_base64='###invalid###',
+    ))
+    assert resp.status_code == 400
+    assert resp.get_json()['error'] == 'Invalid snapshot encoding'
+
+
+def test_create_event_rejects_invalid_image_snapshot(client):
+    # Base64 for plain text, not an image
+    resp = client.post('/api/v1/events', json=_event_payload(
+        snapshot_base64='aGVsbG8=',
+    ))
+    assert resp.status_code == 400
+    assert resp.get_json()['error'] == 'Invalid image data'
+
+
+def test_create_event_rejects_oversized_snapshot(client):
+    oversized_bytes = b'\x89PNG\r\n\x1a\n' + (b'0' * ((10 * 1024 * 1024) + 1))
+    resp = client.post('/api/v1/events', json=_event_payload(
+        snapshot_base64=base64.b64encode(oversized_bytes).decode('utf-8'),
+    ))
+    assert resp.status_code == 413
+    assert resp.get_json()['error'] == 'Snapshot too large'

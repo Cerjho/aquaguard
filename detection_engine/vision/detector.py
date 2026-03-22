@@ -75,13 +75,13 @@ class DrowningDetector:
                         device="cpu",
                         verbose=False,
                     )
-                except Exception as cpu_exc:
+                except (RuntimeError, ValueError, TypeError, AttributeError) as cpu_exc:
                     logger.error("CPU fallback also failed: %s", cpu_exc)
                     return []
             else:
                 logger.error("Inference error: %s", exc)
                 return []
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError, AttributeError) as exc:
             logger.error("Unexpected inference error: %s", exc)
             return []
 
@@ -115,11 +115,11 @@ class DrowningDetector:
             return
         try:
             torch.cuda.empty_cache()
-        except Exception as exc:
+        except RuntimeError as exc:
             logger.debug("torch.cuda.empty_cache failed: %s", exc)
         try:
             torch.cuda.synchronize()
-        except Exception as exc:
+        except RuntimeError as exc:
             logger.debug("torch.cuda.synchronize failed: %s", exc)
         # Prevent immediate repeated CUDA retries after OOM storm.
         self._cuda_oom_cooldown_until = time.monotonic() + 5.0

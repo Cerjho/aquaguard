@@ -56,7 +56,7 @@ class PoseEstimator:
 
         try:
             results = self._pose.process(roi_rgb)
-        except Exception as exc:
+        except (RuntimeError, ValueError, cv2.error) as exc:
             logger.error("MediaPipe pose.process failed: %s", exc)
             return None
 

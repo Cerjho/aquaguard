@@ -4,6 +4,7 @@ from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 
+from config.secrets import get_secret
 from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 from utils.logging_utils import configure_app_logging
@@ -15,16 +16,19 @@ def create_app():
     app = Flask(__name__)
     configure_app_logging(app)
 
-    secret_key = os.environ.get('SECRET_KEY')
-    jwt_secret_key = os.environ.get('JWT_SECRET_KEY')
+    secret_key = get_secret('SECRET_KEY')
+    jwt_secret_key = get_secret('JWT_SECRET_KEY')
+    api_key = get_secret('AQUAGUARD_API_KEY')
     if not secret_key:
-        raise RuntimeError('SECRET_KEY environment variable is required')
+        raise RuntimeError('SECRET_KEY or SECRET_KEY_FILE is required')
     if not jwt_secret_key:
-        raise RuntimeError('JWT_SECRET_KEY environment variable is required')
+        raise RuntimeError('JWT_SECRET_KEY or JWT_SECRET_KEY_FILE is required')
+    if not api_key:
+        raise RuntimeError('AQUAGUARD_API_KEY or AQUAGUARD_API_KEY_FILE is required')
 
     app.config['SECRET_KEY'] = secret_key
     app.config['JWT_SECRET_KEY'] = jwt_secret_key
-    app.config['AQUAGUARD_API_KEY'] = os.environ.get('AQUAGUARD_API_KEY')
+    app.config['AQUAGUARD_API_KEY'] = api_key
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=60)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
     app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']

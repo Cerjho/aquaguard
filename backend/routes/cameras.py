@@ -219,7 +219,7 @@ def stream_camera(zone_id):
                         + frame_bytes
                         + b'\r\n'
                     )
-                except Exception:
+                except OSError:
                     pass
             time.sleep(0.033)
 

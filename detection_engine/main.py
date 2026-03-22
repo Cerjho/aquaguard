@@ -46,6 +46,7 @@ from config.settings import (
     LIVE_ARTIFACT_REPLACE_RETRIES,
     LIVE_ARTIFACT_RETRY_DELAY_SECONDS,
 )
+from config.secrets import get_secret
 
 
 def _utc_now_iso() -> str:
@@ -55,7 +56,7 @@ def _utc_now_iso() -> str:
 def _load_api_env_from_backend_env() -> None:
     """Load backend/.env for local dev without overriding existing shell env."""
     pre_url = os.environ.get("AQUAGUARD_API_URL")
-    pre_key = os.environ.get("AQUAGUARD_API_KEY")
+    pre_key = get_secret("AQUAGUARD_API_KEY")
 
     if pre_url and pre_key:
         logger.info("API config source: shell environment (AQUAGUARD_API_URL + AQUAGUARD_API_KEY)")
@@ -73,7 +74,7 @@ def _load_api_env_from_backend_env() -> None:
                     key, value = line.split("=", 1)
                     os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
         post_url = os.environ.get("AQUAGUARD_API_URL")
-        post_key = os.environ.get("AQUAGUARD_API_KEY")
+        post_key = get_secret("AQUAGUARD_API_KEY")
         if (not pre_url and post_url) or (not pre_key and post_key):
             logger.info("API config source: loaded missing values from %s", _BACKEND_ENV_PATH)
         else:
@@ -353,13 +354,16 @@ def main():
 
     # ── API client and backend camera source of truth ────────────────────────
     _load_api_env_from_backend_env()
-    api_key = os.environ.get("AQUAGUARD_API_KEY", "").strip()
+    api_key = get_secret("AQUAGUARD_API_KEY")
     if not api_key:
         logger.error(
-            "AQUAGUARD_API_KEY is missing. Set it in shell env or backend/.env "
+            "AQUAGUARD_API_KEY is missing. Set AQUAGUARD_API_KEY, "
+            "AQUAGUARD_API_KEY_FILE, or backend/.env "
             "before starting detection_engine.main"
         )
-        raise RuntimeError("Missing AQUAGUARD_API_KEY for backend internal API authentication")
+        raise RuntimeError(
+            "Missing AQUAGUARD_API_KEY for backend internal API authentication"
+        )
 
     api_client = APIClient(
         base_url=_get_required_api_url(),
@@ -424,7 +428,7 @@ def main():
                         live_dir=_LIVE_DIR,
                         last_heartbeat_at=last_heartbeat_at,
                     )
-                except Exception as exc:
+                except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
                     logger.exception("Processing error in zone %s: %s", zone_id, exc)
                     continue
 

@@ -91,7 +91,7 @@ class CameraCapture:
                 else:
                     try:
                         ret, frame = cap.read()
-                    except Exception as exc:
+                    except (cv2.error, OSError, RuntimeError, ValueError) as exc:
                         logger.warning("[%s] Exception while reading frame: %s", self.zone_id, exc)
                         ret, frame = False, None
 

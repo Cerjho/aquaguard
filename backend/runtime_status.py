@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone
 from threading import Lock
+from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import CameraZone
@@ -131,7 +132,7 @@ def get_runtime_status():
 
     try:
         cameras = CameraZone.query.filter_by(is_active=True).all()
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         cameras = []
 

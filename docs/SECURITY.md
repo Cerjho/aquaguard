@@ -45,6 +45,8 @@ Required secret hygiene:
 - Minimum 32-character random values for critical secrets
 - Separate secrets by environment (dev/staging/prod)
 - Rotate secrets on schedule and after any incident
+- Prefer mounted secret files in production using `_FILE` variables:
+  `SECRET_KEY_FILE`, `JWT_SECRET_KEY_FILE`, `AQUAGUARD_API_KEY_FILE`
 
 ## 5. Data Validation Controls
 

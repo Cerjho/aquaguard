@@ -169,7 +169,7 @@ def create_event():
             'status': 'online',
             'message': f'Event received from {event.zone_id}',
         })
-    except Exception as exc:
+    except (RuntimeError, ValueError, OSError) as exc:
         current_app.logger.error('SocketIO emit failed for detection event %s: %s', event_id, exc)
 
     alert_dict = None
@@ -192,7 +192,7 @@ def create_event():
             alert_dict = _serialize_alert_event_payload(alert, event)
             try:
                 socketio.emit('alert_event', alert_dict)
-            except Exception as exc:
+            except (RuntimeError, ValueError, OSError) as exc:
                 current_app.logger.error(
                     'SocketIO emit failed for alert event %s: %s',
                     event_id,

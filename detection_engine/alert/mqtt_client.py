@@ -40,14 +40,14 @@ class MQTTClient:
         """Serialize payload to JSON and publish to alert topic with QoS 1."""
         try:
             self._client.publish(MQTT_TOPIC_ALERT, json.dumps(payload), qos=1)
-        except Exception as exc:
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
             logger.error("MQTT publish_alert failed: %s", exc)
 
     def publish_detection(self, payload: dict) -> None:
         """Serialize payload to JSON and publish to detection topic with QoS 0."""
         try:
             self._client.publish(MQTT_TOPIC_DETECTION, json.dumps(payload), qos=0)
-        except Exception as exc:
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
             logger.error("MQTT publish_detection failed: %s", exc)
 
     def close(self) -> None:
@@ -55,11 +55,11 @@ class MQTTClient:
         self._closing.set()
         try:
             self._client.loop_stop()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("MQTT loop_stop failed: %s", exc)
         try:
             self._client.disconnect()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.warning("MQTT disconnect failed: %s", exc)
         logger.info("MQTT client closed")
 
@@ -82,5 +82,5 @@ class MQTTClient:
         time.sleep(_RECONNECT_DELAY_SECONDS)
         try:
             client.reconnect()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("MQTT reconnect failed: %s", exc)

@@ -159,8 +159,8 @@ def _atomic_write_jpeg(path: str, frame) -> None:
         if os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except OSError:
-                pass
+            except OSError as cleanup_exc:
+                logger.debug("Temporary live artifact cleanup failed for %s: %s", tmp_path, cleanup_exc)
 
 
 def _atomic_write_json(path: str, payload: dict) -> None:

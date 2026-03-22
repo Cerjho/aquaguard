@@ -2,6 +2,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from requests.adapters import HTTPAdapter
 
 from detection_engine.alert.api_client import APIClient
 
@@ -70,3 +71,17 @@ def test_log_event_includes_payload_metadata_fields():
     assert sent_json["yolo_confidence"] == 0.91
     assert sent_json["pose_confidence"] == 0.72
     assert sent_json["final_confidence"] == 0.88
+
+
+def test_api_client_configures_connection_pooling_adapters():
+    client = APIClient("http://localhost:5000", "test-key")
+
+    http_adapter = client._session.adapters["http://"]
+    https_adapter = client._session.adapters["https://"]
+
+    assert isinstance(http_adapter, HTTPAdapter)
+    assert isinstance(https_adapter, HTTPAdapter)
+    assert http_adapter._pool_connections == 10
+    assert http_adapter._pool_maxsize == 20
+    assert https_adapter._pool_connections == 10
+    assert https_adapter._pool_maxsize == 20

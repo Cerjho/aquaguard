@@ -1,1 +1,0 @@
-"""Shared AquaGuard configuration package."""

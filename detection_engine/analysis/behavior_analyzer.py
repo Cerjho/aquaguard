@@ -1,12 +1,14 @@
 """Behavior analyzer — 5-indicator drowning score with temporal consistency."""
 import logging
 from collections import deque
-from typing import Dict, Iterable, List
+from typing import Dict, List
 
 import numpy as np
 
 from detection_engine.models_data.landmark import Landmark
 
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config.settings import (
     WEIGHT_VERTICAL_ORIENTATION,
     WEIGHT_ARMS_ELEVATED,
@@ -143,12 +145,3 @@ class BehaviorAnalyzer:
         if yolo_class == "drowning" and yolo_conf >= YOLO_DROWNING_CONF_BOOST:
             return 1.0
         return 0.0
-
-    def cleanup_stale_tracks(self, active_track_ids: Iterable[str]) -> None:
-        """Drop per-track history for IDs not present in the current frame."""
-        active = set(active_track_ids)
-        stale_ids = [track_id for track_id in self._score_history if track_id not in active]
-        for track_id in stale_ids:
-            self._score_history.pop(track_id, None)
-            self._wrist_history.pop(track_id, None)
-            self._ankle_history.pop(track_id, None)

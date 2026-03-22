@@ -7,14 +7,20 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from extensions import db
 from models import CameraZone
-from auth_helpers import role_required, validate_internal_api_key
+from auth_helpers import role_required
 
 cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 
 
+def _validate_internal_api_key():
+    expected_key = current_app.config.get('AQUAGUARD_API_KEY')
+    provided_key = request.headers.get('X-API-Key')
+    return bool(expected_key and provided_key and expected_key == provided_key)
+
+
 @cameras_bp.route('/internal/cameras', methods=['GET'])
 def list_internal_cameras():
-    if not validate_internal_api_key():
+    if not _validate_internal_api_key():
         return jsonify({'error': 'Unauthorized'}), 401
 
     cameras = CameraZone.query.filter_by(is_active=True).all()

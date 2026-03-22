@@ -1,6 +1,14 @@
 """Shared pytest fixtures for detection_engine tests."""
+import sys
+import os
+
 import numpy as np
 import pytest
+
+# Ensure repo root is on sys.path so `config` and `detection_engine` imports resolve
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 
 # ── Reusable fixtures ──────────────────────────────────────────────────────────

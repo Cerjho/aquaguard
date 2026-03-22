@@ -20,14 +20,12 @@ def app():
     os.environ['SECRET_KEY'] = 'test-secret-key-32-bytes-long!!'
     os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-32-bytes-long!!'
     os.environ['AQUAGUARD_API_KEY'] = 'test-internal-api-key'
-    os.environ['RATELIMIT_ENABLED'] = 'false'
     app = create_app()
     app.config.update({
         'TESTING':                   True,
         'SQLALCHEMY_DATABASE_URI':   f'sqlite:///{_db_path}',
         'JWT_SECRET_KEY':            'test-jwt-secret-key-32-bytes-long!!',
         'WTF_CSRF_ENABLED':          False,
-        'AUTH_RETURN_TOKENS_IN_BODY': True,
     })
     with app.app_context():
         _db.create_all()

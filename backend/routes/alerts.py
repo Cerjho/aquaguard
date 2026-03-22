@@ -1,15 +1,23 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from extensions import db
 from models import Alert, DetectionEvent
-from utils.date_utils import parse_iso_datetime
 
 alerts_bp = Blueprint('alerts', __name__, url_prefix='/api/v1')
 logger = logging.getLogger(__name__)
+
+
+def _parse_iso_datetime(raw_value):
+    if not raw_value:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+    except (TypeError, ValueError):
+        return None
 
 
 def _parse_positive_int(raw_value, default_value):
@@ -50,11 +58,11 @@ def list_alerts():
     if zone_id:
         query = query.filter(Alert.zone_id == zone_id)
 
-    parsed_from = parse_iso_datetime(from_dt)
+    parsed_from = _parse_iso_datetime(from_dt)
     if parsed_from:
         query = query.filter(Alert.triggered_at >= parsed_from)
 
-    parsed_to = parse_iso_datetime(to_dt)
+    parsed_to = _parse_iso_datetime(to_dt)
     if parsed_to:
         query = query.filter(Alert.triggered_at <= parsed_to)
 
@@ -103,7 +111,7 @@ def acknowledge_alert(alert_id):
 
     alert.status          = 'acknowledged'
     alert.acknowledged_by = user_id
-    alert.acknowledged_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    alert.acknowledged_at = datetime.utcnow()
 
     data = request.get_json(silent=True) or {}
     if data.get('notes'):

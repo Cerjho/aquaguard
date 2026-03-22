@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def _make_alert_event(client):
@@ -9,7 +9,7 @@ def _make_alert_event(client):
         'confidence_score': 0.9,
         'behavior_flags':   {'vertical': True},
         'alert_triggered':  True,
-        'detected_at':      datetime.now(timezone.utc).isoformat(),
+        'detected_at':      datetime.utcnow().isoformat(),
     })
     return resp.get_json().get('alert', {}).get('alert_id')
 

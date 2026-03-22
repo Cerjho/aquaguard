@@ -16,7 +16,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 import { useAuth } from './context/AuthContext';
-import ErrorBoundary from './components/ErrorBoundary';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import AlertPanel from './components/alerts/AlertPanel';
@@ -61,25 +60,23 @@ function PrivateLayout() {
 
 function App() {
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
 
-          {/* Private routes — wrapped in PrivateLayout */}
-          <Route element={<PrivateLayout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/incidents" element={<IncidentsPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/system" element={<SystemPage />} />
-          </Route>
+        {/* Private routes — wrapped in PrivateLayout */}
+        <Route element={<PrivateLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/incidents" element={<IncidentsPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/system" element={<SystemPage />} />
+        </Route>
 
-          {/* Fallback — redirect unknown paths to root */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </ErrorBoundary>
+        {/* Fallback — redirect unknown paths to root */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -1,11 +1,17 @@
-from flask import Blueprint, jsonify, request
+from datetime import datetime, timezone
+
+from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required
 
 from runtime_status import get_runtime_status, update_esp32_heartbeat
-from auth_helpers import validate_internal_api_key
-from utils.date_utils import parse_iso_datetime
 
 system_bp = Blueprint('system', __name__, url_prefix='/api/v1/system')
+
+
+def _validate_internal_api_key():
+    expected_key = current_app.config.get('AQUAGUARD_API_KEY')
+    provided_key = request.headers.get('X-API-Key')
+    return bool(expected_key and provided_key and expected_key == provided_key)
 
 
 @system_bp.route('/status', methods=['GET'])
@@ -16,7 +22,7 @@ def system_status():
 
 @system_bp.route('/heartbeat', methods=['POST'])
 def heartbeat():
-    if not validate_internal_api_key():
+    if not _validate_internal_api_key():
         return jsonify({'error': 'Unauthorized'}), 401
 
     data = request.get_json(silent=True) or {}
@@ -27,7 +33,12 @@ def heartbeat():
     status = data.get('status', 'online')
     uptime_ms = data.get('uptime_ms')
     ts_raw = data.get('timestamp')
-    timestamp = parse_iso_datetime(ts_raw) if ts_raw else None
+    timestamp = None
+    if ts_raw:
+        try:
+            timestamp = datetime.fromisoformat(ts_raw)
+        except ValueError:
+            timestamp = datetime.now(timezone.utc)
 
     update_esp32_heartbeat(
         device_id=device_id,

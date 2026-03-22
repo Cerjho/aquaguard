@@ -22,16 +22,11 @@ def seed():
 
         # ── Default users ───────────────────────────────────────────────────
         admin_username = os.getenv('SEED_ADMIN_USERNAME', 'admin')
-        admin_password = os.getenv('SEED_ADMIN_PASSWORD')
+        admin_password = os.getenv('SEED_ADMIN_PASSWORD', 'change-me-admin-password')
         admin_role = os.getenv('SEED_ADMIN_ROLE', 'admin')
         guard_username = os.getenv('SEED_GUARD_USERNAME', 'lifeguard')
-        guard_password = os.getenv('SEED_GUARD_PASSWORD')
+        guard_password = os.getenv('SEED_GUARD_PASSWORD', 'change-me-lifeguard-password')
         guard_role = os.getenv('SEED_GUARD_ROLE', 'lifeguard')
-
-        if not admin_password:
-            raise ValueError('SEED_ADMIN_PASSWORD environment variable is required')
-        if not guard_password:
-            raise ValueError('SEED_GUARD_PASSWORD environment variable is required')
 
         users = [
             {'username': admin_username, 'password': admin_password, 'role': admin_role},

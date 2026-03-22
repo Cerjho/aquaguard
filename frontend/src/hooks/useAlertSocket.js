@@ -1,7 +1,7 @@
 /**
  * AquaGuard — WebSocket hook for real-time alert and status events.
  *
- * Connects to Socket.IO server using backend-managed auth cookies.
+ * Connects to Socket.IO server using JWT from localStorage.
  * Calls provided callbacks for each incoming event type.
  * Automatically disconnects on unmount.
  *
@@ -37,10 +37,10 @@ function useAlertSocket({
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // Establish Socket.IO connection with credentialed cookie handshake.
+    // Establish Socket.IO connection with JWT auth
     const socket = io(WS_URL, {
+      auth: { token: localStorage.getItem('token') },
       transports: ['websocket', 'polling'],
-      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 2000,

@@ -70,17 +70,6 @@ class TestConfidenceFilterWindow:
         cf = ConfidenceFilter()
         cf.remove_track("nonexistent")  # must not raise
 
-    def test_cleanup_stale_tracks_removes_inactive_ids(self):
-        cf = ConfidenceFilter()
-        for _ in range(3):
-            cf.evaluate("keep", 0.9)
-            cf.evaluate("stale", 0.9)
-
-        cf.cleanup_stale_tracks({"keep"})
-
-        assert "keep" in cf._buffers
-        assert "stale" not in cf._buffers
-
 
 class TestConfidenceFilterConditions:
     """Verify both conditions independently."""

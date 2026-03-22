@@ -6,13 +6,20 @@ const mock = new MockAdapter(api);
 
 afterEach(() => {
   mock.reset();
-  document.cookie = 'csrf_access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  document.cookie = 'csrf_refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-  document.cookie = 'csrf_refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/v1/auth/refresh';
+  localStorage.clear();
 });
 
 describe('useApi (axios instance)', () => {
-  test('does not attach Authorization header for cookie-auth requests', async () => {
+  test('attaches Authorization header when token exists in localStorage', async () => {
+    localStorage.setItem('token', 'test-jwt-token');
+    mock.onGet('/api/v1/test').reply(200, { ok: true });
+
+    const response = await api.get('/api/v1/test');
+
+    expect(response.config.headers.Authorization).toBe('Bearer test-jwt-token');
+  });
+
+  test('does not attach Authorization header when no token', async () => {
     mock.onGet('/api/v1/test').reply(200, {});
 
     const response = await api.get('/api/v1/test');
@@ -20,19 +27,15 @@ describe('useApi (axios instance)', () => {
     expect(response.config.headers.Authorization).toBeUndefined();
   });
 
-  test('adds X-CSRF-TOKEN on mutating requests when csrf_access_token exists', async () => {
-    document.cookie = 'csrf_access_token=csrf-token-123; path=/';
-    mock.onPost('/api/v1/protected').reply(200, { ok: true });
-
-    const response = await api.post('/api/v1/protected', { sample: true });
-
-    expect(response.config.headers['X-CSRF-TOKEN']).toBe('csrf-token-123');
-  });
-
-  test('keeps request rejection behavior on 401 response', async () => {
+  test('removes token and user from localStorage on 401 response', async () => {
+    localStorage.setItem('token', 'expired-token');
+    localStorage.setItem('user', JSON.stringify({ id: 1 }));
     mock.onGet('/api/v1/protected').reply(401);
 
     await expect(api.get('/api/v1/protected')).rejects.toThrow();
+
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
   });
 
   test('resolves successfully on 200 response', async () => {

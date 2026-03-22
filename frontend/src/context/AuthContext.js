@@ -2,8 +2,8 @@
  * AquaGuard — Authentication Context
  *
  * Provides: currentUser, login(), logout(), isAuthenticated
- * JWT is persisted as httpOnly cookies by the backend.
- * User profile is kept in memory for the current tab session.
+ * JWT is stored in localStorage under the key "token".
+ * User profile is stored under the key "user".
  */
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
@@ -12,14 +12,21 @@ import api from '../hooks/useApi';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [authError, setAuthError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   /**
    * Log in with username + password.
-    * Calls POST /api/v1/auth/login and relies on backend-set httpOnly cookies.
+   * Calls POST /api/v1/auth/login, stores token and user in localStorage.
    * @param {string} username
    * @param {string} password
    * @returns {Promise<boolean>} true on success, false on failure
@@ -29,8 +36,10 @@ export function AuthProvider({ children }) {
     setAuthError(null);
     try {
       const response = await api.post('/api/v1/auth/login', { username, password });
-      const { user } = response.data;
+      const { access_token, user } = response.data;
 
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
       setCurrentUser(user);
       return true;
     } catch (error) {
@@ -47,7 +56,7 @@ export function AuthProvider({ children }) {
 
   /**
    * Log out the current user.
-    * Clears auth cookies on backend and resets in-memory state.
+   * Clears localStorage and resets state.
    */
   const logout = useCallback(async () => {
     try {
@@ -55,11 +64,13 @@ export function AuthProvider({ children }) {
     } catch {
       // Ignore logout API errors — always clear local state
     } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       setCurrentUser(null);
     }
   }, []);
 
-  const isAuthenticated = Boolean(currentUser);
+  const isAuthenticated = Boolean(currentUser && localStorage.getItem('token'));
 
   const value = {
     currentUser,

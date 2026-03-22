@@ -10,6 +10,7 @@ Usage:
 """
 import logging
 import os
+import sys
 import json
 import time
 from datetime import datetime, timezone
@@ -27,8 +28,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("aquaguard.main")
 
-# ── Base directories ──────────────────────────────────────────────────────────
+# ── Project root on sys.path so imports work regardless of CWD ───────────────
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _BASE_DIR not in sys.path:
+    sys.path.insert(0, _BASE_DIR)
 
 # ── Snapshot directory — MUST be absolute (resolved here, passed downstream) ──
 _SNAPSHOT_DIR = os.path.join(_BASE_DIR, "backend", "snapshots")
@@ -319,7 +322,6 @@ def main():
                                 for det in detections
                             ],
                         )
-                    active_track_ids = {str(det.track_id) for det in detections}
 
                     frame_timestamp = metadata.get("timestamp") or _utc_now_iso()
                     status_payload = {
@@ -399,9 +401,6 @@ def main():
                                 zone_id,
                                 det.track_id,
                             )
-
-                    behavior_analyzers[zone_id].cleanup_stale_tracks(active_track_ids)
-                    confidence_filters[zone_id].cleanup_stale_tracks(active_track_ids)
                 except Exception as exc:
                     logger.exception("Processing error in zone %s: %s", zone_id, exc)
                     continue

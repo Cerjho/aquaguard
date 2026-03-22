@@ -1,6 +1,6 @@
 """Alert engine — dispatches confirmed drowning alerts via MQTT, API, and logger."""
 import base64
-from datetime import datetime, timezone
+import datetime
 import logging
 import threading
 import uuid
@@ -55,7 +55,7 @@ class AlertEngine:
             frame:    Latest BGR frame at time of alert.
         """
         event_id = str(uuid.uuid4())
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.datetime.utcnow().isoformat() + "Z"
 
         # Encode frame to JPEG bytes
         success, buf = cv2.imencode(".jpg", frame)

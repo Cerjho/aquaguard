@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import DetectionFeed from './DetectionFeed';
 import api from '../../hooks/useApi';
 import { useAlertState, useSocketState } from '../../context/AlertContext';
@@ -98,7 +98,9 @@ describe('DetectionFeed mapping resilience', () => {
       expect(api.get).toHaveBeenCalledTimes(1);
     });
 
-    jest.advanceTimersByTime(20000);
+    act(() => {
+      jest.advanceTimersByTime(20000);
+    });
     expect(api.get).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
   });

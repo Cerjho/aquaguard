@@ -4,6 +4,7 @@ Run once after `flask db upgrade`:
     cd backend && conda activate aquaguard_env && python seed.py
 """
 import json
+import logging
 import os
 import sys
 
@@ -13,6 +14,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app import create_app
 from extensions import db, bcrypt
 from models import User, CameraZone
+
+
+logger = logging.getLogger(__name__)
 
 
 def seed():
@@ -42,9 +46,9 @@ def seed():
                 pw_hash = bcrypt.generate_password_hash(u['password']).decode('utf-8')
                 user = User(username=u['username'], password_hash=pw_hash, role=u['role'])
                 db.session.add(user)
-                print(f"Created user: {u['username']} ({u['role']})")
+                logger.info("Created user: %s (%s)", u['username'], u['role'])
             else:
-                print(f"User already exists: {u['username']}")
+                logger.info("User already exists: %s", u['username'])
 
         # ── Default camera zone from cameras.json ───────────────────────────
         cameras_path = os.path.join(
@@ -66,12 +70,12 @@ def seed():
                     resolution           = first_cam.get('resolution', '1280x720'),
                 )
                 db.session.add(zone)
-                print(f"Created camera zone: {zone_id}")
+                logger.info("Created camera zone: %s", zone_id)
             else:
-                print(f"Camera zone already exists or no zone_id: {zone_id}")
+                logger.info("Camera zone already exists or no zone_id: %s", zone_id)
 
         db.session.commit()
-        print("Seed complete.")
+        logger.info("Seed complete.")
 
 
 if __name__ == '__main__':

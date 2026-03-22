@@ -27,8 +27,14 @@ function DetectionFeed() {
   const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
   const [lastPollAt, setLastPollAt] = useState(null);
+  const [nowTick, setNowTick] = useState(Date.now());
   const intervalRef = useRef(null);
   const failureCountRef = useRef(0);
+
+  useEffect(() => {
+    const tick = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   const fetchLatest = useCallback(async () => {
     try {
@@ -86,8 +92,8 @@ function DetectionFeed() {
   const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;
   const isStale = useMemo(() => {
     if (!lastPollAt) return false;
-    return Date.now() - lastPollAt > STALE_AFTER_MS;
-  }, [lastPollAt]);
+    return nowTick - lastPollAt > STALE_AFTER_MS;
+  }, [lastPollAt, nowTick]);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

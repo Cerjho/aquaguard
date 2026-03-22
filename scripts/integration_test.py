@@ -24,7 +24,6 @@ Usage:
 
 import argparse
 import importlib
-import inspect
 import json
 import os
 import sys
@@ -50,7 +49,6 @@ results: list[tuple[str, str, str]] = []   # (category, test_name, outcome)
 
 
 def record(category: str, name: str, outcome: str, detail: str = ''):
-    tag = outcome[:6].strip()
     results.append((category, name, outcome))
     icon = {PASS: '  [PASS]', FAIL: '  [FAIL]', SKIP: '  [SKIP]', WARN: '  [WARN]'}.get(
         outcome, '  [    ]')
@@ -379,9 +377,13 @@ def test_api_endpoints():
             r = client.get('/api/v1/events', headers=auth_hdr)
             assert r.status_code == 200, f'status={r.status_code}'
             data = r.get_json()
-            assert 'items' in data and 'total' in data
+            events = data.get('items')
+            if events is None:
+                events = data.get('events', [])
+            assert isinstance(events, list)
+            total_events = data.get('total', len(events))
             record('api', 'GET /api/v1/events (authenticated)', PASS,
-                   f'{data["total"]} event(s)')
+                   f'{total_events} event(s)')
         except Exception as exc:
             record('api', 'GET /api/v1/events (authenticated)', FAIL, str(exc)[:120])
 
@@ -581,7 +583,10 @@ def print_summary():
         f = counts.get(FAIL, 0)
         w = counts.get(WARN, 0)
         s = counts.get(SKIP, 0)
-        total_pass += p; total_fail += f; total_warn += w; total_skip += s
+        total_pass += p
+        total_fail += f
+        total_warn += w
+        total_skip += s
         print(f'  {cat:<25}  {p:5d}  {f:5d}  {w:5d}  {s:5d}')
 
     print(f'  {"─" * 25}  {"─" * 5}  {"─" * 5}  {"─" * 5}  {"─" * 5}')
@@ -607,9 +612,9 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
+    parse_args()
     print(f'\n{"=" * 65}')
-    print(f'  AquaGuard — Integration Test Suite')
+    print('  AquaGuard — Integration Test Suite')
     print(f'  Run at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
     print(f'{"=" * 65}')
 

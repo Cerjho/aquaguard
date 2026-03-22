@@ -63,7 +63,7 @@ def test_camera(source, num_frames: int = 10, timeout: float = 10.0) -> bool:
 
     source_label = str(source)
     print(f'\n{"=" * 60}')
-    print(f'  AquaGuard — Camera Connection Test')
+    print('  AquaGuard — Camera Connection Test')
     print(f'{"=" * 60}')
     print(f'  Source  : {source_label}')
     print(f'  Frames  : {num_frames}')
@@ -82,7 +82,7 @@ def test_camera(source, num_frames: int = 10, timeout: float = 10.0) -> bool:
             return False
         time.sleep(0.1)
 
-    print(f'[OK]   VideoCapture opened successfully.')
+    print('[OK]   VideoCapture opened successfully.')
 
     # ── read camera properties ───────────────────────────────────────────────
     width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -121,7 +121,7 @@ def test_camera(source, num_frames: int = 10, timeout: float = 10.0) -> bool:
     # ── summary ───────────────────────────────────────────────────────────────
     print()
     print(f'{"─" * 60}')
-    print(f'  SUMMARY')
+    print('  SUMMARY')
     print(f'{"─" * 60}')
     print(f'  Frames captured  : {frames_captured}/{num_frames}')
     print(f'  Frames failed    : {frames_failed}')

@@ -12,22 +12,9 @@
 import React, { useMemo } from 'react';
 import { timeAgo } from '../../utils/dateFormat';
 import { useAlerts } from '../../context/AlertContext';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const ESP32_ONLINE_THRESHOLD_SECONDS = 90;
-
-function normalizeServiceStatus(rawStatus) {
-  if (typeof rawStatus === 'boolean') return rawStatus ? 'online' : 'offline';
-  if (!rawStatus) return 'unknown';
-
-  const value = String(rawStatus).toLowerCase();
-  if (['online', 'active', 'running', 'healthy', 'ok', 'connected'].includes(value)) {
-    return 'online';
-  }
-  if (['offline', 'inactive', 'stopped', 'down', 'disconnected'].includes(value)) {
-    return 'offline';
-  }
-  return value;
-}
 
 function normalizeDetectionEnginePayload(payload) {
   if (!payload || typeof payload !== 'object') {

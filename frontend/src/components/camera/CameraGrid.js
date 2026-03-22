@@ -11,6 +11,7 @@ import CameraCard from './CameraCard';
 import { useAlerts } from '../../context/AlertContext';
 import { formatDateTime } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../utils/constants';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
@@ -73,15 +74,6 @@ function CameraGrid({ reloadToken = 0 }) {
       window.removeEventListener('pageshow', handlePageShow);
     };
   }, [bumpStreamSession]);
-
-  const normalizeStatus = (value) => {
-    if (typeof value === 'boolean') return value ? 'online' : 'offline';
-    if (!value) return 'unknown';
-    const lowered = String(value).toLowerCase();
-    if (['online', 'active', 'running', 'healthy'].includes(lowered)) return 'online';
-    if (['offline', 'inactive', 'stopped', 'down'].includes(lowered)) return 'offline';
-    return lowered;
-  };
 
   const fetchCameras = useCallback(async () => {
     setLoading(true);
@@ -160,14 +152,14 @@ function CameraGrid({ reloadToken = 0 }) {
       const res = await api.get('/api/v1/system/status');
       const payload = res.data || {};
       const engine = payload.detection_engine || {};
-      setDetectionEngineStatus(normalizeStatus(engine.status));
+      setDetectionEngineStatus(normalizeServiceStatus(engine.status));
 
       const runtimeCameras = payload.camera_status || payload.cameras || [];
       const runtimeMap = {};
       if (Array.isArray(runtimeCameras)) {
         runtimeCameras.forEach((camera) => {
           if (camera?.zone_id) {
-            runtimeMap[camera.zone_id] = normalizeStatus(camera.status);
+            runtimeMap[camera.zone_id] = normalizeServiceStatus(camera.status);
           }
         });
       }
@@ -198,7 +190,9 @@ function CameraGrid({ reloadToken = 0 }) {
     if (!isDocumentVisible) return new Set();
     const prioritized = cameras
       .filter((camera) => {
-        const runtime = normalizeStatus(cameraRuntimeMap[camera.zone_id] ?? camera.is_active);
+        const runtime = normalizeServiceStatus(
+          cameraRuntimeMap[camera.zone_id] ?? camera.is_active
+        );
         return runtime === 'online';
       })
       .slice(0, MAX_GRID_STREAMS)
@@ -237,7 +231,7 @@ function CameraGrid({ reloadToken = 0 }) {
 
   useEffect(() => {
     if (systemStatus?.detection_engine?.status) {
-      setDetectionEngineStatus(normalizeStatus(systemStatus.detection_engine.status));
+      setDetectionEngineStatus(normalizeServiceStatus(systemStatus.detection_engine.status));
     }
   }, [systemStatus]);
 
@@ -245,7 +239,7 @@ function CameraGrid({ reloadToken = 0 }) {
     const runtimeMap = {};
     Object.values(cameraStatuses || {}).forEach((camera) => {
       if (camera?.zone_id) {
-        runtimeMap[camera.zone_id] = normalizeStatus(camera.status);
+        runtimeMap[camera.zone_id] = normalizeServiceStatus(camera.status);
       }
     });
     if (Object.keys(runtimeMap).length > 0) {

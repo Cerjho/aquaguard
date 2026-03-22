@@ -9,6 +9,7 @@
 
 import React, { useEffect, useState, memo, useRef } from 'react';
 import useWebRTCStream from '../../hooks/useWebRTCStream';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 function CameraCard({
   camera,
@@ -22,18 +23,9 @@ function CameraCard({
   const streamToken = camera.stream_token || null;
   const streamSessionId = camera.stream_session_id || 0;
   const videoRef = useRef(null);
-  const normalizeStatus = (value) => {
-    if (typeof value === 'boolean') return value ? 'online' : 'offline';
-    if (!value) return 'unknown';
-    const lowered = String(value).toLowerCase();
-    if (['online', 'active', 'running', 'healthy'].includes(lowered)) return 'online';
-    if (['offline', 'inactive', 'stopped', 'down'].includes(lowered)) return 'offline';
-    return lowered;
-  };
-
-  const detectionOnline = normalizeStatus(camera.detection_engine_status) === 'online';
+  const detectionOnline = normalizeServiceStatus(camera.detection_engine_status) === 'online';
   const cameraOnline =
-    normalizeStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
+    normalizeServiceStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
   const isActive = detectionOnline && cameraOnline;
   const { transport, webrtcState, streamUrl, videoStream } = useWebRTCStream({
     zoneId: camera.zone_id,

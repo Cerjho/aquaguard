@@ -19,6 +19,7 @@ import React, {
 } from 'react';
 import useAlertSocket from '../hooks/useAlertSocket';
 import api from '../hooks/useApi';
+import { normalizeServiceStatus } from '../utils/statusHelpers';
 
 const AlertContext = createContext(null);
 const MAX_DETECTION_EVENTS = 50;
@@ -34,19 +35,6 @@ const DEFAULT_TRIAGE_FILTERS = {
   from: '',
   to: '',
 };
-
-function normalizeServiceStatus(rawStatus) {
-  if (typeof rawStatus === 'boolean') return rawStatus ? 'online' : 'offline';
-  if (!rawStatus) return 'unknown';
-  const value = String(rawStatus).toLowerCase();
-  if (['online', 'active', 'running', 'healthy', 'ok', 'connected'].includes(value)) {
-    return 'online';
-  }
-  if (['offline', 'inactive', 'stopped', 'down', 'disconnected'].includes(value)) {
-    return 'offline';
-  }
-  return value;
-}
 
 /**
  * Resolve alert ID from multiple legacy/new payload shapes.

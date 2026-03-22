@@ -9,46 +9,17 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useAlerts } from '../../context/AlertContext';
+import {
+  mapEventClassLabel,
+  mapEventConfidence,
+  mapEventTimestamp,
+} from '../../utils/eventMappers';
 
 const POLL_INTERVAL_MS = 5000;
 const HIDDEN_POLL_INTERVAL_MS = 30000;
 const MAX_DISPLAY = 20;
 const STALE_AFTER_MS = 15000;
 const MAX_BACKOFF_MS = 60000;
-
-function mapEventClassLabel(event = {}) {
-  return (
-    event.class_label
-    || event.class_name
-    || event.detected_class
-    || event.alert_class
-    || 'Person detected'
-  );
-}
-
-function mapEventConfidence(event = {}) {
-  const value = (
-    event.final_confidence
-    ?? event.confidence_score
-    ?? event.confidence
-    ?? event.yolo_confidence
-    ?? event.pose_confidence
-    ?? null
-  );
-  if (value == null || Number.isNaN(Number(value))) return null;
-  return Number(value);
-}
-
-function mapEventTimestamp(event = {}) {
-  return (
-    event.detected_at
-    || event.timestamp
-    || event.alerted_at
-    || event.created_at
-    || event.event_time
-    || null
-  );
-}
 
 function DetectionFeed() {
   const { detectionEvents, socketConnected } = useAlerts();

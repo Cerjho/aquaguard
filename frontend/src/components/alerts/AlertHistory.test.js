@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import AlertHistory from './AlertHistory';
 import api from '../../hooks/useApi';
-import { useAlerts } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext';
 
 jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
@@ -12,13 +12,13 @@ jest.mock('../../hooks/useApi', () => ({
 }));
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useFilterState: jest.fn(),
 }));
 
 describe('AlertHistory shared triage filters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useAlerts.mockReturnValue({
+    useFilterState.mockReturnValue({
       triageFilters: {
         zone_id: 'zone_01',
         status: 'unacknowledged',

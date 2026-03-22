@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
-import { useAlerts } from '../../context/AlertContext';
+import { useAlertState, useSocketState } from '../../context/AlertContext';
 import {
   mapEventClassLabel,
   mapEventConfidence,
@@ -22,7 +22,8 @@ const STALE_AFTER_MS = 15000;
 const MAX_BACKOFF_MS = 60000;
 
 function DetectionFeed() {
-  const { detectionEvents, socketConnected } = useAlerts();
+  const { detectionEvents } = useAlertState();
+  const { socketConnected } = useSocketState();
   const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
   const [lastPollAt, setLastPollAt] = useState(null);

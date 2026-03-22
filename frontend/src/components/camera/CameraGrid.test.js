@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import CameraGrid from './CameraGrid';
 import api from '../../hooks/useApi';
-import { useAlerts } from '../../context/AlertContext';
+import { useSystemState } from '../../context/AlertContext';
 
 jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
@@ -13,13 +13,13 @@ jest.mock('../../hooks/useApi', () => ({
 }));
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useSystemState: jest.fn(),
 }));
 
 describe('CameraGrid stream token auth flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useAlerts.mockReturnValue({
+    useSystemState.mockReturnValue({
       cameraStatuses: {
         zone_01: { zone_id: 'zone_01', status: 'online', zone_name: 'Main Pool' },
       },

@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '../../hooks/useApi';
 import CameraCard from './CameraCard';
-import { useAlerts } from '../../context/AlertContext';
+import { useSystemState } from '../../context/AlertContext';
 import { formatDateTime } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../utils/constants';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
@@ -32,7 +32,7 @@ function CameraGrid({ reloadToken = 0 }) {
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     typeof document === 'undefined' ? true : !document.hidden
   );
-  const { cameraStatuses, systemStatus } = useAlerts();
+  const { cameraStatuses, systemStatus } = useSystemState();
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
   const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);

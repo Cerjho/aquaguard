@@ -8,7 +8,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
-import { useAlerts } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext';
 import {
   mapEventClassLabel,
   mapEventConfidence,
@@ -18,7 +18,7 @@ import {
 const PAGE_SIZE = 10;
 
 function IncidentHistory() {
-  const { triageFilters, setTriageFilters, resetTriageFilters } = useAlerts();
+  const { triageFilters, setTriageFilters, resetTriageFilters } = useFilterState();
   const [events, setEvents] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

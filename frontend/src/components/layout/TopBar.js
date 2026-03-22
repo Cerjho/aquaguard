@@ -11,12 +11,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useAlerts } from '../../context/AlertContext';
+import {
+  useAlertState,
+  useSocketState,
+  useSystemState,
+} from '../../context/AlertContext';
 import AlertBadge from '../alerts/AlertBadge';
 
 function TopBar() {
   const { currentUser, logout } = useAuth();
-  const { unacknowledgedCount, socketConnected, systemStatus, apiStatus } = useAlerts();
+  const { unacknowledgedCount } = useAlertState();
+  const { socketConnected } = useSocketState();
+  const { systemStatus, apiStatus } = useSystemState();
   const navigate = useNavigate();
   const detectionFreshness = systemStatus?.subsystems?.detection_engine?.freshness_seconds;
   const detectionThreshold = systemStatus?.subsystems?.detection_engine?.stale_threshold_seconds;

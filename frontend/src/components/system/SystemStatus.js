@@ -11,7 +11,7 @@
 
 import React, { useMemo } from 'react';
 import { timeAgo } from '../../utils/dateFormat';
-import { useAlerts } from '../../context/AlertContext';
+import { useSocketState, useSystemState } from '../../context/AlertContext';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const ESP32_ONLINE_THRESHOLD_SECONDS = 90;
@@ -105,11 +105,8 @@ function StatusIndicator({ label, status, detail }) {
 }
 
 function SystemStatus() {
-  const {
-    cameraStatuses,
-    systemStatus,
-    socketConnected,
-  } = useAlerts();
+  const { cameraStatuses, systemStatus } = useSystemState();
+  const { socketConnected } = useSocketState();
 
   const detection = useMemo(
     () => normalizeDetectionEnginePayload(systemStatus || {}),

@@ -8,7 +8,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useAlerts } from '../../context/AlertContext';
+import { useAlertState } from '../../context/AlertContext';
 import { API_BASE_URL } from '../../utils/constants';
 import { formatDateTime } from '../../utils/dateFormat';
 
@@ -40,7 +40,7 @@ function AlertPanel() {
     acknowledgingAlertId,
     acknowledgeError,
     dismissActive,
-  } = useAlerts();
+  } = useAlertState();
   const audioRef = useRef(null);
   const [nowMs, setNowMs] = useState(Date.now());
 

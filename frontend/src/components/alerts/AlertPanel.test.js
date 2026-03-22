@@ -21,7 +21,7 @@ beforeAll(() => {
 const mockAcknowledge = jest.fn();
 
 function renderAlertPanel(contextOverrides = {}) {
-  jest.spyOn(AlertContext, 'useAlerts').mockReturnValue({
+  jest.spyOn(AlertContext, 'useAlertState').mockReturnValue({
     activeAlert: null,
     activeAlerts: [],
     acknowledge: mockAcknowledge,

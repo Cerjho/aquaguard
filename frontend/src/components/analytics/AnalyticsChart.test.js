@@ -2,7 +2,7 @@ import React from 'react';
 import { render, waitFor, fireEvent, screen } from '@testing-library/react';
 import AnalyticsChart from './AnalyticsChart';
 import api from '../../hooks/useApi';
-import { useAlerts } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext';
 
 const mockNavigate = jest.fn();
 
@@ -14,7 +14,7 @@ jest.mock('../../hooks/useApi', () => ({
 }));
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useFilterState: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -43,7 +43,7 @@ describe('AnalyticsChart drilldown', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    useAlerts.mockReturnValue({ setTriageFilters });
+    useFilterState.mockReturnValue({ setTriageFilters });
     api.get.mockResolvedValue({
       data: {
         zones: [{ zone_id: 'zone_01', zone_name: 'Main Pool', alert_count: 4, event_count: 10 }],

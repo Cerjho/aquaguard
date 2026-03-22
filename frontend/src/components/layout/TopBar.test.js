@@ -3,14 +3,20 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TopBar from './TopBar';
 import { useAuth } from '../../context/AuthContext';
-import { useAlerts } from '../../context/AlertContext';
+import {
+  useAlertState,
+  useSocketState,
+  useSystemState,
+} from '../../context/AlertContext';
 
 jest.mock('../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
 jest.mock('../../context/AlertContext', () => ({
-  useAlerts: jest.fn(),
+  useAlertState: jest.fn(),
+  useSocketState: jest.fn(),
+  useSystemState: jest.fn(),
 }));
 
 describe('TopBar connectivity health strip', () => {
@@ -19,9 +25,13 @@ describe('TopBar connectivity health strip', () => {
       currentUser: { username: 'admin', role: 'admin' },
       logout: jest.fn(),
     });
-    useAlerts.mockReturnValue({
+    useAlertState.mockReturnValue({
       unacknowledgedCount: 2,
+    });
+    useSocketState.mockReturnValue({
       socketConnected: false,
+    });
+    useSystemState.mockReturnValue({
       apiStatus: { connected: false },
       systemStatus: {
         subsystems: {

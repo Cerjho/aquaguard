@@ -22,6 +22,10 @@ import api from '../hooks/useApi';
 import { normalizeServiceStatus } from '../utils/statusHelpers';
 
 const AlertContext = createContext(null);
+const AlertStateContext = createContext(null);
+const SystemStateContext = createContext(null);
+const FilterStateContext = createContext(null);
+const SocketStateContext = createContext(null);
 const MAX_DETECTION_EVENTS = 50;
 const MAX_ALERT_HISTORY = 1000;
 const STATUS_POLL_BASE_INTERVAL_MS = 15000;
@@ -386,7 +390,7 @@ export function AlertProvider({ children }) {
     setActiveAlert(null);
   }, [activeAlert]);
 
-  const value = useMemo(() => ({
+  const alertStateValue = useMemo(() => ({
     activeAlert,
     activeAlerts,
     alertHistory,
@@ -396,15 +400,6 @@ export function AlertProvider({ children }) {
     acknowledge,
     dismissActive,
     detectionEvents,
-    cameraStatuses,
-    systemStatus,
-    socketConnected,
-    socketMeta,
-    apiStatus,
-    triageFilters,
-    setTriageFilters,
-    resetTriageFilters,
-    refreshSystemStatus,
   }), [
     activeAlert,
     activeAlerts,
@@ -415,19 +410,56 @@ export function AlertProvider({ children }) {
     acknowledge,
     dismissActive,
     detectionEvents,
+  ]);
+
+  const systemStateValue = useMemo(() => ({
     cameraStatuses,
     systemStatus,
-    socketConnected,
-    socketMeta,
     apiStatus,
-    triageFilters,
-    setTriageFilters,
-    resetTriageFilters,
+    refreshSystemStatus,
+  }), [
+    cameraStatuses,
+    systemStatus,
+    apiStatus,
     refreshSystemStatus,
   ]);
 
+  const filterStateValue = useMemo(() => ({
+    triageFilters,
+    setTriageFilters,
+    resetTriageFilters,
+  }), [triageFilters, setTriageFilters, resetTriageFilters]);
+
+  const socketStateValue = useMemo(() => ({
+    socketConnected,
+    socketMeta,
+  }), [socketConnected, socketMeta]);
+
+  // Keep legacy useAlerts() contract for existing consumers and tests.
+  const legacyValue = useMemo(() => ({
+    ...alertStateValue,
+    ...systemStateValue,
+    ...filterStateValue,
+    ...socketStateValue,
+  }), [
+    alertStateValue,
+    systemStateValue,
+    filterStateValue,
+    socketStateValue,
+  ]);
+
   return (
-    <AlertContext.Provider value={value}>{children}</AlertContext.Provider>
+    <AlertContext.Provider value={legacyValue}>
+      <AlertStateContext.Provider value={alertStateValue}>
+        <SystemStateContext.Provider value={systemStateValue}>
+          <FilterStateContext.Provider value={filterStateValue}>
+            <SocketStateContext.Provider value={socketStateValue}>
+              {children}
+            </SocketStateContext.Provider>
+          </FilterStateContext.Provider>
+        </SystemStateContext.Provider>
+      </AlertStateContext.Provider>
+    </AlertContext.Provider>
   );
 }
 
@@ -439,6 +471,38 @@ export function useAlerts() {
   const ctx = useContext(AlertContext);
   if (!ctx) {
     throw new Error('useAlerts must be used inside <AlertProvider>');
+  }
+  return ctx;
+}
+
+export function useAlertState() {
+  const ctx = useContext(AlertStateContext);
+  if (!ctx) {
+    throw new Error('useAlertState must be used inside <AlertProvider>');
+  }
+  return ctx;
+}
+
+export function useSystemState() {
+  const ctx = useContext(SystemStateContext);
+  if (!ctx) {
+    throw new Error('useSystemState must be used inside <AlertProvider>');
+  }
+  return ctx;
+}
+
+export function useFilterState() {
+  const ctx = useContext(FilterStateContext);
+  if (!ctx) {
+    throw new Error('useFilterState must be used inside <AlertProvider>');
+  }
+  return ctx;
+}
+
+export function useSocketState() {
+  const ctx = useContext(SocketStateContext);
+  if (!ctx) {
+    throw new Error('useSocketState must be used inside <AlertProvider>');
   }
   return ctx;
 }

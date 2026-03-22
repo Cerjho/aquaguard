@@ -47,11 +47,13 @@ def login():
     access_token  = create_access_token(identity=str(user.id), additional_claims=additional_claims)
     refresh_token = create_refresh_token(identity=str(user.id), additional_claims=additional_claims)
 
-    response = jsonify({
-        'access_token':  access_token,
-        'refresh_token': refresh_token,
-        'user':          user.to_dict(),
-    })
+    response_body = {'user': user.to_dict()}
+    if current_app.config.get('AUTH_RETURN_TOKENS_IN_BODY', False):
+        response_body.update({
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+        })
+    response = jsonify(response_body)
     set_access_cookies(response, access_token)
     set_refresh_cookies(response, refresh_token)
     return response, 200
@@ -69,7 +71,10 @@ def refresh():
 
     additional_claims = {'role': user.role}
     access_token = create_access_token(identity=identity, additional_claims=additional_claims)
-    response = jsonify({'access_token': access_token})
+    response_body = {'message': 'token refreshed'}
+    if current_app.config.get('AUTH_RETURN_TOKENS_IN_BODY', False):
+        response_body['access_token'] = access_token
+    response = jsonify(response_body)
     set_access_cookies(response, access_token)
     return response, 200
 

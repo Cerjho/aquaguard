@@ -74,6 +74,20 @@ def refresh():
     return response, 200
 
 
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def me():
+    """
+    Get the current authenticated user's profile.
+    Used for session restoration on page reload.
+    """
+    identity = get_jwt_identity()
+    user = db.session.get(User, int(identity))
+    if not user or not user.is_active:
+        return jsonify({'error': 'User not found or inactive'}), 404
+    return jsonify({'user': user.to_dict()}), 200
+
+
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required(verify_type=False)
 def logout():

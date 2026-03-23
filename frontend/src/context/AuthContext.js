@@ -6,16 +6,16 @@
  * User profile is kept in memory for the current tab session.
  */
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import api from '../hooks/useApi';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-
   const [authError, setAuthError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as true to prevent premature redirects
+  const [initialized, setInitialized] = useState(false);
 
   /**
    * Log in with username + password.
@@ -58,6 +58,30 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
     }
   }, []);
+
+  /**
+   * Restore session on mount by checking if httpOnly cookies are valid.
+   * Calls GET /api/v1/auth/me to validate token and retrieve user profile.
+   */
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const response = await api.get('/api/v1/auth/me');
+        const { user } = response.data;
+        setCurrentUser(user);
+      } catch (error) {
+        // Session invalid or no cookies — user is not authenticated
+        setCurrentUser(null);
+      } finally {
+        setLoading(false);
+        setInitialized(true);
+      }
+    };
+
+    if (!initialized) {
+      restoreSession();
+    }
+  }, [initialized]);
 
   const isAuthenticated = Boolean(currentUser);
 

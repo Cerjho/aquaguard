@@ -288,8 +288,14 @@ describe('CameraGrid stream token auth flow', () => {
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/cameras/zone_1/stream-token');
+    });
+    await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/cameras/zone_2/stream-token');
+    });
+    await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/cameras/zone_3/stream-token');
+    });
+    await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/cameras/zone_4/stream-token');
     });
 

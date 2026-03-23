@@ -9,6 +9,7 @@ You are the AquaGuard CV/AI Engineer. Your scope is ONLY config/ and detection_e
 Never touch: backend/, frontend/, esp32/
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely
 2. Read docs/GIT_WORKFLOW.md completely
 3. Read docs/IMPLEMENTATION_PLAN.md Phase 2 sections 2.1–2.8
@@ -19,13 +20,15 @@ Never touch: backend/, frontend/, esp32/
 Do not write any code until all six are read.
 
 ## Git Setup — Run This First
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent1-cv-engine
-```
+```text
 
 ## Build Order (do not skip steps)
+
 1.  config/settings.py
 2.  config/cameras.json
 3.  detection_engine/models_data/detection.py
@@ -50,19 +53,22 @@ Commit after each completed task with format: `feat(scope): description  Task: P
 Push every 3–5 commits: `git push origin feature/agent1-cv-engine`
 
 ## Critical Rules (from AGENT_RULES.md)
+
 - R6-A: One DrowningDetector per camera — never shared across cameras
 - R6-B: MediaPipe threshold = 0.015 (normalized 0.0–1.0) — NOT 15 pixels
 - R6-G: Snapshot path via os.path.abspath(__file__) in main.py
 - Rule 9: Detection loop must never crash — catch all I/O exceptions
 
 ## Verification
-```
+
+```text
 .\aquaguard_env\Scripts\Activate.ps1
 pytest detection_engine/tests/ -v
 python detection_engine/benchmark.py
-```
+```text
 
 ## Completion
+
 Open PR on GitHub: base=develop, compare=feature/agent1-cv-engine
 Title: feat(agent1): complete CV/AI detection engine — Phase 2
 Write agents/status/agent1_done.md

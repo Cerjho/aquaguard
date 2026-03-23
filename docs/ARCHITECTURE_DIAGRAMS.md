@@ -10,7 +10,7 @@ graph TD
     DE -->|MQTT Alerts| MQ[MQTT Broker]
     MQ --> ESP[ESP32 Alarm Node]
     BE --> DB[(SQL Database)]
-```
+```text
 
 ## Detection Pipeline Sequence
 
@@ -34,7 +34,7 @@ sequenceDiagram
     Filt-->>Alert: trigger (N/T/K met)
     Alert->>API: POST event + snapshot
     Alert->>MQTT: publish alert payload
-```
+```text
 
 ## Runtime Ownership Diagram
 
@@ -64,4 +64,4 @@ flowchart LR
     B1 --> B2 --> B3
     B1 --> B4 --> A2
     D1 --> D2 --> D3 --> D4 --> B1
-```
+```text

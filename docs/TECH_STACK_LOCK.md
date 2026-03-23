@@ -14,7 +14,7 @@
 
 ```python
 Python 3.11.x  (3.11.8 recommended)
-```
+```text
 
 Do not use Python 3.12+ — some MediaPipe builds are not yet stable on 3.12.
 
@@ -29,7 +29,7 @@ Always activate before running any Python command:
 
 ```bash
 .\aquaguard_env\Scripts\Activate.ps1
-```
+```text
 
 ---
 
@@ -85,7 +85,7 @@ pytest==8.3.3
 pytest-cov==5.0.0
 pytest-mock==3.14.0
 httpx==0.27.2                 # Async-compatible HTTP client for Flask testing
-```
+```text
 
 ---
 
@@ -98,7 +98,7 @@ flake8==7.1.1                 # Linter
 isort==5.13.2                 # Import sorter
 ipykernel==6.29.5             # Jupyter kernel for benchmarking notebooks
 jupyter==1.1.1                # Jupyter notebook for benchmark.py development
-```
+```text
 
 ---
 
@@ -107,7 +107,7 @@ jupyter==1.1.1                # Jupyter notebook for benchmark.py development
 ```node
 Node.js 20.x LTS  (20.17.0 recommended)
 npm 10.x
-```
+```text
 
 ---
 
@@ -136,7 +136,7 @@ npm 10.x
     "autoprefixer": "10.4.20"
   }
 }
-```
+```text
 
 ---
 
@@ -145,7 +145,6 @@ npm 10.x
 Install via Arduino IDE Library Manager or PlatformIO:
 
 | Library | Version | Author |
-
 |---|---|---|
 | PubSubClient | 2.8.0 | Nick O'Leary |
 | ArduinoJson | 7.1.0 | Benoit Blanchon |
@@ -163,7 +162,6 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## MQTT Broker
 
 | Component | Version |
-
 |---|---|
 | Eclipse Mosquitto | 2.0.18 |
 
@@ -175,7 +173,6 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## Docker
 
 | Component | Version |
-
 |---|---|
 | Docker Desktop / Engine | 27.x |
 | Docker Compose | 2.29.x |
@@ -188,7 +185,6 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## CUDA / GPU
 
 | Component | Version |
-
 |---|---|
 | NVIDIA Driver | ≥ 531.x (Windows) / ≥ 525.x (Linux) |
 | CUDA Toolkit | 12.1 |
@@ -201,7 +197,7 @@ Verify CUDA install:
 nvidia-smi                  # Shows driver version and CUDA version
 nvcc --version              # Shows CUDA compiler version
 python -c "import torch; print(torch.version.cuda)"   # Should print: 12.1
-```
+```text
 
 ---
 
@@ -229,7 +225,7 @@ python -c "import mediapipe; print('MediaPipe OK')"
 python -c "import cv2; print('OpenCV:', cv2.__version__)"
 python -c "import flask; print('Flask:', flask.__version__)"
 python -c "import paho.mqtt; print('paho-mqtt OK')"
-```
+```text
 
 ---
 

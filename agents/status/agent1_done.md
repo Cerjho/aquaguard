@@ -5,6 +5,7 @@
 ## Files Created
 
 ### Phase 1 (Config & Data Models)
+
 - `config/settings.py` — all thresholds, MQTT constants, reconnect config
 - `config/cameras.json` — zone_dev webcam entry (rtsp_url: 0)
 - `detection_engine/models_data/detection.py` — Detection dataclass
@@ -14,6 +15,7 @@
 - `detection_engine/benchmark.py` — 100-iteration YOLOv11s inference benchmark
 
 ### Phase 2 (Detection Engine)
+
 - `detection_engine/vision/preprocessor.py` — P2-01: frame resize/RGB/normalize
 - `detection_engine/camera/capture.py` — P2-02: threaded camera reader with exponential backoff
 - `detection_engine/camera/registry.py` — P2-03: cameras.json loader + lifecycle management
@@ -27,10 +29,12 @@
 - `detection_engine/main.py` — P2-11: main detection loop with per-zone DrowningDetector
 
 ## Tests Run
+
 - All Phase 2 modules import without errors (verified with python -c)
 - DrowningDetector, PoseEstimator, BehaviorAnalyzer, ConfidenceFilter, MQTTClient, APIClient, AlertEngine all load OK
 
 ## Critical Rules Verified
+
 - [x] R6-A: One DrowningDetector per camera zone (`detectors = {zone_id: DrowningDetector(...)}` in main.py)
 - [x] R6-B: MediaPipe threshold is `LIMB_MOTION_STD_THRESHOLD = 0.015` (normalized, not pixels)
 - [x] R6-F: paho-mqtt 2.x uses `CallbackAPIVersion.VERSION2` with 5-argument on_connect/on_disconnect
@@ -39,12 +43,14 @@
 - [x] Rule 9: All I/O operations (camera read, MQTT publish, API POST, snapshot write) have error handling
 
 ## Issues Encountered
+
 - mediapipe==0.10.14 not available; installed latest (0.10.32) which has compatible API
 - config/settings.py had naming mismatches vs code imports — fixed by adding aliases
   (CONSECUTIVE_FRAMES_REQUIRED, CONSECUTIVE_FRAME_LOW_THRESHOLD, MQTT_BROKER_HOST, etc.)
 - Git branch rebased onto develop and recommitted in proper task order
 
 ## Next Agent Dependencies
+
 - Agent 2 (Backend) can proceed — config/settings.py and models_data are stable
 - Agent 5 (Testing) can add unit tests once model weights are placed at `detection_engine/models/aquaguard_yolov11s.pt`
 
@@ -87,7 +93,7 @@
 
 ## Architecture
 
-```
+```text
 CameraCapture (threaded, per zone)
     ↓
 DrowningDetector — YOLOv11s + ByteTrack (one instance per zone)
@@ -99,7 +105,7 @@ BehaviorAnalyzer — 5-indicator score [0.0–1.0] with temporal bonus
 ConfidenceFilter — rolling N=15 window, mean > T=0.75, K=10 hits
     ↓
 AlertEngine — JPEG snapshot + base64 + concurrent MQTT / API dispatch
-```
+```text
 
 ## Design Rules Satisfied
 

@@ -23,7 +23,7 @@ missing.  This prevents:
 ## Affected Files (all empty)
 
 | File | Expected Content |
-|------|-----------------|
+|---|---|
 | `detection_engine/vision/detector.py` | `DrowningDetector` class with YOLOv11s inference |
 | `detection_engine/vision/pose_estimator.py` | `PoseEstimator` class with MediaPipe |
 | `detection_engine/vision/preprocessor.py` | `preprocess()` function |
@@ -42,7 +42,7 @@ missing.  This prevents:
 
 Running `python scripts/integration_test.py`:
 
-```
+```text
 [WARN] detection_engine.vision.preprocessor   — module imported but is empty (no public symbols)
 [WARN] detection_engine.vision.detector       — module imported but is empty (no public symbols)
 [WARN] detection_engine.vision.pose_estimator — module imported but is empty (no public symbols)
@@ -53,12 +53,12 @@ Running `python scripts/integration_test.py`:
 [WARN] detection_engine.models_data.detection — module imported but is empty (no public symbols)
 [WARN] detection_engine.models_data.landmark  — module imported but is empty (no public symbols)
 [WARN] detection_engine.models_data.alert_payload — module imported but is empty (no public symbols)
-```
+```text
 
 Running `python -c "from detection_engine.vision.detector import DrowningDetector"`:
-```
+```text
 ImportError: cannot import name 'DrowningDetector' from 'detection_engine.vision.detector'
-```
+```text
 
 ---
 

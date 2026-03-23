@@ -8,13 +8,13 @@ Use [scripts/load_test.py](../scripts/load_test.py) for lightweight HTTP load pr
 
 ```powershell
 .\aquaguard_env\Scripts\python scripts\load_test.py --url http://127.0.0.1:5000/api/v1/system/status --requests 300 --concurrency 20
-```
+```text
 
 ## Multi-Round Example + JSON Output
 
 ```powershell
 .\aquaguard_env\Scripts\python scripts\load_test.py --url http://127.0.0.1:5000/api/v1/system/status --requests 300 --concurrency 20 --rounds 5 --output agents/status/load_test_system_status.json
-```
+```text
 
 ## Suggested Targets
 

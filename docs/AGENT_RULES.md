@@ -28,7 +28,6 @@ is missing, stop and report to `agents/status/{your_agent_id}_blocked.md`.
 Each agent has a defined scope. Never write files outside it.
 
 | Agent | Owns | Never Touches |
-
 |---|---|---|
 | Orchestrator | `agents/queue/`, `agents/status/` | Application code |
 | Agent 1 — CV | `detection_engine/`, `config/` | `backend/`, `frontend/`, `esp32/` |
@@ -69,13 +68,13 @@ After creating each file, immediately verify it does not have import errors:
 ```bash
 .\aquaguard_env\Scripts\Activate.ps1
 python -c "import detection_engine.vision.detector"   # adjust path
-```
+```text
 
 **React/JS:**
 
 ```bash
 cd frontend && npm run build 2>&1 | tail -20
-```
+```text
 
 If verification fails, fix the file before moving to the next task.
 Do not accumulate broken files — fix each one before proceeding.
@@ -88,7 +87,6 @@ All of the following must come from config files or environment variables.
 Never write these directly into application code:
 
 | Value | Where It Lives |
-
 |---|---|
 | Confidence thresholds (N, T, K) | `config/settings.py` |
 | MQTT topics and broker address | `config/settings.py` |
@@ -111,7 +109,7 @@ Every Python command must run inside `aquaguard_env`.
 
 ```bash
 .\aquaguard_env\Scripts\Activate.ps1
-```
+```text
 
 - Do NOT create a new virtual environment
 - Do NOT run `pip install -r requirements.txt` from scratch
@@ -140,7 +138,7 @@ for zone_id, camera in registry.cameras.items():
 # CORRECT — one instance per zone
 detectors = {zone_id: DrowningDetector(model_path)
              for zone_id in registry.cameras.keys()}
-```
+```text
 
 ### R6-B — MediaPipe Coordinates Are Normalized, Not Pixels
 
@@ -150,7 +148,7 @@ if std_dev_wrist_x < 15:      # 15 pixels — MediaPipe never returns pixels
 
 # CORRECT
 if std_dev_wrist_x < 0.015:   # 0.015 normalized units (0.0–1.0 range)
-```
+```text
 
 ### R6-C — Flask-SocketIO Must Use async_mode='threading'
 
@@ -161,7 +159,7 @@ socketio = SocketIO(cors_allowed_origins="*")
 
 # CORRECT
 socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
-```
+```text
 
 ### R6-D — socketio.emit Must Come After db.session.commit()
 
@@ -173,7 +171,7 @@ db.session.commit()
 # CORRECT
 db.session.commit()
 socketio.emit('alert_event', alert.to_dict())
-```
+```text
 
 ### R6-E — Import socketio From extensions.py in Routes
 
@@ -186,7 +184,7 @@ socketio.emit(...)
 # CORRECT — use the shared instance initialized in create_app()
 from extensions import socketio
 socketio.emit('alert_event', data)
-```
+```text
 
 ### R6-F — paho-mqtt 2.x Callback Signatures
 
@@ -198,7 +196,7 @@ def on_disconnect(client, userdata, rc): ...
 # CORRECT — 2.x requires 5 arguments
 def on_connect(client, userdata, connect_flags, reason_code, properties): ...
 def on_disconnect(client, userdata, disconnect_flags, reason_code, properties): ...
-```
+```text
 
 ### R6-G — Snapshot Path Must Be Absolute
 
@@ -212,7 +210,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SNAPSHOT_DIR = os.path.join(BASE_DIR, 'backend', 'snapshots')
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=SNAPSHOT_DIR)
-```
+```text
 
 ### R6-H — Never Hardcode URLs in React Components
 
@@ -223,7 +221,7 @@ const response = await axios.get('http://localhost:5000/api/v1/cameras');
 // CORRECT — always use the shared api instance
 import api from '../hooks/useApi';
 const response = await api.get('/api/v1/cameras');
-```
+```text
 
 ### R6-I — bcrypt Passwords Must Be Decoded to String
 
@@ -233,7 +231,7 @@ password_hash = bcrypt.generate_password_hash('password')
 
 # CORRECT — decode to UTF-8 string
 password_hash = bcrypt.generate_password_hash('password').decode('utf-8')
-```
+```text
 
 ### R6-J — conftest.py Must Be Created Before Any Test File
 
@@ -245,7 +243,7 @@ backend/tests/conftest.py         ← created second
 # CORRECT order
 backend/tests/conftest.py         ← always first
 backend/tests/test_auth.py        ← then test files
-```
+```text
 
 ---
 
@@ -277,7 +275,7 @@ After completing your assigned phase, write a status report to
 ## Next Agent Dependencies
 - Agent 3 can now start (backend API is stable)
 - (or) No downstream dependencies
-```
+```text
 
 If you are blocked mid-task, immediately write to
 `agents/status/{your_agent_id}_blocked.md` — do not continue
@@ -293,7 +291,7 @@ Before writing a new utility function, check if it already exists:
 ```bash
 grep -r "def function_name" detection_engine/
 grep -r "function_name" frontend/src/
-```
+```text
 
 If the function exists in another module in your scope, import it.
 If it exists in another agent's scope, request it via the queue.
@@ -336,7 +334,7 @@ git checkout -b feature/agent{N}-{scope}
 # feature/agent3-frontend
 # feature/agent4-esp32
 # feature/agent5-testing
-```
+```text
 
 Never commit directly to `main` or `develop`.
 
@@ -352,7 +350,7 @@ git commit -m "feat(detector): implement DrowningDetector with YOLOv11s CUDA inf
 
 One instance per camera zone — ByteTrack state must not be shared.
 Task: P2-04"
-```
+```text
 
 ### R10-C — Commit Message Format
 
@@ -361,7 +359,7 @@ type(scope): short description
 
 Optional body explaining WHY.
 Task: P{phase}-{task}
-```
+```text
 
 Types: `feat`, `fix`, `test`, `chore`, `docs`, `refactor`, `style`
 
@@ -373,7 +371,7 @@ Orchestrator monitor progress:
 
 ```bash
 git push origin feature/agent{N}-{scope}
-```
+```text
 
 ### R10-E — Sync With develop Before Opening PR
 
@@ -382,7 +380,7 @@ git checkout develop && git pull origin develop
 git checkout feature/agent{N}-{scope}
 git rebase develop
 git push origin feature/agent{N}-{scope} --force-with-lease
-```
+```text
 
 ### R10-F — Open a Pull Request for Every Phase Completion
 
@@ -407,7 +405,7 @@ __pycache__/                    # Python cache
 node_modules/                   # npm packages
 backend/snapshots/*.jpg         # runtime snapshots
 *.db                            # SQLite database files
-```
+```text
 
 Run `git status` before every commit. If any of the above appear
 in the staging area, remove them with `git reset HEAD {file}`.
@@ -434,7 +432,7 @@ instruction, do NOT guess. Write the ambiguity to:
 
 ```text
 agents/status/{your_agent_id}_question.md
-```
+```text
 
 Format:
 
@@ -445,7 +443,7 @@ Format:
 **Ambiguity:** Section X says Y but Section Z says W
 **My best interpretation:** ...
 **Blocked until resolved:** yes/no
-```
+```text
 
 The orchestrator will resolve it. Do not proceed on an ambiguous
 instruction that affects system correctness.
@@ -476,7 +474,6 @@ trained model. Agents must:
 ## Quick Reference — Critical File Locations
 
 | What | Where |
-
 |---|---|
 | All thresholds and constants | `config/settings.py` |
 | Camera zone definitions | `config/cameras.json` |

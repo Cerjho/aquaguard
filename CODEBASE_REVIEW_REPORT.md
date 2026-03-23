@@ -46,6 +46,7 @@ However, the review identified **critical security vulnerabilities** and **code 
 ### Architectural Anti-Patterns
 
 #### 1. God Module: detection_engine/main.py (SEVERITY: MEDIUM)
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/main.py` (420 lines)
 
 **Issue:** Single file orchestrates camera management, detection pipeline, alert dispatch, live artifact writing, environment loading, and heartbeat logic.
@@ -59,6 +60,7 @@ However, the review identified **critical security vulnerabilities** and **code 
 - `ConfigLoader` module for environment setup
 
 #### 2. God Component: frontend/src/context/AlertContext.js (SEVERITY: MEDIUM)
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/frontend/src/context/AlertContext.js` (458 lines)
 
 **Issue:** Single context manages active alerts, alert history, detection events, camera statuses, system status, socket connection, API status, triage filters, and polling logic.
@@ -72,6 +74,7 @@ However, the review identified **critical security vulnerabilities** and **code 
 - `SocketContext` (WebSocket connection state)
 
 #### 3. No Service Layer (SEVERITY: LOW-MEDIUM)
+
 **Location:** All backend route handlers
 
 **Issue:** Business logic embedded directly in route handlers. Example: `backend/routes/events.py:create_event()` is 110 lines handling validation, file I/O, database operations, and WebSocket emits.
@@ -83,7 +86,7 @@ class EventService:
     def create_detection_event(self, event_data, snapshot_data):
         # Validation, file writing, DB operations
         pass
-```
+```text
 
 #### 4. Global Mutable State Without Synchronization (SEVERITY: HIGH)
 
@@ -148,7 +151,7 @@ class EventService:
 ```python
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-```
+```text
 
 **Locations:**
 - `/home/runner/work/aquaguard/aquaguard/detection_engine/alert/mqtt_client.py:10-11`
@@ -165,7 +168,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 **Recommendation:** Use proper package installation with `setup.py` or `pyproject.toml`:
 ```bash
 pip install -e .
-```
+```text
 
 ### B. Dead Code
 
@@ -184,7 +187,7 @@ pip install -e .
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/alerts.py:11`
 ```python
 logger = logging.getLogger(__name__)  # Declared but never used
-```
+```text
 
 **Action:** Remove or use it for error logging.
 
@@ -239,6 +242,7 @@ All `__init__.py` files in detection_engine are empty. While not technically wro
 ### CRITICAL VULNERABILITIES (Must Fix Before Production)
 
 #### 1. JWT Token Storage in localStorage (XSS Vulnerability)
+
 **Severity:** CRITICAL
 **Location:** `/home/runner/work/aquaguard/aquaguard/frontend/src/context/AuthContext.js:41-42`
 
@@ -246,7 +250,7 @@ All `__init__.py` files in detection_engine are empty. While not technically wro
 ```javascript
 localStorage.setItem('token', access_token);
 localStorage.setItem('user', JSON.stringify(user));
-```
+```text
 
 JWT tokens stored in `localStorage` are accessible to any JavaScript code, including injected XSS payloads.
 
@@ -263,13 +267,14 @@ JWT tokens stored in `localStorage` are accessible to any JavaScript code, inclu
 ---
 
 #### 2. In-Memory Token Blocklist (Production Failure)
+
 **Severity:** CRITICAL
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/token_blocklist.py:3-29`
 
 **Issue:**
 ```python
 _REVOKED_JTIS = {}  # Process-local in-memory dict
-```
+```text
 
 **Problems:**
 - Tokens revoked on one server instance remain valid on others in multi-instance deployments
@@ -289,18 +294,19 @@ def revoke_jti(jti: str, expires_in_seconds: int):
 
 def is_jti_revoked(jti: str) -> bool:
     return redis_client.exists(f"revoked:{jti}") > 0
-```
+```text
 
 ---
 
 #### 3. CORS Misconfiguration (WebSocket Vulnerability)
+
 **Severity:** HIGH
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/extensions.py:10`
 
 **Issue:**
 ```python
 socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
-```
+```text
 
 SocketIO accepts connections from **ANY origin** while REST API restricts to localhost.
 
@@ -311,18 +317,19 @@ SocketIO accepts connections from **ANY origin** while REST API restricts to loc
 # Get CORS origins from environment
 ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 socketio = SocketIO(async_mode='threading', cors_allowed_origins=ALLOWED_ORIGINS)
-```
+```text
 
 ---
 
 #### 4. Unsafe Werkzeug in Production
+
 **Severity:** HIGH
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/wsgi.py:16`
 
 **Issue:**
 ```python
 socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
-```
+```text
 
 `allow_unsafe_werkzeug=True` bypasses safety checks when using Werkzeug development server in production.
 
@@ -340,11 +347,12 @@ from backend.extensions import socketio
 
 app = create_app()
 # Don't call socketio.run() — let gunicorn handle it
-```
+```text
 
 ---
 
 #### 5. Race Conditions in Shared State
+
 **Severity:** HIGH
 **Locations:**
 - `/home/runner/work/aquaguard/aquaguard/backend/runtime_status.py:56-79` — `_ESP32_HEARTBEAT`
@@ -369,26 +377,28 @@ def update_esp32_heartbeat(device_id: str, timestamp: str):
 def get_esp32_heartbeat(device_id: str) -> str:
     with _heartbeat_lock:
         return _ESP32_HEARTBEAT.get(device_id)
-```
+```text
 
 ---
 
 ### HIGH PRIORITY VULNERABILITIES
 
 #### 6. Missing AQUAGUARD_API_KEY in Example Config
+
 **Severity:** HIGH
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/.env.example`
 
 **Issue:** `AQUAGUARD_API_KEY` not documented in example file. Internal endpoints unprotected if not configured.
 
 **Recommendation:** Add to `.env.example`:
-```
+```text
 AQUAGUARD_API_KEY=change-me-internal-api-key-min-32-chars
-```
+```text
 
 ---
 
 #### 7. Weak Default Credentials in Seed Script
+
 **Severity:** HIGH
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/seed.py:25-28`
 
@@ -396,7 +406,7 @@ AQUAGUARD_API_KEY=change-me-internal-api-key-min-32-chars
 ```python
 admin_password = os.getenv('SEED_ADMIN_PASSWORD', 'change-me-admin-password')
 guard_password = os.getenv('SEED_GUARD_PASSWORD', 'change-me-lifeguard-password')
-```
+```text
 
 **Impact:** Predictable default passwords if env vars not set.
 
@@ -405,11 +415,12 @@ guard_password = os.getenv('SEED_GUARD_PASSWORD', 'change-me-lifeguard-password'
 admin_password = os.getenv('SEED_ADMIN_PASSWORD')
 if not admin_password:
     raise ValueError("SEED_ADMIN_PASSWORD environment variable required")
-```
+```text
 
 ---
 
 #### 8. Missing Rate Limiting
+
 **Severity:** MEDIUM-HIGH
 **Location:** All route files
 
@@ -432,13 +443,14 @@ limiter = Limiter(
 @limiter.limit("5 per minute")
 def login():
     # ...
-```
+```text
 
 ---
 
 ### MEDIUM PRIORITY VULNERABILITIES
 
 #### 9. Missing Input Validation on File Upload
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/events.py:119-137`
 
@@ -464,11 +476,12 @@ try:
     Image.open(io.BytesIO(img_bytes))
 except:
     return jsonify({'error': 'Invalid image data'}), 400
-```
+```text
 
 ---
 
 #### 10. API Key in Environment Variables
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/main.py:244-250`
 
@@ -479,6 +492,7 @@ except:
 ---
 
 #### 11. Token Exposure in URLs
+
 **Severity:** MEDIUM
 **Location:**
 - `/home/runner/work/aquaguard/aquaguard/frontend/src/components/camera/CameraCard.js:48`
@@ -487,7 +501,7 @@ except:
 **Issue:**
 ```javascript
 return `${API_BASE_URL}/api/v1/cameras/${zoneId}/stream?token=${encodeURIComponent(token)}`;
-```
+```text
 
 Tokens in URL query parameters may be logged in browser history, server logs, proxy logs.
 
@@ -496,6 +510,7 @@ Tokens in URL query parameters may be logged in browser history, server logs, pr
 ---
 
 #### 12. Hardcoded Credentials in ESP32 Config
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/esp32/aquaguard_esp32/config.h:5-6`
 
@@ -503,7 +518,7 @@ Tokens in URL query parameters may be logged in browser history, server logs, pr
 ```c
 #define WIFI_SSID           "your_wifi_ssid"
 #define WIFI_PASSWORD       "your_wifi_password"
-```
+```text
 
 While intended to be changed before flashing, hardcoded credentials in version control is risky.
 
@@ -516,6 +531,7 @@ While intended to be changed before flashing, hardcoded credentials in version c
 ### LOW PRIORITY VULNERABILITIES
 
 #### 13. No HTTPS Enforcement
+
 **Severity:** LOW (should be handled by reverse proxy)
 
 **Issue:** No HTTPS redirect or enforcement in code.
@@ -525,6 +541,7 @@ While intended to be changed before flashing, hardcoded credentials in version c
 ---
 
 #### 14. Detailed Error Messages Leak Information
+
 **Severity:** LOW
 **Location:** Multiple endpoints (e.g., `/home/runner/work/aquaguard/aquaguard/backend/routes/events.py:86`)
 
@@ -533,7 +550,7 @@ While intended to be changed before flashing, hardcoded credentials in version c
 **Recommendation:** Generic error messages for external endpoints:
 ```python
 return jsonify({'error': 'Invalid request'}), 400
-```
+```text
 
 ---
 
@@ -542,6 +559,7 @@ return jsonify({'error': 'Invalid request'}), 400
 ### CRITICAL BUGS
 
 #### 1. Deprecated datetime.utcnow() (Python 3.12+ Incompatible)
+
 **Severity:** HIGH
 **Locations:**
 - `/home/runner/work/aquaguard/aquaguard/detection_engine/alert/alert_engine.py:58`
@@ -553,11 +571,12 @@ return jsonify({'error': 'Invalid request'}), 400
 ```python
 from datetime import datetime, timezone
 timestamp = datetime.now(timezone.utc).isoformat() + "Z"
-```
+```text
 
 ---
 
 #### 2. Memory Leak: No Track Cleanup in Filters
+
 **Severity:** MEDIUM-HIGH
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/analysis/confidence_filter.py`
 
@@ -574,11 +593,12 @@ if len(active_track_ids) > 0:
     # Get all tracked IDs from last N frames
     # Remove tracks not seen in last 60 seconds
     confidence_filter.cleanup_stale_tracks(active_track_ids)
-```
+```text
 
 ---
 
 #### 3. Race Condition in Stream Token Refresh
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/frontend/src/components/camera/CameraGrid.js:214-236`
 
@@ -593,6 +613,7 @@ if len(active_track_ids) > 0:
 ### MEDIUM BUGS
 
 #### 4. Timezone Inconsistency
+
 **Severity:** MEDIUM
 **Locations:** Multiple files mix `datetime.utcnow()` and `datetime.now(timezone.utc)`
 
@@ -603,6 +624,7 @@ if len(active_track_ids) > 0:
 ---
 
 #### 5. Database Connection Leak Risk
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/runtime_status.py:125-128`
 
@@ -612,7 +634,7 @@ try:
     cameras = CameraZone.query.filter_by(is_active=True).all()
 except Exception:
     cameras = []  # No db.session.rollback()
-```
+```text
 
 **Impact:** Potential connection leak on database errors.
 
@@ -623,11 +645,12 @@ try:
 except Exception:
     db.session.rollback()
     cameras = []
-```
+```text
 
 ---
 
 #### 6. File Descriptor Leak in MJPEG Stream
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/cameras.py:209-229`
 
@@ -648,13 +671,14 @@ def generate():
     finally:
         if file and not file.closed:
             file.close()
-```
+```text
 
 ---
 
 ### LOW BUGS
 
 #### 7. Missing WebRTC Session ID Validation
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/webrtc.py:341`
 
 **Issue:** Client-provided `session_id` not validated as valid UUID format.
@@ -664,6 +688,7 @@ def generate():
 ---
 
 #### 8. Silent Failure in Cleanup
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/main.py:164-166`
 
 **Issue:** `except OSError: pass` completely silences cleanup failures.
@@ -673,6 +698,7 @@ def generate():
 ---
 
 #### 9. Potential Division by Zero in Frame Rate
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/camera/capture.py:80`
 
 **Issue:** `max(self.frame_rate, 1)` protects against zero, but what if `frame_rate` is negative?
@@ -681,7 +707,7 @@ def generate():
 ```python
 if frame_rate <= 0:
     raise ValueError("frame_rate must be positive")
-```
+```text
 
 ---
 
@@ -690,6 +716,7 @@ if frame_rate <= 0:
 ### HIGH PRIORITY
 
 #### 1. N+1 Query Problem in Reports
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/reports.py:48-59`
 
@@ -699,7 +726,7 @@ zones = CameraZone.query.all()  # 1 query
 for zone in zones:
     zone_detections = query.filter_by(zone_id=zone.zone_id).count()  # N queries
     zone_alerts = query.filter_by(zone_id=zone.zone_id, alert_triggered=True).count()  # N queries
-```
+```text
 
 **Impact:** 2N+1 queries instead of 1 aggregated query. Slow on large datasets.
 
@@ -712,11 +739,12 @@ stats = db.session.query(
     func.count(DetectionEvent.id).label('detections'),
     func.sum(case((DetectionEvent.alert_triggered == True, 1), else_=0)).label('alerts')
 ).filter(...).group_by(DetectionEvent.zone_id).all()
-```
+```text
 
 ---
 
 #### 2. Excessive Context Re-renders
+
 **Severity:** HIGH
 **Location:** `/home/runner/work/aquaguard/aquaguard/frontend/src/context/AlertContext.js:400-438`
 
@@ -729,6 +757,7 @@ stats = db.session.query(
 ---
 
 #### 3. Thread Creation on Hot Path
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/alert/alert_engine.py:104-116`
 
@@ -746,13 +775,14 @@ class AlertEngine:
         self._thread_pool.submit(self._send_mqtt, ...)
         self._thread_pool.submit(self._send_api, ...)
         self._thread_pool.submit(self._log_alert, ...)
-```
+```text
 
 ---
 
 ### MEDIUM PRIORITY
 
 #### 4. Inefficient Frame Copying
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/camera/capture.py:60`
 
 **Issue:** `frame.copy()` creates full copy (potentially 6MB) for every read.
@@ -762,6 +792,7 @@ class AlertEngine:
 ---
 
 #### 5. Missing Database Indexes
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/models.py`
 
 **Issue:** No composite indexes for common query patterns.
@@ -780,11 +811,12 @@ class Alert(db.Model):
     __table_args__ = (
         db.Index('idx_status_triggered_at', 'status', 'triggered_at'),
     )
-```
+```text
 
 ---
 
 #### 6. Infinite Loop in MJPEG Stream
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/cameras.py:212-229`
 
 **Issue:** `while True` with fixed sleep keeps thread alive indefinitely.
@@ -796,12 +828,13 @@ class Alert(db.Model):
 ---
 
 #### 7. Unbounded Alert History
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/frontend/src/context/AlertContext.js:171-172`
 
 **Issue:**
 ```javascript
 setAlertHistory((prev) => [normalizedPayload, ...prev]); // No limit
-```
+```text
 
 **Impact:** Memory usage grows indefinitely.
 
@@ -809,13 +842,14 @@ setAlertHistory((prev) => [normalizedPayload, ...prev]); // No limit
 ```javascript
 const MAX_ALERT_HISTORY = 1000;
 setAlertHistory((prev) => [normalizedPayload, ...prev].slice(0, MAX_ALERT_HISTORY));
-```
+```text
 
 ---
 
 ### LOW PRIORITY
 
 #### 8. No Connection Pooling Configuration
+
 **Location:** `/home/runner/work/aquaguard/aquaguard/detection_engine/alert/api_client.py:25`
 
 **Fix:** Configure pool size:
@@ -825,7 +859,7 @@ from requests.adapters import HTTPAdapter
 adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20)
 self._session.mount('http://', adapter)
 self._session.mount('https://', adapter)
-```
+```text
 
 ---
 
@@ -836,6 +870,7 @@ self._session.mount('https://', adapter)
 ### CRITICAL ISSUES
 
 #### 1. Missing React Error Boundaries
+
 **Severity:** CRITICAL
 **Location:** Frontend — no error boundary components detected
 
@@ -863,13 +898,14 @@ class ErrorBoundary extends React.Component {
         return this.props.children;
     }
 }
-```
+```text
 
 ---
 
 ### HIGH ISSUES
 
 #### 2. Overly Broad Exception Handling
+
 **Severity:** MEDIUM-HIGH
 **Found in:** 15+ locations across detection_engine
 
@@ -877,7 +913,7 @@ class ErrorBoundary extends React.Component {
 ```python
 except Exception as exc:
     logger.error("Some error: %s", exc)
-```
+```text
 
 **Issues:**
 - Catches `KeyboardInterrupt` and `SystemExit` (should not be caught)
@@ -891,11 +927,12 @@ except (ConnectionError, TimeoutError) as exc:
 except ValueError as exc:
     logger.error("Invalid data: %s", exc)
 # Don't catch Exception — let programming errors propagate
-```
+```text
 
 ---
 
 #### 3. Silent Failures in WebRTC
+
 **Severity:** MEDIUM
 **Location:** `/home/runner/work/aquaguard/aquaguard/frontend/src/hooks/useWebRTCStream.js:228-230`
 
@@ -906,7 +943,7 @@ try {
 } catch {
     scheduleRetry(); // No logging or user feedback
 }
-```
+```text
 
 **Fix:** Log errors:
 ```javascript
@@ -914,13 +951,14 @@ try {
     console.error('WebRTC setRemoteDescription failed:', err);
     scheduleRetry();
 }
-```
+```text
 
 ---
 
 ### MEDIUM ISSUES
 
 #### 4. Inconsistent Logging
+
 **Issue:** Mix of `current_app.logger` and `logging.getLogger(__name__)`.
 
 **Fix:** Standardize on one approach across codebase.
@@ -928,6 +966,7 @@ try {
 ---
 
 #### 5. Missing Request Context in Error Logs
+
 **Location:** Multiple backend routes
 
 **Issue:** Errors lack context (user ID, IP, request ID).
@@ -942,11 +981,12 @@ logger.error(
         'request_id': g.get('request_id')
     }
 )
-```
+```text
 
 ---
 
 #### 6. No Structured Logging
+
 **Issue:** All logs use string formatting instead of structured logging (JSON).
 
 **Recommendation:** Use python-json-logger or structlog for better log parsing.
@@ -956,6 +996,7 @@ logger.error(
 ### LOW ISSUES
 
 #### 7. No Error Reporting Service
+
 **Issue:** No integration with Sentry, LogRocket, or similar.
 
 **Recommendation:** Add error tracking for production.
@@ -967,6 +1008,7 @@ logger.error(
 ### Assessment: **Good (8/10)**
 
 ### Strengths
+
 - ✅ **Comprehensive test suite:** 85/85 tests passing
   - Backend: 27/27 tests
   - Detection Engine: 36/36 tests
@@ -978,6 +1020,7 @@ logger.error(
 ### Weaknesses
 
 #### 1. Missing Integration Tests
+
 **Severity:** MEDIUM
 
 No end-to-end tests covering full pipeline:
@@ -990,6 +1033,7 @@ No end-to-end tests covering full pipeline:
 ---
 
 #### 2. Missing Performance/Load Tests
+
 **Severity:** MEDIUM
 
 No tests for:
@@ -1002,6 +1046,7 @@ No tests for:
 ---
 
 #### 3. Missing Error Scenario Tests
+
 **Severity:** MEDIUM
 
 Insufficient tests for:
@@ -1014,6 +1059,7 @@ Insufficient tests for:
 ---
 
 #### 4. Frontend Test Quality Unknown
+
 **Issue:** Test files exist but actual test implementation not analyzed in detail.
 
 **Recommendation:** Ensure tests check:
@@ -1024,6 +1070,7 @@ Insufficient tests for:
 ---
 
 #### 5. CI Configuration Issues
+
 **Location:** `.github/workflows/ci.yml`
 
 **Issue:** CI installs dependencies manually instead of using requirements files consistently.
@@ -1037,6 +1084,7 @@ Insufficient tests for:
 ### Assessment: **Good- (7.5/10)**
 
 ### Strengths
+
 - ✅ **Comprehensive docs directory:** 13 markdown files covering architecture, API, setup, tasks
 - ✅ **Good README:** Clear overview, quick start, feature list
 - ✅ **API reference:** `/docs/API_REFERENCE.md` documents all endpoints
@@ -1046,6 +1094,7 @@ Insufficient tests for:
 ### Weaknesses
 
 #### 1. Missing Security Documentation
+
 **Severity:** HIGH
 
 No documentation on:
@@ -1059,6 +1108,7 @@ No documentation on:
 ---
 
 #### 2. Missing Production Deployment Guide
+
 **Severity:** HIGH
 
 Documentation focuses on development setup. Missing:
@@ -1072,6 +1122,7 @@ Documentation focuses on development setup. Missing:
 ---
 
 #### 3. No Architecture Diagrams
+
 **Severity:** MEDIUM
 
 While `ARCHITECTURE.md` exists, it lacks:
@@ -1084,6 +1135,7 @@ While `ARCHITECTURE.md` exists, it lacks:
 ---
 
 #### 4. Outdated API Documentation
+
 **Severity:** LOW
 
 Some endpoints in code don't match API_REFERENCE.md (e.g., WebRTC endpoints).
@@ -1093,6 +1145,7 @@ Some endpoints in code don't match API_REFERENCE.md (e.g., WebRTC endpoints).
 ---
 
 #### 5. Missing Troubleshooting Guide
+
 **Severity:** LOW
 
 No guide for common issues:
@@ -1121,7 +1174,7 @@ No guide for common issues:
 ```bash
 pip install safety
 safety check -r backend/requirements.txt
-```
+```text
 
 **Recommendations:**
 1. Add `httpx==0.27.2` to requirements.txt
@@ -1157,7 +1210,7 @@ safety check -r backend/requirements.txt
 **CRITICAL ISSUE:**
 ```json
 "axios": "1.7.7"
-```
+```text
 
 **Known Vulnerabilities:**
 - Check CVE database for axios 1.7.7 vulnerabilities
@@ -1174,11 +1227,12 @@ cd frontend
 npm audit
 npm audit fix
 # Review breaking changes before major version updates
-```
+```text
 
 ---
 
 ### Unused Dependencies
+
 **None detected** — all dependencies appear to be used.
 
 ---
@@ -1202,6 +1256,7 @@ npm audit fix
 **Assessment:** Generally good, with issues:
 
 #### Violations Found:
+
 1. **Multiple imports on one line** (5+ locations in detection_engine)
    ```python
    import sys, os  # Should be two lines
@@ -1218,7 +1273,7 @@ npm audit fix
 flake8 backend/ detection_engine/ --max-line-length=100 --statistics
 black backend/ detection_engine/  # Auto-format
 isort backend/ detection_engine/  # Sort imports
-```
+```text
 
 ---
 
@@ -1252,7 +1307,7 @@ def validate_config():
 
 # In create_app():
 validate_config()
-```
+```text
 
 2. **Environment-specific configs not separated**
    - Dev and prod configs mixed in same files
@@ -1270,7 +1325,7 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     # ... production overrides
-```
+```text
 
 ---
 
@@ -1298,7 +1353,7 @@ class ProductionConfig(Config):
 .DS_Store
 .env.local
 .env.production.local
-```
+```text
 
 ---
 
@@ -1331,7 +1386,7 @@ class ProductionConfig(Config):
   uses: snyk/actions/python@master
   env:
     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-```
+```text
 
 ---
 
@@ -1423,7 +1478,7 @@ class ProductionConfig(Config):
 ## OVERALL STATISTICS
 
 | Metric | Count |
-|--------|-------|
+|---|---|
 | **Total Files Analyzed** | 90+ |
 | **Total Lines of Code** | ~6,257 |
 | **Security Issues** | 14 (5 Critical, 4 High, 4 Medium, 1 Low) |
@@ -1440,7 +1495,7 @@ class ProductionConfig(Config):
 **Overall Code Quality Score:** **B- (78/100)**
 
 | Category | Score | Weight | Weighted |
-|----------|-------|--------|----------|
+|---|---|---|---|
 | Architecture | 8/10 | 15% | 1.20 |
 | Code Quality | 7.5/10 | 20% | 1.50 |
 | Security | 4/10 | 25% | 1.00 |
@@ -1465,6 +1520,7 @@ class ProductionConfig(Config):
 ## RECOMMENDATIONS BY ROLE
 
 ### For Project Manager
+
 1. **Block production deployment** until critical security issues resolved
 2. **Allocate 2-3 weeks** for security hardening and critical fixes
 3. **Add security review** to release checklist
@@ -1472,6 +1528,7 @@ class ProductionConfig(Config):
 5. **Set up error monitoring** (Sentry, LogRocket) before launch
 
 ### For System Architect
+
 1. **Refactor God modules** (main.py, AlertContext.js) into smaller components
 2. **Introduce service layer** in backend to separate business logic from routes
 3. **Design state management strategy** for production (Redis for token blocklist, heartbeats)
@@ -1479,6 +1536,7 @@ class ProductionConfig(Config):
 5. **Plan for horizontal scaling** (multi-instance backend deployment)
 
 ### For Backend Developer
+
 1. **Fix critical security issues** (token blocklist → Redis, CORS, rate limiting)
 2. **Add thread synchronization** to shared state
 3. **Extract duplicate helper functions** to utils modules
@@ -1487,6 +1545,7 @@ class ProductionConfig(Config):
 6. **Improve error handling** (specific exceptions, proper rollback)
 
 ### For CV/AI Developer
+
 1. **Delete dead code** (`preprocessor.py`)
 2. **Fix sys.path manipulation** (use proper package installation)
 3. **Fix deprecated datetime calls** (`utcnow()` → `now(timezone.utc)`)
@@ -1495,6 +1554,7 @@ class ProductionConfig(Config):
 6. **Add configuration validation** on startup
 
 ### For Frontend Developer
+
 1. **Fix JWT storage** (migrate to httpOnly cookies)
 2. **Add React Error Boundaries**
 3. **Update dependencies** (axios, react-router, recharts)
@@ -1504,6 +1564,7 @@ class ProductionConfig(Config):
 7. **Fix unbounded history growth**
 
 ### For QA/Tester
+
 1. **Add integration tests** for full pipeline
 2. **Add load tests** for alert storms
 3. **Add fault injection tests** (network failures, disk full)

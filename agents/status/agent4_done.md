@@ -7,7 +7,7 @@
 ## Files Created
 
 | # | File | Task | Description |
-|---|------|------|-------------|
+|---|---|---|---|
 | 1 | `esp32/aquaguard_esp32/config.h` | P4-01 | All hardware and network constants — WiFi SSID/password, MQTT broker IP, port, ALARM_PIN (26), ALARM_DURATION_MS (30 000), DEVICE_ID, all MQTT topics, heartbeat interval, reconnect interval. Include guard prevents double-inclusion. |
 | 2 | `esp32/aquaguard_esp32/aquaguard_esp32.ino` | P4-02 | Full ESP32 Arduino C++ firmware sketch. WiFi connect with blocking retry loop, PubSubClient MQTT with `DEVICE_ID` as client ID, subscribes to `aquaguard/alert` and `aquaguard/alert/reset` at QoS 1, GPIO alarm actuation in `callback()`, 30 s heartbeat publishing `{"device_id", "status", "uptime_ms"}` to `aquaguard/device/status`, full WiFi+MQTT reconnect every `RECONNECT_INTERVAL_MS` in `loop()`. Zero hardcoded literals — all values from `config.h`. ArduinoJson 7.x (`JsonDocument`, not `StaticJsonDocument`). |
 | 3 | `scripts/test_mqtt.py` | P6-01 | Python MQTT integration test. Connects to Mosquitto on `MQTT_BROKER_HOST:MQTT_BROKER_PORT` (env vars, default `localhost:1883`). Uses `paho-mqtt==2.1.0` with `CallbackAPIVersion.VERSION2` and compliant 5-arg `on_connect`. Publishes mock alert `{"alert_id": "test-001", "zone_id": "pool-1", "confidence": 0.92, "timestamp": <iso8601>}` to `aquaguard/alert`. Subscribes to `aquaguard/device/status`, prints received heartbeat, prints PASS (exit 0) or FAIL (exit 1) after 35 s timeout. |
@@ -64,7 +64,7 @@ Task: P4-02"
 
 # 6. Push feature branch
 git push origin feature/agent4-esp32
-```
+```text
 
 ---
 

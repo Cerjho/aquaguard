@@ -77,7 +77,7 @@
 
 ```powershell
 docker compose config
-```
+```text
 
 **Result:** success.
 
@@ -91,7 +91,7 @@ Output summary:
 
 ```powershell
 python scripts/verify_cuda.py
-```
+```text
 
 **Result:** success.
 
@@ -100,7 +100,7 @@ Key output:
 ```text
 13/13 checks passed
 Environment is ready.
-```
+```text
 
 Additional note from output:
 

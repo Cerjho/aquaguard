@@ -16,14 +16,14 @@
 
 **Command:**
 
-```
+```text
 Set-Location "C:\Users\Jhocer Barcela\Desktop\AquaGuard\backend"
 & "...\aquaguard_env\Scripts\pytest.exe" tests/ -v --cov=. --cov-report=term-missing
-```
+```text
 
 **Result: ✅ 27 passed, 1 warning in 11.69s**
 
-```
+```text
 platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.6.0
 collected 27 items
 
@@ -56,16 +56,16 @@ tests/test_reports.py::test_summary_date_range PASSED                [ 96%]
 tests/test_reports.py::test_summary_invalid_dates PASSED             [100%]
 
 27 passed, 1 warning in 11.69s
-```
+```text
 
 **Warning (non-fatal):**
-```
+```text
 routes\auth.py:42: LegacyAPIWarning: The Query.get() method is considered legacy as of the
 1.x series of SQLAlchemy and becomes a legacy construct in 2.0.
-```
+```text
 
 **Coverage:**
-```
+```text
 Name                    Stmts   Miss  Cover   Missing
 -----------------------------------------------------
 app.py                     29      0   100%
@@ -82,13 +82,13 @@ seed.py                    34     34     0%   6-66
 sockets.py                 19     12    37%   13-24, 29
 tests\conftest.py          41      2    95%   51-52
 TOTAL                     628    126    80%
-```
+```text
 
 **Notes:**
 
 ```bash
 cd backend && python -m pytest tests/ -v --cov=. --cov-report=term-missing -p no:cacheprovider
-```
+```text
 
 **Last Run:** 2026-03-17 14:08
 
@@ -100,14 +100,14 @@ cd backend && python -m pytest tests/ -v --cov=. --cov-report=term-missing -p no
 - **Coverage:** 56%
 
 **Test breakdown:**
-```
+```text
 backend/tests/conftest.py       ✓ exists
 backend/tests/test_auth.py      5 tests (4 passed, 1 failed)
 backend/tests/test_events.py    6 tests (3 passed, 3 errors)
 backend/tests/test_alerts.py    5 tests (1 passed, 4 errors)
 backend/tests/test_cameras.py   7 tests (3 passed, 4 errors)
 backend/tests/test_reports.py   4 tests (1 passed, 3 errors)
-```
+```text
 
 **Coverage by module:**
 - `routes/auth.py` — 97%
@@ -126,23 +126,23 @@ backend/tests/test_reports.py   4 tests (1 passed, 3 errors)
 
 **Command:**
 
-```
+```text
 Set-Location "C:\Users\Jhocer Barcela\Desktop\AquaGuard"
 & "...\aquaguard_env\Scripts\pytest.exe" detection_engine/tests/ -v
-```
+```text
 
 **Result: ✅ 36 passed in 19.70s**
 
 ```bash
 pytest detection_engine/tests/ -v
-```
+```text
 
 **Status: NO UNIT TESTS CREATED**
 
 `detection_engine/tests/__init__.py` exists but no test files have been created.
 The following test files from P6-03 are still **missing**:
 
-```
+```text
 platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.6.0
 collected 36 items
 
@@ -187,21 +187,21 @@ detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_l
 **Recommendation:** Agent 1 should add unit tests for their modules in a follow-up task.
 
 36 passed in 19.70s
-```
+```text
 
 ---
 
 ## 3. Frontend Tests
 
 **Command:**
-```
+```text
 Set-Location "C:\Users\Jhocer Barcela\Desktop\AquaGuard\frontend"
 npm test -- --watchAll=false
-```
+```text
 
 **Result: ✅ 22 passed, 4 suites, in 3.762s**
 
-```
+```text
 PASS src/context/AuthContext.test.js
 PASS src/hooks/useApi.test.js
 PASS src/pages/LoginPage.test.js
@@ -211,17 +211,18 @@ Test Suites: 4 passed, 4 total
 Tests:       22 passed, 22 total
 Snapshots:   0 total
 Time:        3.762 s
-```
+```text
 
 **Console warnings (non-fatal, expected in jsdom):**
-```
+```text
 console.warn: [AlertPanel] Could not play alert audio: audio.play is not a function
-```
+```text
 This is expected — jsdom does not implement the Web Audio API. The component handles the error gracefully and no test fails.
 
 #### 2. Detection Engine Module Imports
+
 | Module | Status | Notes |
-|--------|--------|-------|
+|---|---|---|
 | `detection_engine.vision.preprocessor` | ✓ PASS | Implements frame resize + normalize |
 | `detection_engine.vision.detector` | ✓ PASS | YOLOv11s with ByteTrack |
 | `detection_engine.vision.pose_estimator` | ✓ PASS | MediaPipe BlazePose |
@@ -236,8 +237,9 @@ This is expected — jsdom does not implement the Web Audio API. The component h
 **Result: 10/10 PASS — All detection engine modules implemented and importable**
 
 #### 3. Config File Validation
+
 | Check | Status |
-|-------|--------|
+|---|---|
 | `config/cameras.json` valid JSON + schema | ✓ PASS — 1 camera defined |
 | `config/settings.py` has required constants | ✓ PASS |
 | `LIMB_MOTION_STD_THRESHOLD = 0.015` (normalised) | ✓ PASS (R6-B compliant) |
@@ -246,8 +248,9 @@ This is expected — jsdom does not implement the Web Audio API. The component h
 **Result: 4/4 PASS**
 
 #### 4. Flask API Endpoint Tests (test client)
+
 | Endpoint | Expected | Status |
-|----------|----------|--------|
+|---|---|---|
 | POST /api/v1/auth/login (success) | 200 + tokens | ✓ PASS |
 | POST /api/v1/auth/login (wrong password) | 401 | ✓ PASS |
 | POST /api/v1/auth/refresh | 200 + new token | ✓ PASS |
@@ -264,8 +267,9 @@ This is expected — jsdom does not implement the Web Audio API. The component h
 **Result: 12/12 PASS**
 
 #### 5. Critical Rules Verification
+
 | Rule | Check | Status |
-|------|-------|--------|
+|---|---|---|
 | R6-B | `LIMB_MOTION_STD_THRESHOLD = 0.015` (normalized, not pixels) | ✓ PASS |
 | R6-C | `socketio = SocketIO(async_mode='threading', ...)` | ✓ PASS |
 | R6-D | `db.session.commit()` called BEFORE `socketio.emit()` in events.py | ✓ PASS |
@@ -277,8 +281,9 @@ This is expected — jsdom does not implement the Web Audio API. The component h
 **Result: 7/7 PASS**
 
 #### 6. Script Files Validation
+
 | Script | Status |
-|--------|--------|
+|---|---|
 | `scripts/test_mqtt.py` | ✓ PASS — exists |
 | `scripts/verify_cuda.py` | ✓ PASS — exists |
 | `scripts/test_camera.py` | ✓ PASS — created by Agent 5 |
@@ -294,14 +299,14 @@ This is expected — jsdom does not implement the Web Audio API. The component h
 **Command:**
 ```bash
 python scripts/latency_test.py --iterations 30
-```
+```text
 
 **Last Run:** 2026-03-17 14:08
 
 **Modules used:** ✓ REAL DETECTION ENGINE (all modules implemented)
 
 | Stage | Mean (ms) | Median (ms) | P95 (ms) | Max (ms) | Notes |
-|-------|-----------|-------------|----------|----------|-------|
+|---|---|---|---|---|---|
 | Preprocessing | 12.0 | 12.2 | 21.9 | 24.1 | OpenCV resize + normalize |
 | Detection | 2549.8 | 1480.1 | 1921.8 | 34094.7 | YOLOv11s CUDA inference |
 | Pose estimation | 0.03 | 0.0 | 0.0 | 0.2 | MediaPipe BlazePose |
@@ -332,15 +337,16 @@ python scripts/latency_test.py --iterations 30
 ## Overall Summary
 
 | Suite | Collected | Passed | Failed | Errors |
-|-------|-----------|--------|--------|--------|
+|---|---|---|---|---|
 | `backend/tests/` | 27 | **27** | 0 | 0 |
 | `detection_engine/tests/` | 36 | **36** | 0 | 0 |
 | `frontend` (npm test) | 22 | **22** | 0 | 0 |
 | **TOTAL** | **85** | **85** | **0** | **0** |
 
 ✅ **All 85 tests pass. System is ready for production deployment.**
+
 | Item | Status | Notes |
-|------|--------|-------|
+|---|---|---|
 | Backend app factory imports cleanly | ✓ PASS | |
 | All 5 routes registered | ✓ PASS | auth, events, alerts, cameras, reports |
 | JWT auth works (login → token → protected route) | ⚠ PARTIAL | Works manually; test fixture needs fix |
@@ -363,6 +369,7 @@ python scripts/latency_test.py --iterations 30
 ## Issues Encountered
 
 ### Issue 1 — FIXED: Detection Engine Implementation Complete
+
 All detection engine source files have been implemented by Agent 1:
 - `detection_engine/vision/{detector,pose_estimator,preprocessor}.py` ✓
 - `detection_engine/analysis/{behavior_analyzer,confidence_filter}.py` ✓
@@ -373,16 +380,19 @@ All detection engine source files have been implemented by Agent 1:
 **Latency test results with real inference:** 2623.5ms mean (target: ≤3000ms) ✓
 
 ### Issue 2 — PARTIAL: Backend Test Fixtures
+
 The `admin_token` fixture in `conftest.py` fails to extract `access_token` from login response, causing 14 tests to error. Manual API testing confirms authentication works correctly. This is a test harness issue, not a backend code issue.
 
 **Impact:** 14/27 tests show ERROR status (not FAIL)
 **Workaround needed:** Debug conftest.py fixture or test login response format
 
 ### Issue 3 — INFO: No Detection Engine Unit Tests
+
 `detection_engine/tests/` contains only `__init__.py`.  
 The 4 test files from P6-03 are not in scope for Agent 5 (testing phase). Unit tests should be created by Agent 1 (implementation phase) as part of their development workflow.
 
 ### Issue 4 — INFO: No Frontend Tests
+
 `frontend/src/` has no `.test.js` or `.spec.js` files.  
 Agent 3 should add React component tests for coverage.
 
@@ -391,7 +401,7 @@ Agent 3 should add React component tests for coverage.
 ## Critical Rules Verification Status
 
 | Rule | Description | Status |
-|------|-------------|--------|
+|---|---|---|
 | R6-A | One DrowningDetector per camera | ✓ PASS (verified in main.py) |
 | R6-B | MediaPipe threshold 0.015 (normalized) | ✓ PASS in config/settings.py |
 | R6-C | Flask-SocketIO `async_mode='threading'` | ✓ PASS |
@@ -437,7 +447,7 @@ Optional follow-up tasks (non-blocking):
 ## Tasks Completed
 
 | Task | Status |
-|------|--------|
+|---|---|
 | P6-01 `scripts/test_camera.py` | ✓ DONE |
 | P6-02 Backend tests (Agent 2 created) | ✓ VERIFIED (12/27 pass, fixtures need fix) |
 | P6-03 Detection engine tests | ⚠ DEFERRED (unit tests are Agent 1 scope) |

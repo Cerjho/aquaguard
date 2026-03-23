@@ -7,8 +7,7 @@ Real-time drowning detection using YOLOv11 + MediaPipe Pose, ESP32 physical alar
 ## Team
 
 | Role | Member |
-
-|------|--------|
+|---|---|
 | Project Manager / Requirements Analyst | Jarvy Joy Longenos |
 | System Designer / Architect | Joshua Gutierrez |
 | AI/CV Developer (Python / YOLOv11) | Jhocer Barcela |
@@ -25,8 +24,7 @@ AquaGuard processes live RTSP or webcam video on an edge server using YOLOv11s f
 ## Tech Stack
 
 | Layer | Technology |
-
-|-------|------------|
+|---|---|
 | Detection | YOLOv11s + MediaPipe Pose |
 | Backend | Python Flask + Flask-SocketIO |
 | Frontend | React.js + Tailwind CSS |
@@ -62,7 +60,7 @@ git clone https://github.com/Cerjho/aquaguard.git
 Set-Location aquaguard
 python -m venv aquaguard_env
 .\aquaguard_env\Scripts\Activate.ps1
-```
+```text
 
 ### 2. Install Python dependencies
 
@@ -70,7 +68,7 @@ python -m venv aquaguard_env
 python -m pip install --upgrade pip
 python -m pip install -r .\backend\requirements.txt
 python -m pip install -r .\detection_engine\requirements.txt
-```
+```text
 
 ### 3. Install frontend dependencies
 
@@ -78,7 +76,7 @@ python -m pip install -r .\detection_engine\requirements.txt
 Set-Location .\frontend
 npm install
 Set-Location ..
-```
+```text
 
 ### 4. Configure environment variables
 
@@ -88,7 +86,7 @@ Copy-Item .\.env.example .\backend\.env
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_WS_URL=http://localhost:5000
 "@ | Set-Content .\frontend\.env
-```
+```text
 
 Place the model weights file manually at `detection_engine/models/aquaguard_yolov11s.pt` before running the detection engine.
 
@@ -100,19 +98,19 @@ $env:FLASK_APP = "wsgi.py"
 python -m flask db upgrade
 python seed.py
 Set-Location ..
-```
+```text
 
 ### 6. Start all services
 
 ```powershell
 .\scripts\start_dev.ps1
-```
+```text
 
 ### 7. Run the detection engine
 
 ```powershell
 & ".\aquaguard_env\Scripts\python.exe" .\detection_engine\main.py
-```
+```text
 
 ### 8. Production backend startup (Gunicorn)
 
@@ -120,7 +118,7 @@ Set-Location ..
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
 Set-Location ..
-```
+```text
 
 ---
 
@@ -151,7 +149,7 @@ Set-Location ..
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\pytest.exe" tests/ -v --cov=. --cov-report=term-missing
 Set-Location ..
-```
+```text
 
 Result: 27/27 passing.
 
@@ -159,7 +157,7 @@ Result: 27/27 passing.
 
 ```powershell
 & ".\aquaguard_env\Scripts\pytest.exe" .\detection_engine\tests\ -v
-```
+```text
 
 Result: 36/36 passing.
 
@@ -169,7 +167,7 @@ Result: 36/36 passing.
 Set-Location .\frontend
 npm test -- --watchAll=false
 Set-Location ..
-```
+```text
 
 Result: 22/22 passing.
 
@@ -206,8 +204,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 ## Performance
 
 | Metric | Value |
-
-|--------|-------|
+|---|---|
 | Mean detection latency | 2623ms |
 | P95 latency | 1932ms |
 | Target | <= 3000ms |

@@ -20,15 +20,16 @@ Never touch: `backend/` source code, `frontend/`, `detection_engine/` source cod
 ## Prerequisites — Check Before Starting
 
 Run:
-```
+```text
 ls agents/status/agent2_done.md
 ls agents/status/agent1_done.md
 ls agents/status/agent5_done.md
-```
+```text
 All three must exist before you start. These agents own the source code you
 will be documenting.
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely
 2. Read docs/GIT_WORKFLOW.md completely
 3. Read docs/AquaGuard_System_Design.md — this is your primary reference
@@ -41,11 +42,12 @@ will be documenting.
 Do not write any file until all eight are read.
 
 ## Git Setup — Run This First
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent7-docs
-```
+```text
 
 ---
 
@@ -56,16 +58,16 @@ git checkout -b feature/agent7-docs
 This file is required by `backend/Dockerfile` to build correctly.
 Run from inside the venv:
 
-```
+```text
 pip freeze > backend/requirements.txt
-```
+```text
 
 Review the output and remove any packages that are clearly not backend
 dependencies (e.g. torch, mediapipe, ultralytics — those belong to
 detection_engine/requirements.txt only).
 
 The backend requirements should include only:
-```
+```text
 flask==3.0.3
 flask-socketio==5.3.6
 flask-jwt-extended==4.6.0
@@ -82,13 +84,13 @@ requests==2.32.3
 pytest==8.3.3
 pytest-cov==5.0.0
 pytest-mock==3.14.0
-```
+```text
 
 Commit:
-```
+```text
 git add backend/requirements.txt
 git commit -m "chore(deps): add backend requirements.txt for Docker build  Task: P8-01"
-```
+```text
 
 ---
 
@@ -202,16 +204,16 @@ See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
 ## License
 Academic project — Mabini Colleges, Inc. 2025–2026
-```
+```text
 
 Fill in all sections with real content from the system design doc and agent
 status reports. Do not leave any section as a placeholder.
 
 Commit:
-```
+```text
 git add README.md
 git commit -m "docs(readme): add complete project README with setup and test results  Task: P8-02"
-```
+```text
 
 ---
 
@@ -242,10 +244,10 @@ on Windows from scratch. Must cover:
   machine's local IP before flashing
 
 Commit:
-```
+```text
 git add docs/SETUP_GUIDE.md
 git commit -m "docs(setup): add complete Windows developer setup guide  Task: P8-03"
-```
+```text
 
 ---
 
@@ -296,7 +298,7 @@ Connection: `io(WS_URL, { auth: { token: <access_token> } })`
 ---
 
 ## Error Responses
-```
+```text
 
 For each endpoint include:
 - Method and path
@@ -306,10 +308,10 @@ For each endpoint include:
 - Notes on behavior
 
 Commit:
-```
+```text
 git add docs/API_REFERENCE.md
 git commit -m "docs(api): add complete REST API and WebSocket reference  Task: P8-04"
-```
+```text
 
 ---
 
@@ -353,16 +355,16 @@ paths:
     get:
       # ...
   # etc for all endpoints
-```
+```text
 
 Define full request/response schemas for every endpoint. Use the JSON
 examples from docs/API_REFERENCE.md as the basis.
 
 Commit:
-```
+```text
 git add docs/OPENAPI.yaml
 git commit -m "docs(openapi): add OpenAPI 3.0 spec for all API endpoints  Task: P8-05"
-```
+```text
 
 ---
 
@@ -382,7 +384,7 @@ Write a technical architecture document covering:
 10. **Performance characteristics** — latency breakdown per stage
 
 Draw the data flow using ASCII:
-```
+```text
 Camera (RTSP/USB)
       │
       ▼
@@ -405,21 +407,21 @@ AlertEngine (3 parallel daemon threads)
    ├── MQTTClient ──► ESP32 GPIO alarm
    ├── APIClient  ──► Flask POST /events ──► DB + SocketIO ──► React dashboard
    └── Logger     ──► system_logs
-```
+```text
 
 Commit:
-```
+```text
 git add docs/ARCHITECTURE.md
 git commit -m "docs(arch): add system architecture reference document  Task: P8-06"
-```
+```text
 
 ---
 
 ## Push and Open PR
 
-```
+```text
 git push origin feature/agent7-docs
-```
+```text
 
 Open PR on GitHub:
 - Base: `develop`
@@ -437,5 +439,6 @@ Open PR on GitHub:
 - [ ] All test result numbers match agent5_done.md exactly (85/85, 27/27, 36/36, 22/22)
 
 ## Completion
+
 Write `agents/status/agent7_done.md` with list of all files created and
 word count for each document.

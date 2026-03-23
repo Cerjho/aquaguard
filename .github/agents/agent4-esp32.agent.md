@@ -11,6 +11,7 @@ You write Arduino C++ firmware. Never touch: backend/, frontend/, detection_engi
 ## No Prerequisites — Start Immediately
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely
 2. Read docs/GIT_WORKFLOW.md completely
 3. Read docs/IMPLEMENTATION_PLAN.md Phase 4
@@ -19,13 +20,15 @@ You write Arduino C++ firmware. Never touch: backend/, frontend/, detection_engi
 6. Read docs/TECH_STACK_LOCK.md Arduino library versions
 
 ## Git Setup
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent4-esp32
-```
+```text
 
 ## Build Order
+
 1. esp32/aquaguard_esp32/config.h
    - Define: WIFI_SSID, WIFI_PASSWORD, MQTT_BROKER, MQTT_PORT=1883, ALARM_PIN=26, ALARM_DURATION_MS=30000, DEVICE_ID
 
@@ -44,7 +47,8 @@ git checkout -b feature/agent4-esp32
    - Print PASS/FAIL
 
 ## Commits
-```
+
+```text
 git add esp32/aquaguard_esp32/config.h
 git commit -m "feat(esp32): add firmware configuration header  Task: P4-01"
 
@@ -55,16 +59,18 @@ git add scripts/test_mqtt.py
 git commit -m "test(mqtt): add mock alert publisher for broker verification  Task: P6-01"
 
 git push origin feature/agent4-esp32
-```
+```text
 
 ## Verification
-```
+
+```text
 .\aquaguard_env\Scripts\Activate.ps1
 python scripts/test_mqtt.py
-```
+```text
 Physical ESP32 flashing is done by the human — not this agent.
 
 ## Completion
+
 Open PR: base=develop, compare=feature/agent4-esp32
 Title: feat(agent4): complete ESP32 firmware and MQTT test — Phase 4
 Write agents/status/agent4_done.md

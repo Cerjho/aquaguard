@@ -21,8 +21,8 @@ What should happen.
 What actually happens.
 
 **Error Output:**
-```
+```text
 paste error here
-```
+```text
 
 **Agent Assigned:** Agent {N}

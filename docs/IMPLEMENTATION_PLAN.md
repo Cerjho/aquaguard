@@ -30,7 +30,7 @@ Activate the existing environment:
 
 ```bash
 .\aquaguard_env\Scripts\Activate.ps1
-```
+```text
 
 Verify CUDA is working before installing anything else:
 
@@ -38,13 +38,13 @@ Verify CUDA is working before installing anything else:
 import torch
 assert torch.cuda.is_available(), "CUDA not found — check PyTorch CUDA installation"
 print(torch.cuda.get_device_name(0))  # Expected: NVIDIA GeForce RTX 2050
-```
+```text
 
 If CUDA returns `False`, do NOT reinstall PyTorch blindly. Check the driver first:
 
 ```bash
 nvidia-smi   # confirms driver and CUDA version
-```
+```text
 
 Install remaining dependencies that ultralytics does not include — run inside `aquaguard_env`:
 
@@ -56,7 +56,7 @@ pip install python-socketio==5.11.3 python-engineio==4.9.1
 pip install paho-mqtt==2.1.0
 pip install python-dotenv==1.0.1 pymysql==1.1.1 requests==2.32.3
 pip install pytest==8.3.3 pytest-cov==5.0.0 pytest-mock==3.14.0
-```
+```text
 
 Verify all key installs:
 
@@ -66,7 +66,7 @@ python -c "import mediapipe; print('MediaPipe OK')"
 python -c "import flask; print('Flask', flask.__version__)"
 python -c "import paho.mqtt; print('paho-mqtt OK')"
 python -c "import cv2; print('OpenCV', cv2.__version__)"
-```
+```text
 
 > **requirements.txt** should still be committed to the repo for documentation purposes, but the agent must NOT run `pip install -r requirements.txt` from scratch — only install missing packages individually as listed above.
 
@@ -77,7 +77,7 @@ Node.js is installed system-wide — it does not go inside `aquaguard_env`. Inst
 ```bash
 cd frontend
 npm install
-```
+```text
 
 ### 1.3 MQTT Broker Setup
 
@@ -86,13 +86,13 @@ Download and install Eclipse Mosquitto. Place config at `mqtt/mosquitto.conf`:
 ```text
 listener 1883
 allow_anonymous true
-```
+```text
 
 Start the broker:
 
 ```bash
 mosquitto -c mqtt/mosquitto.conf
-```
+```text
 
 ### 1.4 Model Weights
 
@@ -100,7 +100,7 @@ Place the Kaggle-trained model weights at:
 
 ```text
 detection_engine/models/aquaguard_yolov11s.pt
-```
+```text
 
 Verify the model loads:
 
@@ -108,7 +108,7 @@ Verify the model loads:
 from ultralytics import YOLO
 model = YOLO("detection_engine/models/aquaguard_yolov11s.pt")
 model.info()
-```
+```text
 
 ---
 
@@ -164,7 +164,7 @@ score += 0.25  if are_arms_elevated(landmarks)
 score += 0.20  if no_limb_motion(track_id, landmarks)   # requires history
 score += 0.15  if is_face_submerged(landmarks)
 score += 0.10  if (yolo_class == "drowning" and yolo_confidence > 0.6)
-```
+```text
 
 Also apply temporal consistency bonus:
 
@@ -190,7 +190,7 @@ LIMB_MOTION_STD_THRESHOLD = 0.015   # in config/settings.py
 
 # WRONG — never do this
 LIMB_MOTION_STD_THRESHOLD_PX = 15   # MediaPipe does NOT return pixels
-```
+```text
 
 ### 2.5 False Positive Filter
 
@@ -230,7 +230,7 @@ SNAPSHOT_DIR = os.path.join(BASE_DIR, 'backend', 'snapshots')
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
 alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=SNAPSHOT_DIR)
-```
+```text
 
 ```python
 # detection_engine/alert/alert_engine.py
@@ -261,7 +261,7 @@ class AlertEngine:
         }
         threading.Thread(target=self.mqtt.publish_alert, args=(payload,), daemon=True).start()
         threading.Thread(target=self.api.log_event,      args=(payload,), daemon=True).start()
-```
+```text
 
 ### 2.8 MQTT Client
 
@@ -312,7 +312,7 @@ class MQTTClient:
             self.client.reconnect()
         except Exception as e:
             logger.error(f"Reconnect failed: {e}")
-```
+```text
 
 **File:** `detection_engine/main.py`
 
@@ -330,7 +330,7 @@ detectors = {
     zone_id: DrowningDetector(model_path)
     for zone_id in registry.cameras.keys()
 }
-```
+```text
 
 Full main loop structure:
 
@@ -365,7 +365,7 @@ try:
                     alert_eng.dispatch(zone_id, det.track_id, score, frame)
 except KeyboardInterrupt:
     registry.stop_all()
-```
+```text
 
 Note the `SNAPSHOT_DIR` resolution using `__file__` — this is the correct cross-process path resolution (see gap fix in Section 2.6).
 
@@ -402,7 +402,7 @@ def create_app():
     cors.init_app(app, origins=["http://localhost:3000"])
     # register blueprints here
     return app
-```
+```text
 
 **CRITICAL — emitting from inside a route:** Import the `socketio` instance from `extensions.py` directly in your route file. Do not re-initialize SocketIO inside a route. The correct pattern is:
 
@@ -420,7 +420,7 @@ def log_event():
         # Emit AFTER commit so alert_id exists
         socketio.emit('alert_event', alert.to_dict())  # correct
     return jsonify({'event_id': event.id}), 201
-```
+```text
 
 ### 3.2 Database Models
 
@@ -520,7 +520,7 @@ The Flask backend emits `alert_event` when `POST /api/v1/events` receives an `al
 #define ALARM_PIN       26
 #define ALARM_DURATION_MS 30000
 #define DEVICE_ID       "ESP32_AquaGuard_01"
-```
+```text
 
 ---
 
@@ -534,14 +534,14 @@ cd frontend
 npm install axios socket.io-client recharts react-router-dom
 npm install -D tailwindcss postcss autoprefixer
 npx tailwindcss init -p
-```
+```text
 
 **Create `frontend/.env`** — CRA automatically exposes variables prefixed with `REACT_APP_`:
 
 ```env
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_WS_URL=http://localhost:5000
-```
+```text
 
 **How to consume `.env` values in React code:**
 
@@ -579,7 +579,7 @@ export function useAlertSocket(onAlert, onCameraStatus) {
         return () => socket.disconnect();
     }, [onAlert, onCameraStatus]);
 }
-```
+```text
 
 **NEVER hardcode `http://localhost:5000` directly in component files.** Always import from `constants.js`.
 
@@ -618,7 +618,7 @@ JWT_SECRET_KEY=generate_with_secrets_module
 MQTT_BROKER_HOST=localhost
 MQTT_BROKER_PORT=1883
 FLASK_ENV=development
-```
+```text
 
 ### 6.2 Database Initialization
 
@@ -628,7 +628,7 @@ flask db init
 flask db migrate -m "initial schema"
 flask db upgrade
 python seed.py    # creates default admin user
-```
+```text
 
 **`seed.py` — exact bcrypt pattern to use with Flask-Bcrypt:**
 
@@ -667,7 +667,7 @@ with app.app_context():
 
     db.session.commit()
     print("Seed complete.")
-```
+```text
 
 **Verifying passwords at login — use `bcrypt.check_password_hash()`:**
 
@@ -677,7 +677,7 @@ from extensions import bcrypt
 user = User.query.filter_by(username=data['username']).first()
 if user and bcrypt.check_password_hash(user.password_hash, data['password']):
     # issue JWT
-```
+```text
 
 ### 6.3 start_dev.sh
 
@@ -705,7 +705,7 @@ python -m flask run --port=5000
 
 echo ""
 echo "All services started. Detection engine: run manually with: python detection_engine/main.py"
-```
+```text
 
 **On Windows, run each service manually in separate terminals** instead of using this script. Make sure to run `.\aquaguard_env\Scripts\Activate.ps1` in each terminal before starting Flask or the detection engine.
 
@@ -782,7 +782,7 @@ def _seed_test_data(app):
         )
         _db.session.add_all([admin, guard, zone])
         _db.session.commit()
-```
+```text
 
 ### 6.5 Docker Compose
 
@@ -814,20 +814,20 @@ Run unit tests:
 ```bash
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
-```
+```text
 
 Run React tests:
 
 ```bash
 cd frontend
 npm test
-```
+```text
 
 Run benchmark:
 
 ```bash
 python detection_engine/benchmark.py
-```
+```text
 
 See TASK_BREAKDOWN.md for detailed test case specifications per module.
 

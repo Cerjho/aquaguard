@@ -32,7 +32,7 @@ AlertEngine (bounded worker pool)
    +-- MQTTClient --> ESP32 GPIO alarm
    +-- APIClient  --> Flask POST /events --> DB + SocketIO --> React dashboard
    +-- Logger     --> system logs
-```
+```text
 
 ```mermaid
 flowchart TD
@@ -50,7 +50,7 @@ flowchart TD
       backend --> db[(PostgreSQL/SQLite)]
       backend --> ws[Socket.IO]
       ws --> ui[React Dashboard]
-```
+```text
 
 ## 2. Component Descriptions
 
@@ -152,14 +152,14 @@ raw_score =
 + 0.20 * no_limb_motion
 + 0.15 * face_submerged
 + 0.10 * yolo_class_score
-```
+```text
 
 Temporal consistency bonus:
 
 ```text
 temporal_ratio = count(last_5_raw_scores > 0.5) / 5
 final_score = min(1.0, raw_score * (1.0 + 0.1 * temporal_ratio))
-```
+```text
 
 ### Stage 4: Rolling Confidence Filter
 
@@ -171,7 +171,7 @@ Trigger condition:
 mean(last_15_scores) > 0.75
 AND
 count(last_10_scores > 0.65) >= 10
-```
+```text
 
 On trigger, track buffer is cleared to avoid immediate retrigger loops.
 

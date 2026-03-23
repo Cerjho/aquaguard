@@ -61,8 +61,12 @@ def login():
             expires_delta=timedelta(days=30)
         )
     else:
-        access_token = create_access_token(identity=str(user.id), additional_claims=additional_claims)
-        refresh_token = create_refresh_token(identity=str(user.id), additional_claims=additional_claims)
+        access_token = create_access_token(
+            identity=str(user.id), additional_claims=additional_claims
+        )
+        refresh_token = create_refresh_token(
+            identity=str(user.id), additional_claims=additional_claims
+        )
 
     response = jsonify({
         'access_token':  access_token,

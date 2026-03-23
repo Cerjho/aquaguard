@@ -22,13 +22,18 @@ export function AuthProvider({ children }) {
     * Calls POST /api/v1/auth/login and relies on backend-set httpOnly cookies.
    * @param {string} username
    * @param {string} password
+   * @param {boolean} rememberMe - If true, requests extended token expiration
    * @returns {Promise<boolean>} true on success, false on failure
    */
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, rememberMe = false) => {
     setLoading(true);
     setAuthError(null);
     try {
-      const response = await api.post('/api/v1/auth/login', { username, password });
+      const response = await api.post('/api/v1/auth/login', {
+        username,
+        password,
+        remember_me: rememberMe
+      });
       const { user } = response.data;
 
       setCurrentUser(user);

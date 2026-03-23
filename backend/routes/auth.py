@@ -35,6 +35,7 @@ def login():
     data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()
     password = data.get('password', '')
+    remember_me = data.get('remember_me', False)
 
     if not username or not password:
         return jsonify({'error': 'username and password required'}), 400
@@ -44,8 +45,24 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     additional_claims = {'role': user.role}
-    access_token  = create_access_token(identity=str(user.id), additional_claims=additional_claims)
-    refresh_token = create_refresh_token(identity=str(user.id), additional_claims=additional_claims)
+
+    # If remember_me is True, use extended token expiration (30 days)
+    # Otherwise use default expiration from config
+    from datetime import timedelta
+    if remember_me:
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims=additional_claims,
+            expires_delta=timedelta(days=30)
+        )
+        refresh_token = create_refresh_token(
+            identity=str(user.id),
+            additional_claims=additional_claims,
+            expires_delta=timedelta(days=30)
+        )
+    else:
+        access_token = create_access_token(identity=str(user.id), additional_claims=additional_claims)
+        refresh_token = create_refresh_token(identity=str(user.id), additional_claims=additional_claims)
 
     response = jsonify({
         'access_token':  access_token,

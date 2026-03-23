@@ -90,3 +90,42 @@ def test_me_endpoint_with_invalid_token(client):
     resp = client.get('/api/v1/auth/me',
                       headers={'Authorization': 'Bearer invalid-token'})
     assert resp.status_code == 422
+
+
+def test_login_with_remember_me_false(client):
+    """Test that login without remember_me uses default token expiration."""
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'admin',
+        'password': 'adminpass',
+        'remember_me': False
+    })
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'access_token' in data
+    assert 'refresh_token' in data
+    assert data['user']['username'] == 'admin'
+
+
+def test_login_with_remember_me_true(client):
+    """Test that login with remember_me=true succeeds and returns tokens."""
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'admin',
+        'password': 'adminpass',
+        'remember_me': True
+    })
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'access_token' in data
+    assert 'refresh_token' in data
+    assert data['user']['username'] == 'admin'
+
+
+def test_login_remember_me_defaults_to_false(client):
+    """Test that remember_me defaults to False when not provided."""
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'admin',
+        'password': 'adminpass'
+    })
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert 'access_token' in data

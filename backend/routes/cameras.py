@@ -170,7 +170,7 @@ def _validate_stream_token(token, zone_id):
     return True, None
 
 
-@cameras_bp.route('/cameras/<zone_id>/stream-token', methods=['POST'])
+@cameras_bp.route('/cameras/<zone_id>/stream-token', methods=['GET', 'POST'])
 @jwt_required()
 def create_stream_token(zone_id):
     CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()

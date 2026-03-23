@@ -97,7 +97,7 @@ function CameraGrid({ reloadToken = 0 }) {
   const mintStreamToken = useCallback(async (zoneId) => {
     if (!zoneId) return null;
     try {
-      const res = await api.post(`/api/v1/cameras/${zoneId}/stream-token`);
+      const res = await api.get(`/api/v1/cameras/${zoneId}/stream-token`);
       const token = (
         res?.data?.stream_token
         || res?.data?.token

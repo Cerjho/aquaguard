@@ -35,6 +35,20 @@ def test_webrtc_offer_accepts_jwt_and_returns_contract_shape(client, admin_token
         assert payload['fallback']['reason']
 
 
+def test_webrtc_ice_config_accepts_cookie_jwt(client):
+    login = client.post('/api/v1/auth/login', json={
+        'username': 'admin',
+        'password': 'adminpass',
+    })
+    assert login.status_code == 200
+
+    # No Authorization header: request should still be authenticated via JWT cookie.
+    resp = client.get('/api/v1/webrtc/ice-config')
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload.get('auth_type') == 'jwt_cookie'
+
+
 def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
     offer = client.post('/api/v1/webrtc/offer',
                         headers=_auth_headers(admin_token),

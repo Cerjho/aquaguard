@@ -10,14 +10,14 @@ Copilot assists with in this repository. Follow them strictly.
 - Always branch off `develop`, never off `main`
 - Branch names must follow this format:
 
-```
+```text
 feat/short-description
 fix/short-description
 refactor/short-description
 docs/short-description
 test/short-description
 chore/short-description
-```
+```text
 
 - Never create sub-PR branches (no `copilot/sub-pr-*` patterns)
 - Never create session or worktree branches
@@ -31,9 +31,9 @@ chore/short-description
 
 - Every commit message must follow Conventional Commits format:
 
-```
+```text
 type(scope): short description in lowercase
-```
+```text
 
 - Allowed types: `feat` `fix` `refactor` `docs`
   `test` `chore` `perf` `style`
@@ -83,7 +83,7 @@ git merge --squash feat/your-feature-name
 git commit -m "feat(scope): describe the feature"
 git branch -d feat/your-feature-name
 git push origin --delete feat/your-feature-name
-```
+```text
 
 - Never use plain `git merge` into `develop` or `main`
 - Never use `git merge --no-ff` (creates noisy merge commits)
@@ -104,7 +104,7 @@ git commit -m "release: AquaGuard vX.X.X"
 git tag vX.X.X
 git push origin main
 git push origin vX.X.X
-```
+```text
 
 ---
 
@@ -125,7 +125,7 @@ git push origin vX.X.X
 
 Every PR must include:
 
-```
+```text
 ## What
 One sentence describing what this PR does.
 
@@ -143,7 +143,7 @@ One sentence explaining why this change is needed.
 ## Single Responsibility Check
 Does this PR do only ONE thing? Yes / No
 If No — split it before opening.
-```
+```text
 
 ---
 
@@ -189,6 +189,7 @@ in this repository. Follow them strictly across all modules.
 ## 10. Python Rules (Backend + Detection Engine)
 
 ### Style
+
 - Follow **PEP 8** strictly — max line length is **88 chars**
   (Black formatter standard)
 - Use **type hints** on all function signatures:
@@ -198,12 +199,13 @@ def get_camera(camera_id: int) -> Camera | None:
 
 # Bad
 def get_camera(camera_id):
-```
+```text
 - Use **f-strings** only — never `%` formatting or `.format()`
 - Always use **snake_case** for variables and functions
 - Always use **PascalCase** for classes
 
 ### Structure
+
 - Keep functions under **30 lines** — if longer, decompose
 - One class per file unless tightly coupled
 - Group imports in this order with a blank line between:
@@ -212,6 +214,7 @@ def get_camera(camera_id):
   3. Local modules
 
 ### Error Handling
+
 - Always catch **specific** exceptions — never bare `except:`
 ```python
 # Good
@@ -225,7 +228,7 @@ try:
     result = detect_frame(frame)
 except:
     pass
-```
+```text
 - Use **structured logging** — never `print()` in production code:
 ```python
 # Good
@@ -233,15 +236,17 @@ logger.info("Camera %s connected", camera_id)
 
 # Bad
 print(f"Camera {camera_id} connected")
-```
+```text
 
 ### Database
+
 - Never use raw SQL strings — always use SQLAlchemy ORM
 - Never use `Query.get()` — use `db.session.get()` instead
 - Always close sessions in a `finally` block or use context managers
 - Never expose database errors directly to API responses
 
 ### Security
+
 - Never hardcode secrets, API keys, or passwords
 - Always load secrets from environment variables or secret files
 - Always validate and sanitize all user inputs
@@ -252,6 +257,7 @@ print(f"Camera {camera_id} connected")
 ## 11. React / Frontend Rules
 
 ### Style
+
 - Use **functional components** only — never class components
 - Use **TypeScript types** or PropTypes on all component props
 - Always use **camelCase** for variables and functions
@@ -259,6 +265,7 @@ print(f"Camera {camera_id} connected")
 - Max component file length: **150 lines** — decompose if longer
 
 ### Hooks
+
 - Never call hooks inside conditions or loops
 - Extract complex hook logic into **custom hooks**:
 ```javascript
@@ -268,9 +275,10 @@ const { alerts, isLoading } = useAlertFeed(cameraId)
 // Bad — logic dumped directly in component
 const [alerts, setAlerts] = useState([])
 useEffect(() => { /* 40 lines of logic */ }, [])
-```
+```text
 
 ### State Management
+
 - Keep state as **local as possible**
 - Never store derived data in state — compute it instead
 - Always clean up `useEffect` subscriptions and timers:
@@ -280,14 +288,16 @@ useEffect(() => {
   const socket = connectSocket()
   return () => socket.disconnect()
 }, [])
-```
+```text
 
 ### Error Handling
+
 - Always handle loading and error states in components
 - Never let an unhandled promise rejection reach the user
 - Always show a meaningful fallback UI on errors
 
 ### Performance
+
 - Never recreate objects or arrays inline in JSX props
 - Use `useCallback` for handlers passed to child components
 - Use `useMemo` for expensive computations
@@ -303,7 +313,7 @@ useEffect(() => {
 if frame is None or frame.size == 0:
     logger.warning("Empty frame received, skipping")
     return None
-```
+```text
 - Always validate positive values for frame rate,
   resolution, and confidence thresholds on initialization
 - Never block the main detection loop with I/O operations
@@ -322,7 +332,7 @@ if frame is None or frame.size == 0:
   "data": {},
   "message": "optional human readable string"
 }
-```
+```text
 - Never return raw exceptions or stack traces in API responses
 - Always return correct HTTP status codes:
   - `200` — success

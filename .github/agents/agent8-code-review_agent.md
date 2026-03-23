@@ -10,22 +10,25 @@ You READ, AUDIT, and REPORT. If you find a bug, you write a fix request to
 `agents/queue/fix_{target_agent}.md` — you never edit another agent's files directly.
 
 ## Your Scope
+
 - Read access to ALL source files across the entire repo
 - Write access ONLY to:
   - `agents/status/agent8_review_report.md`
   - `agents/queue/fix_agent{N}.md` (bug reports to other agents)
 
 ## Prerequisites — All Agents Must Be Done First
-```
+
+```text
 ls agents/status/agent1_done.md
 ls agents/status/agent2_done.md
 ls agents/status/agent3_done.md
 ls agents/status/agent4_done.md
 ls agents/status/agent5_done.md
-```
+```text
 If any are missing, wait. Do not begin review until all five exist.
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely — this is your audit checklist
 2. Read docs/IMPLEMENTATION_PLAN.md completely — this is your spec
 3. Read docs/AquaGuard_System_Design.md — ground truth for behavior
@@ -35,11 +38,12 @@ If any are missing, wait. Do not begin review until all five exist.
 Do not begin code review until all five are read.
 
 ## Git Setup
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent8-code-review
-```
+```text
 
 ---
 
@@ -53,13 +57,13 @@ Work through each section below in order. For every issue found:
 - 🟢 INFO — style, minor inconsistency, or improvement suggestion
 
 For each finding write:
-```
+```text
 [SEVERITY] File: path/to/file.py Line: N
 Issue: what is wrong
 Spec: what the spec requires (cite IMPLEMENTATION_PLAN.md or AGENT_RULES.md section)
 Fix: what needs to change
 Owner: Agent N
-```
+```text
 
 ---
 
@@ -69,6 +73,7 @@ Do not trust the agent status reports. Read the actual source files and
 verify each rule yourself.
 
 ### R6-A — One DrowningDetector per camera
+
 Open `detection_engine/main.py`.
 Verify: detectors are instantiated as a dict keyed by zone_id.
 FAIL if: a single detector instance is passed to multiple cameras.
@@ -76,9 +81,10 @@ FAIL if: a single detector instance is passed to multiple cameras.
 # CORRECT pattern to look for:
 detectors = {zone_id: DrowningDetector(model_path)
              for zone_id in registry.cameras.keys()}
-```
+```text
 
 ### R6-B — MediaPipe normalized coordinates
+
 Open `detection_engine/analysis/behavior_analyzer.py`.
 Verify: `LIMB_MOTION_STD_THRESHOLD` comparison uses value from `config/settings.py`.
 Open `config/settings.py`.
@@ -86,37 +92,43 @@ Verify: `LIMB_MOTION_STD_THRESHOLD = 0.015` (NOT 15, NOT 0.15).
 FAIL if: any pixel-based comparison exists anywhere in behavior_analyzer.py.
 
 ### R6-C — Flask-SocketIO async_mode
+
 Open `backend/extensions.py`.
 Verify: `socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")`
 FAIL if: `async_mode` is missing or set to anything other than `'threading'`.
 
 ### R6-D — socketio.emit after db.session.commit
+
 Open `backend/routes/events.py`.
 Search for every `socketio.emit` call.
 Verify: `db.session.commit()` appears BEFORE every `socketio.emit()` call.
 FAIL if: any emit precedes its commit.
 
 ### R6-E — socketio imported from extensions.py
+
 Search all files in `backend/routes/` for:
 ```python
 from flask_socketio import SocketIO
 socketio = SocketIO()
-```
+```text
 FAIL if this pattern exists anywhere in routes/ — it creates a second unconnected instance.
 PASS only if routes import via: `from extensions import socketio`
 
 ### R6-F — paho-mqtt 2.x callback signatures
+
 Open `detection_engine/alert/mqtt_client.py`.
 Search for `def on_connect` and `def on_disconnect`.
 Verify each has exactly 5 parameters: `(client, userdata, connect_flags, reason_code, properties)`
 FAIL if either has 4 parameters (old 1.x signature).
 
 ### R6-G — Snapshot path is absolute
+
 Open `detection_engine/main.py`.
 Verify: `SNAPSHOT_DIR` is built using `os.path.abspath(__file__)` or equivalent.
 FAIL if: any hardcoded relative path like `"backend/snapshots/"` exists.
 
 ### R6-H — No hardcoded URLs in React
+
 Search all files in `frontend/src/` for:
 - `http://localhost:5000`
 - `http://127.0.0.1:5000`
@@ -125,18 +137,20 @@ FAIL if any hardcoded URL is found. All calls must go through the `api` instance
 from `useApi.js` which reads from `constants.js`.
 
 ### R6-I — bcrypt decoded to UTF-8
+
 Open `backend/seed.py` and `backend/tests/conftest.py`.
 Search for every `bcrypt.generate_password_hash(` call.
 Verify: every one is followed by `.decode('utf-8')`.
 FAIL if any password hash is stored without decoding.
 
 ### R6-J — conftest.py before test files
+
 Check file creation timestamps or git log to verify `backend/tests/conftest.py`
 was committed before any `test_*.py` file.
-```
+```text
 git log --oneline -- backend/tests/conftest.py
 git log --oneline -- backend/tests/test_auth.py
-```
+```text
 Verify conftest commit is older.
 
 ---
@@ -144,16 +158,18 @@ Verify conftest commit is older.
 ## Section 2 — Security Audit
 
 ### 2.1 No secrets in source code
+
 Search entire repo for patterns that should never be committed:
-```
+```text
 grep -r "password" --include="*.py" | grep -v "hash\|check\|test\|seed\|example\|generate"
 grep -r "SECRET_KEY\s*=" --include="*.py"
 grep -r "JWT_SECRET" --include="*.py"
-```
+```text
 FAIL if any real secret value (not a reference to os.environ or .env) appears
 in any committed Python file.
 
 ### 2.2 JWT required on all protected routes
+
 Open each route file in `backend/routes/`:
 - `cameras.py` — GET, POST, PUT, DELETE must all have `@jwt_required()`
 - `events.py` — GET /events must have `@jwt_required()` (POST /events may be open for LAN)
@@ -162,19 +178,22 @@ Open each route file in `backend/routes/`:
 FAIL if any protected endpoint is missing `@jwt_required()`.
 
 ### 2.3 Role enforcement on admin routes
+
 Open `backend/routes/cameras.py`.
 Verify: POST, PUT, DELETE camera routes have `@role_required('admin')`.
 FAIL if admin-only routes accept any authenticated user.
 
 ### 2.4 SQL injection risk
+
 AquaGuard uses SQLAlchemy ORM — verify no raw SQL strings exist:
-```
+```text
 grep -r "execute(" --include="*.py" backend/
 grep -r "text(" --include="*.py" backend/
-```
+```text
 FAIL if raw SQL strings with user input are found.
 
 ### 2.5 CORS configuration
+
 Open `backend/extensions.py` or `backend/app.py`.
 Verify CORS is configured. Note: `cors_allowed_origins="*"` is acceptable for
 development but should be restricted in production.
@@ -185,23 +204,25 @@ Flag as INFO if wildcard CORS is present — recommend restricting in production
 ## Section 3 — Spec Compliance Audit
 
 ### 3.1 BehaviorAnalyzer — 5 indicators and weights
+
 Open `detection_engine/analysis/behavior_analyzer.py`.
 Verify the scoring formula matches IMPLEMENTATION_PLAN.md Section 2.4 exactly:
-```
+```text
 score += 0.30  if is_vertical_orientation(landmarks)
 score += 0.25  if are_arms_elevated(landmarks)
 score += 0.20  if no_limb_motion(track_id, landmarks)
 score += 0.15  if is_face_submerged(landmarks)
 score += 0.10  if (yolo_class == "drowning" and yolo_confidence > 0.6)
-```
+```text
 Verify temporal consistency bonus formula:
-```
+```text
 temporal_ratio = count(last 5 history > 0.5) / 5
 score = min(1.0, score * (1.0 + 0.1 * temporal_ratio))
-```
+```text
 FAIL if any weight differs from spec. FAIL if temporal bonus is missing.
 
 ### 3.2 ConfidenceFilter — dual condition
+
 Open `detection_engine/analysis/confidence_filter.py`.
 Verify both conditions must be true before triggering:
 - Condition 1: `mean(buffer) > 0.75`
@@ -210,33 +231,39 @@ Verify: buffer resets after trigger (to prevent duplicate alerts).
 FAIL if either condition is missing. FAIL if buffer does not reset.
 
 ### 3.3 AlertEngine — 3 parallel dispatch threads
+
 Open `detection_engine/alert/alert_engine.py`.
 Verify: MQTT publish, Flask POST, and local log run as daemon threads simultaneously.
 FAIL if alert dispatch is sequential (one after another blocks the detection loop).
 Verify: snapshot is saved to disk AND encoded as base64 for the API payload.
 
 ### 3.4 CameraCapture — exponential backoff reconnect
+
 Open `detection_engine/camera/capture.py`.
 Verify reconnect uses exponential backoff: `[1, 2, 4, 8, 30]` seconds max.
 FAIL if reconnect uses a fixed interval or no backoff at all.
 
 ### 3.5 DrowningDetector — CUDA device and tracking
+
 Open `detection_engine/vision/detector.py`.
 Verify: `model.track(frame, persist=True, conf=0.4, device=self.device, verbose=False)`
 FAIL if `persist=True` is missing — ByteTrack loses track IDs across frames.
 FAIL if `conf=0.4` threshold differs significantly from spec.
 
 ### 3.6 PoseEstimator — ROI cropping
+
 Open `detection_engine/vision/pose_estimator.py`.
 Verify: bbox is used to crop the ROI from the frame before running MediaPipe.
 FAIL if MediaPipe runs on the full frame instead of the cropped ROI.
 
 ### 3.7 Flask app factory pattern
+
 Open `backend/app.py`.
 Verify: `create_app()` function exists and initializes all extensions via `init_app()`.
 FAIL if extensions are initialized at module level (breaks testing).
 
 ### 3.8 WebSocket — alert_event payload
+
 Open `backend/routes/events.py`.
 Verify: when `alert_triggered=True`, the event creates an Alert record, commits
 to DB, then emits `alert_event` via socketio.
@@ -247,6 +274,7 @@ Verify: the emitted payload matches what frontend expects (check AlertContext.js
 ## Section 4 — Cross-Agent Consistency Audit
 
 ### 4.1 API endpoints — backend vs frontend
+
 From `agents/status/agent2_done.md`, extract the full endpoint list.
 From `frontend/src/utils/constants.js` and all component files, extract
 every API path the frontend calls.
@@ -260,6 +288,7 @@ Common mismatches to check:
 - Response field names: frontend expects `alert_id`, backend returns `id`
 
 ### 4.2 WebSocket event names — backend vs frontend
+
 Backend emits (from `backend/routes/events.py` and `backend/sockets.py`):
 - `alert_event`
 - `camera_status`
@@ -271,6 +300,7 @@ Frontend listens (from `frontend/src/hooks/useAlertSocket.js`):
 FAIL if backend emits `'alert_triggered'` but frontend listens for `'alert_event'`.
 
 ### 4.3 Alert payload fields — detection engine vs backend vs frontend
+
 Detection engine sends (from `detection_engine/alert/api_client.py`):
 - Extract the JSON payload structure
 
@@ -284,6 +314,7 @@ Verify the field names are consistent across all three.
 FAIL if any field is named differently at different layers.
 
 ### 4.4 MQTT topics — detection engine vs ESP32
+
 Detection engine publishes to (from `config/settings.py`):
 - `MQTT_ALERT_TOPIC`
 - `MQTT_RESET_TOPIC`
@@ -300,28 +331,33 @@ to `aquaguard/alerts` (plural).
 ## Section 5 — Error Handling Audit (Rule 9)
 
 ### 5.1 Detection loop — never crashes
+
 Open `detection_engine/main.py`.
 Verify the main frame processing loop has a broad try/except that logs
 errors and continues rather than crashing.
 FAIL if a single bad frame, None return, or network error would kill the loop.
 
 ### 5.2 Camera reconnect — handles stream failure
+
 Open `detection_engine/camera/capture.py`.
 Verify: when `cap.read()` returns `(False, None)`, the thread enters reconnect
 logic rather than crashing or returning None silently.
 
 ### 5.3 MQTT publish — failure does not crash detection
+
 Open `detection_engine/alert/mqtt_client.py`.
 Verify: if MQTT publish fails (broker down), the exception is caught and logged.
 FAIL if an unhandled exception would propagate to the detection loop.
 
 ### 5.4 Flask routes — DB failure handling
+
 Open each route file in `backend/routes/`.
 Verify: every `db.session.commit()` is inside a try/except that calls
 `db.session.rollback()` on failure and returns a 500 response.
 FAIL if any route has a bare `db.session.commit()` with no error handling.
 
 ### 5.5 MediaPipe — None landmarks handled
+
 Open `detection_engine/analysis/behavior_analyzer.py`.
 Verify: if `landmarks` is None, the function returns 0.0 or skips processing.
 FAIL if None landmarks would cause an AttributeError.
@@ -331,39 +367,44 @@ FAIL if None landmarks would cause an AttributeError.
 ## Section 6 — Code Quality Audit
 
 ### 6.1 Dead imports
+
 Run:
-```
+```text
 flake8 backend/ --select=F401 --exclude=migrations/
 flake8 detection_engine/ --select=F401
-```
+```text
 Report any unused imports as WARNING.
 
 ### 6.2 Missing type hints
+
 Check key functions in detection_engine/ for missing type hints on signatures.
 Per coding standards in IMPLEMENTATION_PLAN.md, all function signatures must
 have type hints.
 Report missing type hints as INFO.
 
 ### 6.3 Missing loggers
+
 Verify every module has:
 ```python
 logger = logging.getLogger(__name__)
-```
+```text
 And uses it for key events. Report missing loggers as WARNING.
 
 ### 6.4 Magic numbers
+
 Search for numeric literals that should be in `config/settings.py`:
-```
+```text
 grep -rn "[0-9]\+\.[0-9]\+" detection_engine/ --include="*.py" | grep -v "test\|#\|settings"
-```
+```text
 Report any threshold values (0.75, 0.65, 0.015, etc.) that appear hardcoded
 in application code instead of imported from settings. FAIL severity.
 
 ### 6.5 Print statements in production code
-```
+
+```text
 grep -rn "^    print(" backend/ detection_engine/ --include="*.py"
 grep -rn "^print(" backend/ detection_engine/ --include="*.py"
-```
+```text
 Report any `print()` in non-test code as WARNING — should use logger instead.
 
 ---
@@ -423,14 +464,14 @@ Create `agents/status/agent8_review_report.md` with this structure:
 ---
 
 ## Conclusion
-```
+```text
 
 ---
 
 ## If Critical Issues Are Found
 
 Write a fix request for each one:
-```
+```text
 cat > agents/queue/fix_agent{N}.md << EOF
 # Fix Request from Agent 8 (Code Review)
 
@@ -450,7 +491,7 @@ cat > agents/queue/fix_agent{N}.md << EOF
 **Verification:**
 [how to confirm the fix is correct]
 EOF
-```
+```text
 
 Then commit the fix requests and notify the relevant agent to address them
 before the PR is merged.
@@ -459,11 +500,11 @@ before the PR is merged.
 
 ## Push and Open PR
 
-```
+```text
 git add agents/status/agent8_review_report.md agents/queue/
 git commit -m "review(agent8): complete code review — findings and fix requests  Task: P9-01"
 git push origin feature/agent8-code-review
-```
+```text
 
 Open PR on GitHub:
 - Base: `develop`
@@ -471,6 +512,7 @@ Open PR on GitHub:
 - Title: `review(agent8): complete code review report — Phase 9`
 
 ## Completion
+
 The PR is complete when:
 - [ ] All 7 review sections are covered in the report
 - [ ] Every CRITICAL finding has a corresponding fix request in agents/queue/

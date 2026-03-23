@@ -49,4 +49,4 @@ Each agent must create their feature branch from `develop` before writing any co
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent{N}-{scope}
-```
+```text

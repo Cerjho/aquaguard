@@ -24,7 +24,7 @@ Week 1:  Orchestrator → Agent 1 (CV) → Agent 4 (ESP32)
 Week 2:  Agent 2 (Backend)
 Week 3:  Agent 3 (Frontend)
 Week 4:  Agent 5 (Testing) + Integration
-```
+```text
 
 Or faster if your request limit resets mid-build:
 check github.com/settings/copilot for your reset date.
@@ -39,7 +39,7 @@ check github.com/settings/copilot for your reset date.
 cd AquaGuard
 .\aquaguard_env\Scripts\Activate.ps1
 code .
-```
+```text
 
 ### Reload VS Code to detect agent files
 
@@ -55,7 +55,7 @@ All AquaGuard agents should appear in the list.
 ```bash
 python -c "import torch; print(torch.cuda.is_available())"
 # Must print: True
-```
+```text
 
 ---
 
@@ -84,7 +84,7 @@ Initialize the AquaGuard GitHub repository.
 Follow your startup sequence — create .github/workflows/ci.yml,
 develop branch, branch protection, and agents/status/ directory.
 Commit everything to GitHub.
-```
+```text
 
 **Done when:** `.github/workflows/ci.yml` exists and is pushed to GitHub.
 **Estimated requests:** ~10
@@ -100,7 +100,7 @@ Commit everything to GitHub.
 Begin Phase 4. Build config.h, the firmware sketch, and
 scripts/test_mqtt.py in order. Follow TASK_BREAKDOWN.md tasks
 P4-01 and P4-02.
-```
+```text
 
 **Done when:** `agents/status/agent4_done.md` exists and PR is open.
 **Estimated requests:** ~10
@@ -117,7 +117,7 @@ Begin Phase 2. Read all required docs first, then build every
 file in the exact order listed in TASK_BREAKDOWN.md tasks
 P1-03 through P2-11. Verify each file before moving to the next.
 Run pytest detection_engine/tests/ -v when all files are done.
-```
+```text
 
 **Done when:** `agents/status/agent1_done.md` exists and PR is open.
 **Estimated requests:** ~40
@@ -137,7 +137,7 @@ Begin Phase 3. Read all required docs first, then build every
 file in order from TASK_BREAKDOWN.md tasks P3-01 through P3-10.
 Create conftest.py before any test file.
 Run pytest backend/tests/ -v --cov=. when all files are done.
-```
+```text
 
 **Done when:** `agents/status/agent2_done.md` exists and PR is open.
 **Estimated requests:** ~40
@@ -155,7 +155,7 @@ Check that agents/status/agent2_done.md exists, then begin
 Phase 5. Build every file in order from TASK_BREAKDOWN.md
 tasks P5-01 through P5-10. Run npm run build when done —
 it must complete with 0 errors.
-```
+```text
 
 **Done when:** `agents/status/agent3_done.md` exists and PR is open.
 **Estimated requests:** ~40
@@ -172,7 +172,7 @@ it must complete with 0 errors.
 Check that both agents/status/agent1_done.md and agent2_done.md
 exist. Then build scripts/test_camera.py and scripts/latency_test.py,
 run all test suites, and write the integration report.
-```
+```text
 
 **Done when:** `agents/status/agent5_integration_report.md` exists.
 **Estimated requests:** ~20
@@ -201,7 +201,6 @@ The agent will stop responding or give degraded answers.
 ### Request budget across all 6 sessions
 
 | Session | Estimated Requests |
-
 |---|---|
 | Orchestrator | ~10 |
 | ESP32 | ~10 |
@@ -227,7 +226,7 @@ select the same agent, and send:
 I was in the middle of Phase {N}. The last completed task
 was {task ID} in TASK_BREAKDOWN.md. Read the current state
 of the codebase and continue from the next incomplete task.
-```
+```text
 
 The agent will read the existing files and pick up where it left off.
 
@@ -252,7 +251,7 @@ feature/agent2-backend-api → develop
 feature/agent3-frontend    → develop (after agent2 merged)
 feature/agent5-testing     → develop (last)
 develop                    → main (final release)
-```
+```text
 
 ---
 
@@ -265,7 +264,7 @@ Run local GPU verification on your RTX 2050:
 python detection_engine/benchmark.py     # see actual inference ms
 python scripts/test_camera.py            # test your webcam
 python scripts/latency_test.py           # must be ≤ 3000ms
-```
+```text
 
 Then start all services to test the full system:
 
@@ -281,7 +280,7 @@ cd frontend && npm start
 
 # Terminal 4 — Detection engine
 .\aquaguard_env\Scripts\Activate.ps1 && python detection_engine/main.py
-```
+```text
 
 Open browser at <http://localhost:3000> and verify the dashboard loads.
 

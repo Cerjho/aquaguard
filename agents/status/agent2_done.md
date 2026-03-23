@@ -75,7 +75,7 @@ flask db upgrade
 
 # Seed default users and camera:
 python seed.py
-```
+```text
 
 ---
 
@@ -85,14 +85,14 @@ python seed.py
 .\aquaguard_env\Scripts\Activate.ps1
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
-```
+```text
 
 ---
 
 ## API Summary
 
 | Method | Endpoint                              | Auth        | Role    |
-|--------|---------------------------------------|-------------|---------|
+|---|---|---|---|
 | POST   | /api/v1/auth/login                    | None        | —       |
 | POST   | /api/v1/auth/refresh                  | Refresh JWT | —       |
 | POST   | /api/v1/auth/logout                   | None        | —       |
@@ -112,7 +112,7 @@ pytest tests/ -v --cov=. --cov-report=term-missing
 ## WebSocket Events
 
 | Event           | Direction       | Payload                        |
-|-----------------|-----------------|--------------------------------|
+|---|---|---|
 | `connect`       | client → server | auth: {token}                  |
 | `disconnect`    | client → server | —                              |
 | `alert_event`   | server → client | Alert.to_dict()                |

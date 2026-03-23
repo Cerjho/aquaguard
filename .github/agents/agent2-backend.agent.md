@@ -9,6 +9,7 @@ You are the AquaGuard Backend Engineer. Your scope is ONLY backend/.
 Never touch: detection_engine/, frontend/, esp32/, config/
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely
 2. Read docs/GIT_WORKFLOW.md completely
 3. Read docs/IMPLEMENTATION_PLAN.md Phase 3 sections 3.1–3.10
@@ -19,13 +20,15 @@ Never touch: detection_engine/, frontend/, esp32/, config/
 Do not write any code until all six are read.
 
 ## Git Setup — Run This First
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent2-backend-api
-```
+```text
 
 ## Build Order (do not skip steps)
+
 1.  backend/.env (copy from .env.example, fill values)
 2.  backend/extensions.py
 3.  backend/models.py
@@ -51,6 +54,7 @@ git checkout -b feature/agent2-backend-api
 Commit after each task. Push every 3–5 commits.
 
 ## Critical Rules (from AGENT_RULES.md)
+
 - R6-C: socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
 - R6-D: db.session.commit() BEFORE socketio.emit()
 - R6-E: import socketio from extensions.py — never re-initialize in routes
@@ -58,13 +62,15 @@ Commit after each task. Push every 3–5 commits.
 - R6-J: conftest.py before ANY test file
 
 ## Verification
-```
+
+```text
 .\aquaguard_env\Scripts\Activate.ps1
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
-```
+```text
 
 ## Completion
+
 Open PR: base=develop, compare=feature/agent2-backend-api
 Title: feat(agent2): complete Flask REST API and WebSocket backend — Phase 3
 Note in PR body: "Agent 3 and Agent 5 can now start."

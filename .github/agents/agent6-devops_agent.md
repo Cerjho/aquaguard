@@ -31,6 +31,7 @@ Never touch source code inside: `backend/` (except Dockerfile), `frontend/` (exc
 `detection_engine/` (except Dockerfile), `esp32/`, `config/`
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely
 2. Read docs/GIT_WORKFLOW.md completely
 3. Read docs/IMPLEMENTATION_PLAN.md sections 1.3, 6.3, 6.5
@@ -40,15 +41,17 @@ Never touch source code inside: `backend/` (except Dockerfile), `frontend/` (exc
 Do not write any file until all five are read.
 
 ## Git Setup — Run This First
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent6-devops
-```
+```text
 
 ## Build Order (do not skip steps)
 
 ### 1. `.flake8` — Linting configuration
+
 Create at repo root:
 ```ini
 [flake8]
@@ -72,24 +75,25 @@ ignore =
 per-file-ignores =
     detection_engine/tests/*:F401
     backend/tests/*:F401
-```
+```text
 
 Verify:
-```
+```text
 flake8 backend/ --max-line-length=100 --exclude=migrations/
 flake8 detection_engine/ --max-line-length=100
-```
+```text
 Both must produce zero output before moving on.
 
 Commit:
-```
+```text
 git add .flake8
 git commit -m "style(lint): add .flake8 project config  Task: P7-01"
-```
+```text
 
 ---
 
 ### 2. `.gitignore` — Ensure all required entries exist
+
 Verify these entries are present. Add any that are missing:
 ```gitignore
 # Python
@@ -141,22 +145,23 @@ Thumbs.db
 
 # Alembic
 backend/migrations/versions/__pycache__/
-```
+```text
 
 Commit:
-```
+```text
 git add .gitignore
 git commit -m "chore(gitignore): add coverage, swp, pytest cache exclusions  Task: P7-02"
-```
+```text
 
 ---
 
 ### 3. `mqtt/mosquitto.conf` — MQTT broker config
+
 Verify the file exists and contains:
-```
+```text
 listener 1883
 allow_anonymous true
-```
+```text
 
 If missing, create it. Then write installation instructions for Windows in
 `docs/MOSQUITTO_SETUP.md`:
@@ -165,9 +170,9 @@ If missing, create it. Then write installation instructions for Windows in
 # Mosquitto MQTT Broker — Windows Setup
 
 ## Install
-```
+```text
 winget install EclipseFoundation.Mosquitto
-```
+```text
 If winget fails, download directly from:
 https://mosquitto.org/download/
 Choose: mosquitto-2.x.x-install-win64.exe
@@ -177,26 +182,27 @@ After install, add to System PATH:
 C:\Program Files\mosquitto\
 
 ## Verify
-```
+```text
 mosquitto --version
-```
+```text
 
 ## Run
-```
+```text
 mosquitto -c mqtt/mosquitto.conf
-```
+```text
 Run this in a separate terminal before starting the backend or detection engine.
-```
+```text
 
 Commit:
-```
+```text
 git add mqtt/mosquitto.conf docs/MOSQUITTO_SETUP.md
 git commit -m "chore(mqtt): verify mosquitto config and add Windows setup guide  Task: P7-03"
-```
+```text
 
 ---
 
 ### 4. `scripts/start_dev.ps1` — Windows development startup script
+
 Create `scripts/start_dev.ps1`:
 
 ```powershell
@@ -277,13 +283,13 @@ try {
     if (-not $SkipFrontend) { Stop-Job $frontendJob -ErrorAction SilentlyContinue }
     Get-Process mosquitto -ErrorAction SilentlyContinue | Stop-Process
 }
-```
+```text
 
 Commit:
-```
+```text
 git add scripts/start_dev.ps1
 git commit -m "feat(scripts): add Windows PowerShell dev startup script  Task: P7-04"
-```
+```text
 
 ---
 
@@ -297,6 +303,7 @@ git commit -m "feat(scripts): add Windows PowerShell dev startup script  Task: P
 - ❌ NEVER create a Dockerfile at the repo root
 
 #### Step 5a — `backend/Dockerfile`
+
 ```dockerfile
 FROM python:3.11-slim
 WORKDIR /app
@@ -305,9 +312,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 5000
 CMD ["python", "wsgi.py"]
-```
+```text
 
 #### Step 5b — `frontend/Dockerfile`
+
 ```dockerfile
 FROM node:20-alpine AS build
 WORKDIR /app
@@ -319,9 +327,10 @@ RUN npm run build
 FROM nginx:alpine
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80
-```
+```text
 
 #### Step 5c — `detection_engine/Dockerfile`
+
 Uses NVIDIA CUDA base image so the container has GPU access.
 ```dockerfile
 FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
@@ -341,11 +350,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 CMD ["python", "main.py"]
-```
+```text
 
 Create `detection_engine/requirements.txt` listing only the CV engine deps
 (separate from backend requirements):
-```
+```text
 torch==2.2.2
 torchvision==0.17.2
 ultralytics==8.3.0
@@ -355,9 +364,10 @@ numpy==1.26.4
 paho-mqtt==2.1.0
 requests==2.32.3
 python-dotenv==1.0.1
-```
+```text
 
 #### Step 5d — `docker-compose.yml` at repo root
+
 ```yaml
 version: '3.9'
 
@@ -426,17 +436,18 @@ services:
               count: 1
               capabilities: [gpu]
     restart: unless-stopped
-```
+```text
 
 Commit:
-```
+```text
 git add docker-compose.yml backend/Dockerfile frontend/Dockerfile detection_engine/Dockerfile detection_engine/requirements.txt
 git commit -m "feat(docker): add docker-compose and per-service Dockerfiles  Task: P7-05"
-```
+```text
 
 ---
 
 ### 6. `.github/workflows/ci.yml` — Fix and maintain CI pipeline
+
 Read the existing `.github/workflows/ci.yml`. Verify it:
 - Uses `--exclude=backend/migrations/` (with `backend/` prefix for Windows paths)
 - References the correct Python version (3.11)
@@ -450,17 +461,18 @@ Update the lint job to use the `.flake8` config instead of inline flags:
 
 - name: Lint Python (detection engine)
   run: flake8 detection_engine/
-```
+```text
 
 Commit:
-```
+```text
 git add .github/workflows/ci.yml
 git commit -m "fix(ci): use .flake8 config in lint job, fix Windows migration path  Task: P7-06"
-```
+```text
 
 ---
 
 ### 7. `scripts/verify_cuda.py` — Environment verification script
+
 Create `scripts/verify_cuda.py`:
 
 ```python
@@ -527,26 +539,26 @@ if passed == total:
 else:
     print("Fix the failed checks before running the detection engine.\n")
     sys.exit(1)
-```
+```text
 
 Verify it runs:
-```
+```text
 python scripts/verify_cuda.py
-```
+```text
 
 Commit:
-```
+```text
 git add scripts/verify_cuda.py
 git commit -m "feat(scripts): add environment verification script  Task: P7-07"
-```
+```text
 
 ---
 
 ## Push and Open PR
 
-```
+```text
 git push origin feature/agent6-devops
-```
+```text
 
 Open PR on GitHub:
 - Base: `develop`
@@ -564,4 +576,5 @@ Open PR on GitHub:
 - [ ] GitHub Actions CI — all 4 jobs green on the PR
 
 ## Completion
+
 Write `agents/status/agent6_done.md` with real command output.

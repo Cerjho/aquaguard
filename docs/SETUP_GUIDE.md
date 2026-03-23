@@ -36,7 +36,7 @@ git clone https://github.com/Cerjho/aquaguard.git
 Set-Location aquaguard
 python -m venv aquaguard_env
 .\aquaguard_env\Scripts\Activate.ps1
-```
+```text
 
 Critical: Use `aquaguard_env\Scripts\python.exe` or `.\aquaguard_env\Scripts\Activate.ps1` for all Python commands in this guide. Use venv, not conda.
 
@@ -48,14 +48,14 @@ Install backend and detection dependencies.
 python -m pip install --upgrade pip
 python -m pip install -r .\backend\requirements.txt
 python -m pip install -r .\detection_engine\requirements.txt
-```
+```text
 
 Verify Python stack and CUDA:
 
 ```powershell
 python .\scripts\verify_cuda.py
 python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO GPU')"
-```
+```text
 
 Model file requirement:
 
@@ -68,17 +68,17 @@ Install Mosquitto, then run broker using project config.
 
 ```powershell
 & "C:\Program Files\mosquitto\mosquitto.exe" -c ".\mqtt\mosquitto.conf"
-```
+```text
 
 In another terminal, verify pub/sub works:
 
 ```powershell
 & "C:\Program Files\mosquitto\mosquitto_sub.exe" -h localhost -p 1883 -t aquaguard/alert
-```
+```text
 
 ```powershell
 & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h localhost -p 1883 -t aquaguard/alert -m "{\"test\":true}"
-```
+```text
 
 If the subscriber terminal receives the payload, MQTT is ready.
 
@@ -88,7 +88,7 @@ Create backend and frontend env files.
 
 ```powershell
 Copy-Item .\.env.example .\backend\.env
-```
+```text
 
 Set frontend environment:
 
@@ -97,7 +97,7 @@ Set frontend environment:
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_WS_URL=http://localhost:5000
 "@ | Set-Content .\frontend\.env
-```
+```text
 
 Backend `backend/.env` minimum values:
 
@@ -108,7 +108,7 @@ DATABASE_URL=sqlite:///aquaguard.db
 FLASK_ENV=development
 FLASK_DEBUG=1
 FLASK_APP=wsgi.py
-```
+```text
 
 ## 6. Database Initialization
 
@@ -120,7 +120,7 @@ $env:FLASK_APP = "wsgi.py"
 python -m flask db upgrade
 python seed.py
 Set-Location ..
-```
+```text
 
 If this is a clean repo and migration state is missing:
 
@@ -132,7 +132,7 @@ python -m flask db migrate -m "initial schema"
 python -m flask db upgrade
 python seed.py
 Set-Location ..
-```
+```text
 
 Default seeded accounts:
 
@@ -148,7 +148,7 @@ Set-Location .\frontend
 npm install
 npm test -- --watchAll=false
 Set-Location ..
-```
+```text
 
 The frontend consumes URLs from `frontend/src/utils/constants.js` using `process.env.REACT_APP_API_URL` and `process.env.REACT_APP_WS_URL`.
 
@@ -172,7 +172,7 @@ To find your machine local IPv4 for `MQTT_BROKER`:
 
 ```powershell
 ipconfig
-```
+```text
 
 Use the IPv4 address of your active Wi-Fi/Ethernet adapter.
 
@@ -182,7 +182,7 @@ Preferred method (single command):
 
 ```powershell
 .\scripts\start_dev.ps1
-```
+```text
 
 Manual method (separate terminals):
 
@@ -190,7 +190,7 @@ Terminal 1 - MQTT:
 
 ```powershell
 & "C:\Program Files\mosquitto\mosquitto.exe" -c ".\mqtt\mosquitto.conf"
-```
+```text
 
 Terminal 2 - Flask backend:
 
@@ -199,14 +199,14 @@ Terminal 2 - Flask backend:
 Set-Location .\backend
 $env:FLASK_APP = "wsgi.py"
 python -m flask run --port=5000
-```
+```text
 
 Terminal 3 - React frontend:
 
 ```powershell
 Set-Location .\frontend
 npm start
-```
+```text
 
 ## 10. Run the Detection Engine
 
@@ -215,7 +215,7 @@ In a new terminal at repo root:
 ```powershell
 .\aquaguard_env\Scripts\Activate.ps1
 python .\detection_engine\main.py
-```
+```text
 
 ## 11. Verify Everything Works
 
@@ -223,7 +223,7 @@ python .\detection_engine\main.py
 
 ```powershell
 python .\scripts\verify_cuda.py
-```
+```text
 
 1. Open dashboard in browser:
 
@@ -260,13 +260,13 @@ Fix:
 
 ```powershell
 netstat -ano | findstr :1883
-```
+```text
 
 ### Issue: Flask port already in use
 
 ```powershell
 netstat -ano | findstr :5000
-```
+```text
 
 Stop conflicting process, then restart backend.
 

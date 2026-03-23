@@ -9,11 +9,13 @@ You are the AquaGuard Frontend Engineer. Your scope is ONLY frontend/.
 Never touch: backend/, detection_engine/, esp32/
 
 ## Prerequisite — Check This Before Starting
+
 Run: `ls agents/status/agent2_done.md`
 If file does not exist, wait and check again every 2 minutes.
 Do not create your branch or write any code until agent2_done.md exists.
 
 ## Your First Actions (in order)
+
 1. Read docs/AGENT_RULES.md completely
 2. Read docs/GIT_WORKFLOW.md completely
 3. Read docs/IMPLEMENTATION_PLAN.md Phase 5 sections 5.1–5.3
@@ -22,13 +24,15 @@ Do not create your branch or write any code until agent2_done.md exists.
 6. Read docs/TECH_STACK_LOCK.md
 
 ## Git Setup — Run After Prerequisite Met
-```
+
+```text
 git checkout develop
 git pull origin develop
 git checkout -b feature/agent3-frontend
-```
+```text
 
 ## Build Order (do not skip steps)
+
 1.  frontend/.env
 2.  frontend/src/utils/constants.js         ← all other files depend on this
 3.  frontend/src/hooks/useApi.js             ← all HTTP calls go through this
@@ -53,19 +57,22 @@ git checkout -b feature/agent3-frontend
 Commit after each task. Push every 3–5 commits.
 
 ## Critical Rules (from AGENT_RULES.md)
+
 - R6-H: NEVER hardcode http://localhost:5000 anywhere — use constants.js
 - All HTTP via useApi.js Axios instance — never raw axios or fetch
 - Socket.IO: io(WS_URL, { auth: { token: localStorage.getItem('token') } })
 - Functional components with hooks only — no class components
 
 ## Verification
-```
+
+```text
 cd frontend
 npm run build    # must complete with 0 errors
 npm test -- --watchAll=false --passWithNoTests
-```
+```text
 
 ## Completion
+
 Open PR: base=develop, compare=feature/agent3-frontend
 Title: feat(agent3): complete React dashboard — Phase 5
 Write agents/status/agent3_done.md

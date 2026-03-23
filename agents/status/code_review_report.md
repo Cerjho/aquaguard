@@ -1,9 +1,11 @@
 # AquaGuard Code Review Report
+
 **Reviewed by:** Code Reviewer Agent  
 **Date:** 2026-03-21  
 **Overall Status:** PASS WITH WARNINGS
 
 ## Critical Issues (must fix before defense)
+
 - **File:** `detection_engine/alert/api_client.py` line 63  
   **Issue:** Failed `POST /api/v1/events` payloads were only logged and dropped, causing silent event loss during transient backend/network failures.  
   **Fix:** Add an internal bounded retry queue and flush pending events before posting new events; keep explicit logging when queue is full.  
@@ -13,6 +15,7 @@
   **Fix:** Add `config/cameras.json` with valid schema and at least one development camera entry.
 
 ## High Priority Issues
+
 - **File:** `backend/routes/events.py` line 167  
   **Issue:** `socketio.emit()` calls were not guarded. If websocket transport fails after DB commit, request could error despite successful DB write.  
   **Fix:** Wrap emit block in `try/except`, log websocket errors, and keep successful DB response path.
@@ -46,6 +49,7 @@
   **Fix:** Use `os.path.join(self._snapshot_dir, snapshot_filename)`.
 
 ## Root Cause: Detection Events Not Reaching Dashboard
+
 - **Pipeline Trace**
   - `detection_engine/alert/api_client.py` builds payload and posts to `POST /api/v1/events`.
   - `backend/routes/events.py::create_event` persists event, then emits:
@@ -67,6 +71,7 @@
   - Added guarded websocket emit blocks in `backend/routes/events.py`.
 
 ## Medium Priority Issues
+
 - **File:** `scripts/integration_test.py` line ~383  
   **Issue:** API result key assumption can drift (`items` vs `events`) and produce false negatives in integration checks.  
 
@@ -77,6 +82,7 @@
   **Issue:** direct `print()` statements in operational script; prefer structured logging for consistency.
 
 ## What Is Working Correctly
+
 - R6-A: One `DrowningDetector` per zone in `detection_engine/main.py`.
 - R6-B: MediaPipe threshold uses normalized `0.015`.
 - R6-C: `SocketIO(async_mode='threading', ...)` configured in `backend/extensions.py`.
@@ -92,6 +98,7 @@
   - `pytest detection_engine/tests/ -v` → **52 passed**
 
 ## Recommended Fix Order
+
 1. Prevent event loss and websocket-path failures (API retry queue + WS URL fallback + guarded emits).
 2. Keep detection scoring strict to defense criteria (YOLO class boost gate).
 3. Reduce MJPEG latency bottleneck (cached frame bytes by mtime).

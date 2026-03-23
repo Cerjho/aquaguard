@@ -10,7 +10,7 @@
 ## Summary
 
 | Severity | Total Findings | Resolved | Open |
-|---|---:|---:|---:|
+|---|---|---|---|
 | 🔴 CRITICAL | 2 | 2 | 0 |
 | 🟡 WARNING | 6 | 6 | 0 |
 | 🟢 INFO | 0 | 0 | 0 |

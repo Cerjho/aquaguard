@@ -591,7 +591,6 @@ Run this checklist live with a camera attached:
 ## Task Count Summary
 
 | Phase | Tasks | Status |
-
 |---|---|---|
 | Phase 1 — Setup | 5 tasks, 20 subtasks | [ ] |
 | Phase 2 — Detection Engine | 11 tasks | [ ] |

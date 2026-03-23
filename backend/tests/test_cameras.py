@@ -198,7 +198,7 @@ def test_stream_rejects_raw_jwt_query_token(client, admin_token):
 
 
 def test_stream_token_requires_jwt(client):
-    resp = client.post('/api/v1/cameras/zone_01/stream-token')
+    resp = client.get('/api/v1/cameras/zone_01/stream-token')
     assert resp.status_code == 401
 
 
@@ -209,8 +209,10 @@ def test_stream_token_mint_and_use(client, admin_token):
         'rtsp_url':  'rtsp://localhost/zone1',
     }, headers={'Authorization': f'Bearer {admin_token}'})
 
-    mint = client.post('/api/v1/cameras/zone_01/stream-token',
-                       headers={'Authorization': f'Bearer {admin_token}'})
+    mint = client.get(
+        '/api/v1/cameras/zone_01/stream-token',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
     assert mint.status_code == 200
     token_payload = mint.get_json()
     token = token_payload['stream_token']
@@ -243,8 +245,10 @@ def test_stream_token_zone_mismatch_is_rejected(client, admin_token):
         'rtsp_url':  'rtsp://localhost/zone2',
     }, headers={'Authorization': f'Bearer {admin_token}'})
 
-    mint = client.post('/api/v1/cameras/zone_01/stream-token',
-                       headers={'Authorization': f'Bearer {admin_token}'})
+    mint = client.get(
+        '/api/v1/cameras/zone_01/stream-token',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
     token = mint.get_json()['stream_token']
 
     mismatch = client.get(f'/api/v1/cameras/zone_02/stream?token={token}')

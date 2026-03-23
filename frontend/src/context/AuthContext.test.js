@@ -60,6 +60,8 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('currentUser')).toHaveTextContent('admin');
+    });
+    await waitFor(() => {
       expect(screen.getByTestId('isAuthenticated')).toHaveTextContent('true');
     });
   });
@@ -90,6 +92,8 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('currentUser')).toHaveTextContent('null');
+    });
+    await waitFor(() => {
       expect(screen.getByTestId('isAuthenticated')).toHaveTextContent('false');
     });
   });

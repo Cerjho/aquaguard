@@ -38,6 +38,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
   const statusTimerRef = useRef(null);
   const retryTimerRef = useRef(null);
   const sessionIdRef = useRef(null);
+  const fallbackUrlRef = useRef(null);
   const negotiatedRef = useRef(false);
   const stoppedRef = useRef(false);
   const retryScheduledRef = useRef(false);
@@ -49,6 +50,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
   }, [zoneId, streamToken]);
 
   useEffect(() => {
+    fallbackUrlRef.current = fallbackUrl;
     setStreamUrl(fallbackUrl);
   }, [fallbackUrl]);
 
@@ -63,7 +65,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       setTransport('fallback');
       setWebrtcState('unsupported');
       setVideoStream(null);
-      setStreamUrl(fallbackUrl);
+      setStreamUrl(fallbackUrlRef.current);
       return undefined;
     }
 
@@ -107,7 +109,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       teardownPeer();
       setTransport('fallback');
       setWebrtcState('retrying');
-      setStreamUrl(fallbackUrl);
+      setStreamUrl(fallbackUrlRef.current);
       retryTimerRef.current = setTimeout(() => {
         retryScheduledRef.current = false;
         if (!stoppedRef.current) startWebRTC();
@@ -125,7 +127,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           teardownPeer();
           setTransport('fallback');
           setWebrtcState('fallback');
-          setStreamUrl(fallbackUrl);
+          setStreamUrl(fallbackUrlRef.current);
         }
       } catch {
         pollFailureCountRef.current += 1;
@@ -209,7 +211,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           teardownPeer();
           setTransport('fallback');
           setWebrtcState('fallback');
-          setStreamUrl(fallbackUrl);
+          setStreamUrl(fallbackUrlRef.current);
           return;
         }
         const answerSdp = offerResponse?.data?.sdp;
@@ -239,7 +241,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       sessionIdRef.current = null;
       negotiatedRef.current = false;
     };
-  }, [zoneId, fallbackUrl, shouldRenderStream, isActive]);
+  }, [zoneId, shouldRenderStream, isActive]);
 
   return {
     transport,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import DetectionFeed from './DetectionFeed';
 import api from '../../hooks/useApi';
 import { useAlertState, useSocketState } from '../../context/AlertContext';
@@ -17,9 +17,7 @@ jest.mock('../../context/AlertContext', () => ({
 }));
 
 async function renderFeed() {
-  await act(async () => {
-    render(<DetectionFeed />);
-  });
+  render(<DetectionFeed />);
 }
 
 describe('DetectionFeed mapping resilience', () => {
@@ -104,10 +102,8 @@ describe('DetectionFeed mapping resilience', () => {
       expect(api.get).toHaveBeenCalledTimes(1);
     });
 
-    act(() => {
-      jest.advanceTimersByTime(20000);
-    });
-    await act(async () => {});
+    jest.advanceTimersByTime(20000);
+    await Promise.resolve();
     expect(api.get).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
   });

@@ -10,9 +10,78 @@ param(
 
 $ROOT = Split-Path -Parent $PSScriptRoot
 $VENV_PYTHON = "$ROOT\aquaguard_env\Scripts\python.exe"
-$VENV_ACTIVATE = "$ROOT\aquaguard_env\Scripts\Activate.ps1"
 $backendJob = $null
 $frontendJob = $null
+
+function New-RandomSecret {
+    param(
+        [int]$ByteLength = 24
+    )
+
+    $bytes = New-Object byte[] $ByteLength
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $token = [Convert]::ToBase64String($bytes)
+    # Make the token .env friendly.
+    $token = $token.Replace('+', '-').Replace('/', '_').TrimEnd('=')
+    return $token
+}
+
+function Get-DotEnvValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string]$Key
+    )
+
+    if (-not (Test-Path $FilePath)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content $FilePath) {
+        if ($line -match '^\s*#' -or [string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+        if ($line -match "^\s*$([regex]::Escape($Key))\s*=\s*(.*)\s*$") {
+            $value = $Matches[1].Trim()
+            if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+            return $value
+        }
+    }
+
+    return $null
+}
+
+function Set-DotEnvValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string]$Key,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
+
+    $lineToWrite = "$Key=$Value"
+    if (-not (Test-Path $FilePath)) {
+        Set-Content -Path $FilePath -Value $lineToWrite
+        return
+    }
+
+    $lines = @(Get-Content $FilePath)
+    $keyPattern = "^\s*$([regex]::Escape($Key))\s*="
+    $found = $false
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match $keyPattern) {
+            $lines[$i] = $lineToWrite
+            $found = $true
+            break
+        }
+    }
+
+    if (-not $found) {
+        $lines += $lineToWrite
+    }
+
+    Set-Content -Path $FilePath -Value $lines
+}
 
 function Test-ProcessCommandLine {
     param(
@@ -112,6 +181,44 @@ REACT_APP_WS_URL=http://localhost:5000
 
 # 1c. Initialize database (migrations + seed)
 Write-Host "==> Initializing database (migrations + seed)..." -ForegroundColor Green
+$seedAdminPassword = if (-not [string]::IsNullOrWhiteSpace($env:SEED_ADMIN_PASSWORD)) {
+    $env:SEED_ADMIN_PASSWORD
+} else {
+    Get-DotEnvValue -FilePath $backendEnv -Key 'SEED_ADMIN_PASSWORD'
+}
+$seedGuardPassword = if (-not [string]::IsNullOrWhiteSpace($env:SEED_GUARD_PASSWORD)) {
+    $env:SEED_GUARD_PASSWORD
+} else {
+    Get-DotEnvValue -FilePath $backendEnv -Key 'SEED_GUARD_PASSWORD'
+}
+
+$generatedAdminSeed = $false
+$generatedGuardSeed = $false
+
+if ([string]::IsNullOrWhiteSpace($seedAdminPassword)) {
+    $seedAdminPassword = New-RandomSecret
+    $generatedAdminSeed = $true
+    Write-Host "    WARNING: SEED_ADMIN_PASSWORD not set; generated a random value for this run." -ForegroundColor Yellow
+}
+if ([string]::IsNullOrWhiteSpace($seedGuardPassword)) {
+    $seedGuardPassword = New-RandomSecret
+    $generatedGuardSeed = $true
+    Write-Host "    WARNING: SEED_GUARD_PASSWORD not set; generated a random value for this run." -ForegroundColor Yellow
+}
+
+$env:SEED_ADMIN_PASSWORD = $seedAdminPassword
+$env:SEED_GUARD_PASSWORD = $seedGuardPassword
+$env:ALLOW_UNSAFE_WERKZEUG = '1'
+
+if ($generatedAdminSeed) {
+    Set-DotEnvValue -FilePath $backendEnv -Key 'SEED_ADMIN_PASSWORD' -Value $seedAdminPassword
+    Write-Host "    Persisted generated SEED_ADMIN_PASSWORD to backend\.env" -ForegroundColor Green
+}
+if ($generatedGuardSeed) {
+    Set-DotEnvValue -FilePath $backendEnv -Key 'SEED_GUARD_PASSWORD' -Value $seedGuardPassword
+    Write-Host "    Persisted generated SEED_GUARD_PASSWORD to backend\.env" -ForegroundColor Green
+}
+
 $env:FLASK_APP = "wsgi.py"
 Push-Location "$ROOT\backend"
 try {
@@ -151,11 +258,27 @@ if (-not $SkipMqtt) {
 # 3. Start local TURN service via Docker (coturn)
 if (-not $SkipTurn) {
     Write-Host "==> Starting TURN service (coturn) via docker compose..." -ForegroundColor Green
-    try {
-        docker compose up -d coturn | Out-Null
-        Write-Host "    coturn running on port 3478 (tcp/udp)" -ForegroundColor Green
-    } catch {
-        Write-Host "    WARNING: Could not start coturn. Ensure Docker Desktop is running." -ForegroundColor Yellow
+    $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
+    if ($null -eq $dockerCommand) {
+        Write-Host "    WARNING: Docker CLI not found. Skipping coturn startup." -ForegroundColor Yellow
+    } else {
+        $dockerInfoOutput = & docker info 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "    WARNING: Docker daemon is not reachable. Start Docker Desktop, then rerun this script." -ForegroundColor Yellow
+            if (-not [string]::IsNullOrWhiteSpace(($dockerInfoOutput | Out-String).Trim())) {
+                Write-Host "    Docker error: $($dockerInfoOutput | Select-Object -First 1)" -ForegroundColor Yellow
+            }
+        } else {
+            $composeOutput = & docker compose --env-file "$backendEnv" up -d coturn 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "    coturn running on port 3478 (tcp/udp)" -ForegroundColor Green
+            } else {
+                Write-Host "    WARNING: Could not start coturn. Ensure Docker Desktop is running." -ForegroundColor Yellow
+                if (-not [string]::IsNullOrWhiteSpace(($composeOutput | Out-String).Trim())) {
+                    Write-Host "    docker compose output: $($composeOutput | Select-Object -First 1)" -ForegroundColor Yellow
+                }
+            }
+        }
     }
 }
 
@@ -182,12 +305,11 @@ if ($backendPortListening -and -not $ForceRestartBackend) {
     Write-Host "    Port 5000 already listening (backend assumed running, skip start)" -ForegroundColor Yellow
 } else {
     $backendScript = {
-        param($root, $activate)
-        & $activate
+        param($root, $pythonPath)
         Set-Location "$root\backend"
-        python wsgi.py
+        & $pythonPath wsgi.py
     }
-    $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_ACTIVATE
+    $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_PYTHON
     Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green
 }
 

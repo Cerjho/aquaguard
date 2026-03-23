@@ -7,7 +7,9 @@ app = create_app()
 
 if __name__ == '__main__':
     debug_enabled = os.environ.get('FLASK_DEBUG', '0').strip().lower() in {'1', 'true', 'yes'}
-    allow_unsafe_werkzeug = os.environ.get('ALLOW_UNSAFE_WERKZEUG', '0').strip().lower() in {'1', 'true', 'yes'}
+    allow_unsafe_werkzeug = (
+        os.environ.get('ALLOW_UNSAFE_WERKZEUG', '0').strip().lower() in {'1', 'true', 'yes'}
+    )
     socketio.run(
         app,
         host='0.0.0.0',

@@ -65,7 +65,7 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/username/i), { target: { value: '  admin  ' } });
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
-    expect(mockLogin).toHaveBeenCalledWith('admin', 'secret');
+    expect(mockLogin).toHaveBeenCalledWith('admin', 'secret', false);
   });
 
   test('displays authError returned from context', () => {

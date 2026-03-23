@@ -34,7 +34,19 @@ import './App.css';
  * Redirects to /login if the user is not authenticated.
  */
 function PrivateLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  // Wait for session restoration to complete before redirecting
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

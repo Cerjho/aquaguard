@@ -6,29 +6,34 @@
  * User profile is kept in memory for the current tab session.
  */
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import api from '../hooks/useApi';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-
   const [authError, setAuthError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as true to prevent premature redirects
+  const [initialized, setInitialized] = useState(false);
 
   /**
    * Log in with username + password.
     * Calls POST /api/v1/auth/login and relies on backend-set httpOnly cookies.
    * @param {string} username
    * @param {string} password
+   * @param {boolean} rememberMe - If true, requests extended token expiration
    * @returns {Promise<boolean>} true on success, false on failure
    */
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, rememberMe = false) => {
     setLoading(true);
     setAuthError(null);
     try {
-      const response = await api.post('/api/v1/auth/login', { username, password });
+      const response = await api.post('/api/v1/auth/login', {
+        username,
+        password,
+        remember_me: rememberMe
+      });
       const { user } = response.data;
 
       setCurrentUser(user);
@@ -58,6 +63,30 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
     }
   }, []);
+
+  /**
+   * Restore session on mount by checking if httpOnly cookies are valid.
+   * Calls GET /api/v1/auth/me to validate token and retrieve user profile.
+   */
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const response = await api.get('/api/v1/auth/me');
+        const { user } = response.data;
+        setCurrentUser(user);
+      } catch (error) {
+        // Session invalid or no cookies — user is not authenticated
+        setCurrentUser(null);
+      } finally {
+        setLoading(false);
+        setInitialized(true);
+      }
+    };
+
+    if (!initialized) {
+      restoreSession();
+    }
+  }, [initialized]);
 
   const isAuthenticated = Boolean(currentUser);
 

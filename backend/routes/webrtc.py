@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import verify_jwt_in_request
+from flask_jwt_extended.exceptions import JWTExtendedException
 
 from extensions import socketio
 
@@ -118,12 +119,13 @@ def _cleanup_expired_sessions():
 
 
 def _authorized_actor():
-    if request.headers.get('Authorization'):
-        try:
-            verify_jwt_in_request()
-            return {'authorized': True, 'auth_type': 'jwt'}
-        except Exception:
-            return {'authorized': False}
+    try:
+        # Accept JWT from configured locations (headers or cookies).
+        verify_jwt_in_request()
+        auth_type = 'jwt_header' if request.headers.get('Authorization') else 'jwt_cookie'
+        return {'authorized': True, 'auth_type': auth_type}
+    except JWTExtendedException:
+        pass
 
     expected_key = current_app.config.get('AQUAGUARD_API_KEY')
     provided_key = request.headers.get('X-API-Key')

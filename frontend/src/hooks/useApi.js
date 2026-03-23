@@ -43,11 +43,11 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Global response error handler — redirect to login on auth failure
+// Global response error handler — redirect to login only on auth (401) failure
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    if (error.response && error.response.status === 401) {
       // Force auth boundary reset so protected pages do not keep firing requests.
       if (window.location.pathname !== '/login') {
         window.location.assign('/login');

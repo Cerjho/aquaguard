@@ -34,10 +34,10 @@ import './App.css';
  * Redirects to /login if the user is not authenticated.
  */
 function PrivateLayout() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, initializingSession } = useAuth();
 
   // Wait for session restoration to complete before redirecting
-  if (loading) {
+  if (initializingSession) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-100">
         <div className="text-center">

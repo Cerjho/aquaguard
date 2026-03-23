@@ -19,7 +19,12 @@ function New-RandomSecret {
     )
 
     $bytes = New-Object byte[] $ByteLength
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($bytes)
+    } finally {
+        $rng.Dispose()
+    }
     $token = [Convert]::ToBase64String($bytes)
     # Make the token .env friendly.
     $token = $token.Replace('+', '-').Replace('/', '_').TrimEnd('=')
@@ -61,7 +66,7 @@ function Set-DotEnvValue {
 
     $lineToWrite = "$Key=$Value"
     if (-not (Test-Path $FilePath)) {
-        Set-Content -Path $FilePath -Value $lineToWrite
+        Set-Content -Path $FilePath -Value $lineToWrite -Encoding utf8
         return
     }
 
@@ -80,7 +85,7 @@ function Set-DotEnvValue {
         $lines += $lineToWrite
     }
 
-    Set-Content -Path $FilePath -Value $lines
+    Set-Content -Path $FilePath -Value $lines -Encoding utf8
 }
 
 function Test-ProcessCommandLine {

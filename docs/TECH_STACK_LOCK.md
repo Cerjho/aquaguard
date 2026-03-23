@@ -4,7 +4,7 @@
 > The Claude agent must use these exact versions. Do not upgrade without testing.
 > Last verified: March 2026 — compatible with RTX 2050 CUDA 12.1, Windows 11 / Ubuntu 22.04.
 >
-> **IMPORTANT:** A conda environment named `aquaguard_env` already exists with `ultralytics`
+> **IMPORTANT:** A venv (virtual environment) named `aquaguard_env` already exists with `ultralytics`
 > (and therefore PyTorch + CUDA) installed. Do NOT reinstall PyTorch or ultralytics.
 > Only install the remaining packages listed in the "Install remaining packages" section below.
 
@@ -12,7 +12,7 @@
 
 ## Python Version
 
-```
+```python
 Python 3.11.x  (3.11.8 recommended)
 ```
 
@@ -22,18 +22,18 @@ Do not use Python 3.12+ — some MediaPipe builds are not yet stable on 3.12.
 
 ## Environment
 
-**Existing conda environment:** `aquaguard_env`
+**Existing venv:** `aquaguard_env`
 **Already installed:** `ultralytics` (includes PyTorch, torchvision, torchaudio, opencv-python, numpy, Pillow)
 
 Always activate before running any Python command:
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 ```
 
 ---
 
-## requirements.txt — Detection Engine + Backend (shared conda env)
+## requirements.txt — Detection Engine + Backend (shared venv)
 
 > This file is for **documentation only**. Do NOT run `pip install -r requirements.txt` from scratch.
 > PyTorch and ultralytics are already installed. Only run the targeted installs below.
@@ -47,26 +47,26 @@ conda activate aquaguard_env
 # ultralytics==8.3.0
 # opencv-python==4.10.0.84
 # numpy==1.26.4
-# Pillow==10.4.0
+# Pillow==12.1.1
 
 mediapipe==0.10.14            # MediaPipe Pose landmark estimation
 opencv-python==4.10.0.84      # OpenCV for frame capture and processing
 numpy==1.26.4                 # Numerical operations (deque analysis, landmark math)
-Pillow==10.4.0                # Image encoding for snapshot JPEG export
+Pillow==12.1.1                # Image encoding for snapshot JPEG export
 
 # ── IoT / MQTT ─────────────────────────────────────────────────────────────
 paho-mqtt==2.1.0              # MQTT client for publishing alerts to Mosquitto
 
 # ── Flask Backend ──────────────────────────────────────────────────────────
-Flask==3.0.3
+Flask==3.1.3
 Flask-SocketIO==5.3.6         # WebSocket server for real-time dashboard push
 Flask-JWT-Extended==4.6.0     # JWT authentication
 Flask-SQLAlchemy==3.1.1       # ORM
 Flask-Migrate==4.0.7          # Alembic-based DB migrations
-Flask-CORS==4.0.1             # CORS for React dev server
+Flask-CORS==6.0.0             # CORS for React dev server
 flask-bcrypt==1.0.1           # Password hashing
-python-socketio==5.11.3       # Socket.IO dependency for Flask-SocketIO
-python-engineio==4.9.1        # Engine.IO dependency
+python-socketio==5.14.0       # Socket.IO dependency for Flask-SocketIO
+python-engineio==4.12.3       # Engine.IO dependency
 
 # ── Database ───────────────────────────────────────────────────────────────
 SQLAlchemy==2.0.35
@@ -76,7 +76,7 @@ PyMySQL==1.1.1                # MySQL driver for production
 
 # ── Utilities ──────────────────────────────────────────────────────────────
 python-dotenv==1.0.1          # Load .env files
-requests==2.32.3              # HTTP client for internal API calls from detection engine
+requests==2.32.4              # HTTP client for internal API calls from detection engine
 python-dateutil==2.9.0
 uuid==1.30                    # UUID generation for event IDs
 
@@ -104,7 +104,7 @@ jupyter==1.1.1                # Jupyter notebook for benchmark.py development
 
 ## Node.js Version
 
-```
+```node
 Node.js 20.x LTS  (20.17.0 recommended)
 npm 10.x
 ```
@@ -145,12 +145,14 @@ npm 10.x
 Install via Arduino IDE Library Manager or PlatformIO:
 
 | Library | Version | Author |
+
 |---|---|---|
 | PubSubClient | 2.8.0 | Nick O'Leary |
 | ArduinoJson | 7.1.0 | Benoit Blanchon |
 | WiFi (built-in ESP32) | — | Espressif |
 
 **Arduino IDE Board Package:**
+
 - ESP32 by Espressif Systems: `2.0.17`
 - Install via: Boards Manager → search "esp32" → install Espressif ESP32
 
@@ -161,10 +163,11 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## MQTT Broker
 
 | Component | Version |
+
 |---|---|
 | Eclipse Mosquitto | 2.0.18 |
 
-**Windows install:** Download from https://mosquitto.org/download/
+**Windows install:** Download from <https://mosquitto.org/download/>
 **Ubuntu install:** `sudo apt install mosquitto mosquitto-clients`
 
 ---
@@ -172,6 +175,7 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## Docker
 
 | Component | Version |
+
 |---|---|
 | Docker Desktop / Engine | 27.x |
 | Docker Compose | 2.29.x |
@@ -184,6 +188,7 @@ Install via Arduino IDE Library Manager or PlatformIO:
 ## CUDA / GPU
 
 | Component | Version |
+
 |---|---|
 | NVIDIA Driver | ≥ 531.x (Windows) / ≥ 525.x (Linux) |
 | CUDA Toolkit | 12.1 |
@@ -208,13 +213,13 @@ python -c "import torch; print(torch.version.cuda)"   # Should print: 12.1
 # Step 1: SKIP — aquaguard_env with ultralytics already exists
 
 # Step 2: Activate env and install remaining packages
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 pip install mediapipe==0.10.14
-pip install flask==3.0.3 flask-socketio==5.3.6 flask-jwt-extended==4.6.0
-pip install flask-sqlalchemy==3.1.1 flask-migrate==4.0.7 flask-cors==4.0.1 flask-bcrypt==1.0.1
-pip install python-socketio==5.11.3 python-engineio==4.9.1
+pip install flask==3.1.3 flask-socketio==5.3.6 flask-jwt-extended==4.6.0
+pip install flask-sqlalchemy==3.1.1 flask-migrate==4.0.7 flask-cors==6.0.0 flask-bcrypt==1.0.1
+pip install python-socketio==5.14.0 python-engineio==4.12.3
 pip install paho-mqtt==2.1.0
-pip install python-dotenv==1.0.1 pymysql==1.1.1 requests==2.32.3
+pip install python-dotenv==1.0.1 pymysql==1.1.1 requests==2.32.4
 pip install pytest==8.3.3 pytest-cov==5.0.0 pytest-mock==3.14.0 httpx==0.27.2
 
 # Step 3: Verify all key packages
@@ -233,14 +238,17 @@ python -c "import paho.mqtt; print('paho-mqtt OK')"
 - **MediaPipe 0.10.14** requires Python ≤ 3.11. On Python 3.12 use 0.10.18+ if available.
 - **Flask-SocketIO 5.x** requires `python-socketio>=5.0` and `python-engineio>=4.0` — both pinned above.
 - **Flask-SocketIO async_mode:** Always initialize with `async_mode='threading'` when using Flask's built-in dev server or Gunicorn threaded workers. Omitting this causes WebSocket connections to hang or fail silently:
+
   ```python
   socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
   ```
+
 - **MediaPipe Pose coordinate system:** All landmark x, y, z values are **normalized to [0.0, 1.0]** relative to the input image/ROI dimensions. Never compare them against pixel thresholds. Use normalized thresholds (e.g., `0.015` not `15`) or denormalize first: `px_x = landmark.x * frame_width`.
 - **torch 2.2.x + cu121** is compatible with NVIDIA driver ≥ 525. The RTX 2050 on Lenovo LOQ ships with a driver that satisfies this.
 - **ultralytics 8.3.0** includes YOLOv11 support. Do not use versions below 8.1.0 for YOLOv11.
 - **opencv-python** and **opencv-python-headless** conflict. Use `opencv-python` for development (enables GUI windows). Use `opencv-python-headless` in Docker containers.
 - **paho-mqtt 2.x** has a breaking API change from 1.x — callback signatures are different from version 1.x. Use `CallbackAPIVersion.VERSION2` AND update all callback signatures:
+
   ```python
   from paho.mqtt.enums import CallbackAPIVersion
   client = mqtt.Client(CallbackAPIVersion.VERSION2)
@@ -254,4 +262,5 @@ python -c "import paho.mqtt; print('paho-mqtt OK')"
   # on_message: unchanged — still 3 args
   def on_message(client, userdata, message): ...
   ```
+
   Using the old 3- or 4-argument signatures will raise `TypeError` at runtime with paho-mqtt 2.x.

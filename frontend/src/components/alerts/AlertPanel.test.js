@@ -1,0 +1,137 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import AlertPanel, { resolveSnapshotUrl } from './AlertPanel';
+import * as AlertContext from '../../context/AlertContext';
+
+// Prevent axios ESM import errors from transitive deps
+jest.mock('../../hooks/useApi', () => ({ post: jest.fn(), get: jest.fn() }));
+// Prevent useAlertSocket from connecting during tests
+jest.mock('../../hooks/useAlertSocket', () => jest.fn());
+
+// Mock Audio — jsdom doesn't implement it
+beforeAll(() => {
+  global.Audio = jest.fn().mockImplementation(() => ({
+    play: jest.fn().mockResolvedValue(undefined),
+    pause: jest.fn(),
+    loop: false,
+    volume: 1,
+  }));
+});
+
+const mockAcknowledge = jest.fn();
+
+function renderAlertPanel(contextOverrides = {}) {
+  jest.spyOn(AlertContext, 'useAlertState').mockReturnValue({
+    activeAlert: null,
+    activeAlerts: [],
+    acknowledge: mockAcknowledge,
+    acknowledgingAlertId: null,
+    acknowledgeError: null,
+    dismissActive: jest.fn(),
+    ...contextOverrides,
+  });
+  return render(<AlertPanel />);
+}
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  mockAcknowledge.mockReset();
+});
+
+beforeEach(() => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+const sampleAlert = {
+  id: 1,
+  zone_name: 'Pool A',
+  confidence: 0.92,
+  alerted_at: '2024-01-01T10:00:00Z',
+  frame_snapshot_path: null,
+};
+
+describe('AlertPanel', () => {
+  test('renders nothing when there is no active alert', () => {
+    const { container } = renderAlertPanel({ activeAlert: null });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  test('renders alert dialog when activeAlert is set', () => {
+    renderAlertPanel({ activeAlert: sampleAlert });
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(screen.getByText(/drowning alert/i)).toBeInTheDocument();
+  });
+
+  test('displays zone name', () => {
+    renderAlertPanel({ activeAlert: sampleAlert });
+    expect(screen.getAllByText('Pool A').length).toBeGreaterThan(0);
+  });
+
+  test('displays confidence as percentage', () => {
+    renderAlertPanel({ activeAlert: sampleAlert });
+    expect(screen.getAllByText('92.0%').length).toBeGreaterThan(0);
+  });
+
+  test('calls acknowledge with alert id when button is clicked', () => {
+    renderAlertPanel({ activeAlert: sampleAlert });
+    fireEvent.click(screen.getByRole('button', { name: /^acknowledge$/i }));
+    expect(mockAcknowledge).toHaveBeenCalledWith(sampleAlert);
+  });
+
+  test('renders multiple camera alert cards when activeAlerts has many entries', () => {
+    renderAlertPanel({
+      activeAlert: sampleAlert,
+      activeAlerts: [
+        { ...sampleAlert, id: 1, zone_name: 'Pool A' },
+        { ...sampleAlert, id: 2, zone_name: 'Pool B' },
+      ],
+    });
+    expect(screen.getAllByText('Pool A').length).toBeGreaterThan(0);
+    expect(screen.getByText('Pool B')).toBeInTheDocument();
+  });
+
+  test('shows dash for confidence when confidence is null', () => {
+    renderAlertPanel({ activeAlert: { ...sampleAlert, confidence: null } });
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  test('shows loading state while acknowledge is in progress', () => {
+    renderAlertPanel({
+      activeAlert: sampleAlert,
+      acknowledgingAlertId: '1',
+    });
+    expect(screen.getAllByRole('button', { name: /acknowledging/i })[0]).toBeDisabled();
+  });
+
+  test('shows acknowledge error banner when present', () => {
+    renderAlertPanel({
+      activeAlert: sampleAlert,
+      acknowledgeError: 'Acknowledge failed.',
+    });
+    expect(screen.getByText('Acknowledge failed.')).toBeInTheDocument();
+  });
+
+  describe('resolveSnapshotUrl', () => {
+    test('returns absolute http/https snapshot path as-is', () => {
+      expect(
+        resolveSnapshotUrl('https://cdn.example.com/snapshots/frame.jpg', 'http://api.example.com')
+      ).toBe('https://cdn.example.com/snapshots/frame.jpg');
+      expect(
+        resolveSnapshotUrl('http://cdn.example.com/snapshots/frame.jpg', 'http://api.example.com')
+      ).toBe('http://cdn.example.com/snapshots/frame.jpg');
+    });
+
+    test('joins relative path with api base without duplicate slashes', () => {
+      expect(resolveSnapshotUrl('/snapshots/frame.jpg', 'http://api.example.com/'))
+        .toBe('http://api.example.com/snapshots/frame.jpg');
+      expect(resolveSnapshotUrl('snapshots/frame.jpg', 'http://api.example.com///'))
+        .toBe('http://api.example.com/snapshots/frame.jpg');
+    });
+
+    test('returns sensible relative path when api base is missing', () => {
+      expect(resolveSnapshotUrl('/snapshots/frame.jpg', '')).toBe('/snapshots/frame.jpg');
+      expect(resolveSnapshotUrl('snapshots/frame.jpg', '')).toBe('/snapshots/frame.jpg');
+      expect(resolveSnapshotUrl('snapshots/frame.jpg', '   ')).toBe('/snapshots/frame.jpg');
+    });
+  });
+});

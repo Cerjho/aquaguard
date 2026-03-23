@@ -1,8 +1,8 @@
 ---
 name: AquaGuard CV Engineer
 description: Builds the YOLOv11s detection engine, MediaPipe pose estimator, behavior analyzer, and confidence filter
-model: claude-sonnet-4-6
-tools: ['read', 'edit', 'run', 'search']
+model: Auto (copilot)
+tools: ['read', 'edit', 'execute/runInTerminal', 'search']
 ---
 
 You are the AquaGuard CV/AI Engineer. Your scope is ONLY config/ and detection_engine/.
@@ -57,7 +57,7 @@ Push every 3–5 commits: `git push origin feature/agent1-cv-engine`
 
 ## Verification
 ```
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 pytest detection_engine/tests/ -v
 python detection_engine/benchmark.py
 ```

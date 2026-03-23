@@ -25,6 +25,11 @@ frontend/.env
 # Snapshots (generated at runtime)
 backend/snapshots/*.jpg
 backend/snapshots/*.jpeg
+backend/snapshots/*.tmp
+backend/snapshots/live/*.jpg
+backend/snapshots/live/*.jpeg
+
+
 
 # Node
 frontend/node_modules/
@@ -34,6 +39,7 @@ frontend/build/
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # OS
 .DS_Store
@@ -41,3 +47,23 @@ Thumbs.db
 
 # conda env (do not commit)
 aquaguard_env/
+
+.coverage
+backend/.coverage
+*.coverage
+htmlcov/
+
+# Pytest
+.pytest_cache/
+
+# Alembic
+backend/migrations/versions/__pycache__/
+
+# Runtime artifacts (never commit)
+backend/snapshots/live/*
+backend/snapshots/live/*.json
+backend/snapshots/live/*.tmp
+agents/runtime_logs/*
+agents/runtime_logs/**
+agents/logs/*
+agents/logs/**

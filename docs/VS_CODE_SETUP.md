@@ -8,7 +8,7 @@
 ## Your Setup
 
 - Machine: Lenovo LOQ 15IAX9E — RTX 2050, 8GB DDR5
-- Environment: aquaguard_env (ultralytics already installed)
+- Environment: aquaguard_env (Python venv with ultralytics installed)
 - Editor: VS Code with GitHub Copilot (Claude agent available)
 - Constraint: ~90% of monthly premium requests already used
 
@@ -19,7 +19,7 @@
 You cannot run agents in parallel (one account, limited requests).
 Run them in this exact order — each phase depends on the previous.
 
-```
+```text
 Week 1:  Orchestrator → Agent 1 (CV) → Agent 4 (ESP32)
 Week 2:  Agent 2 (Backend)
 Week 3:  Agent 3 (Frontend)
@@ -37,7 +37,7 @@ check github.com/settings/copilot for your reset date.
 
 ```bash
 cd AquaGuard
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 code .
 ```
 
@@ -61,9 +61,9 @@ python -c "import torch; print(torch.cuda.is_available())"
 
 ## How to Run Each Agent
 
-### Every time you start an agent session:
+### Every time you start an agent session
 
-1. Open terminal → `conda activate aquaguard_env`
+1. Open terminal → `.\aquaguard_env\Scripts\Activate.ps1`
 2. Open Copilot Chat (`Ctrl+Alt+I`)
 3. Click `+` for a new conversation
 4. Click agents dropdown → select **Claude** model
@@ -75,41 +75,50 @@ python -c "import torch; print(torch.cuda.is_available())"
 ## Agent Run Order and Starting Prompts
 
 ### Session 1 — Orchestrator (Jarvy's role, but you do it)
+
 **Agent:** AquaGuard Orchestrator
 **Starting prompt:**
-```
+
+```text
 Initialize the AquaGuard GitHub repository.
 Follow your startup sequence — create .github/workflows/ci.yml,
 develop branch, branch protection, and agents/status/ directory.
 Commit everything to GitHub.
 ```
+
 **Done when:** `.github/workflows/ci.yml` exists and is pushed to GitHub.
 **Estimated requests:** ~10
 
 ---
 
 ### Session 2 — Agent 4 ESP32 (quickest, do this while you have requests)
+
 **Agent:** AquaGuard ESP32 Engineer
 **Starting prompt:**
-```
+
+```text
 Begin Phase 4. Build config.h, the firmware sketch, and
 scripts/test_mqtt.py in order. Follow TASK_BREAKDOWN.md tasks
 P4-01 and P4-02.
 ```
+
 **Done when:** `agents/status/agent4_done.md` exists and PR is open.
 **Estimated requests:** ~10
 
 ---
 
 ### Session 3 — Agent 1 CV Engine (longest phase — save a fresh day)
+
 **Agent:** AquaGuard CV Engineer
 **Starting prompt:**
-```
+
+```text
 Begin Phase 2. Read all required docs first, then build every
 file in the exact order listed in TASK_BREAKDOWN.md tasks
 P1-03 through P2-11. Verify each file before moving to the next.
 Run pytest detection_engine/tests/ -v when all files are done.
 ```
+
 **Done when:** `agents/status/agent1_done.md` exists and PR is open.
 **Estimated requests:** ~40
 **Note:** If you run out of requests mid-session, just send
@@ -118,44 +127,53 @@ Run pytest detection_engine/tests/ -v when all files are done.
 ---
 
 ### Session 4 — Agent 2 Backend
+
 **Agent:** AquaGuard Backend Engineer
 **Prerequisite:** agent1_done.md must exist (check Explorer panel)
 **Starting prompt:**
-```
+
+```text
 Begin Phase 3. Read all required docs first, then build every
 file in order from TASK_BREAKDOWN.md tasks P3-01 through P3-10.
 Create conftest.py before any test file.
 Run pytest backend/tests/ -v --cov=. when all files are done.
 ```
+
 **Done when:** `agents/status/agent2_done.md` exists and PR is open.
 **Estimated requests:** ~40
 
 ---
 
 ### Session 5 — Agent 3 Frontend
+
 **Agent:** AquaGuard Frontend Engineer
 **Prerequisite:** agent2_done.md must exist
 **Starting prompt:**
-```
+
+```text
 Check that agents/status/agent2_done.md exists, then begin
 Phase 5. Build every file in order from TASK_BREAKDOWN.md
 tasks P5-01 through P5-10. Run npm run build when done —
 it must complete with 0 errors.
 ```
+
 **Done when:** `agents/status/agent3_done.md` exists and PR is open.
 **Estimated requests:** ~40
 
 ---
 
 ### Session 6 — Agent 5 Testing (final phase)
+
 **Agent:** AquaGuard QA Engineer
 **Prerequisite:** agent1_done.md AND agent2_done.md must both exist
 **Starting prompt:**
-```
+
+```text
 Check that both agents/status/agent1_done.md and agent2_done.md
 exist. Then build scripts/test_camera.py and scripts/latency_test.py,
 run all test suites, and write the integration report.
 ```
+
 **Done when:** `agents/status/agent5_integration_report.md` exists.
 **Estimated requests:** ~20
 
@@ -164,20 +182,26 @@ run all test suites, and write the integration report.
 ## Managing Your Premium Request Limit
 
 ### Check how many you have left
+
 Go to: `github.com/settings/copilot`
 Look for "Premium requests" usage.
 
 ### Check your reset date
+
 Same page — note the date your monthly limit resets.
 
 ### If you run out mid-session
+
 The agent will stop responding or give degraded answers.
+
 - Save your progress note: which task was last completed
 - Wait for reset date
 - Come back and send: `Continue from task P{X}-{Y} in TASK_BREAKDOWN.md`
 
 ### Request budget across all 6 sessions
+
 | Session | Estimated Requests |
+
 |---|---|
 | Orchestrator | ~10 |
 | ESP32 | ~10 |
@@ -199,7 +223,7 @@ which you likely still have available.
 If Copilot stops mid-phase, start a new chat conversation,
 select the same agent, and send:
 
-```
+```text
 I was in the middle of Phase {N}. The last completed task
 was {task ID} in TASK_BREAKDOWN.md. Read the current state
 of the codebase and continue from the next incomplete task.
@@ -220,7 +244,8 @@ Since you are alone, you review and merge your own PRs:
 5. Delete the feature branch after merge
 
 Merge order:
-```
+
+```text
 feature/agent4-esp32       → develop (any time)
 feature/agent1-cv-engine   → develop
 feature/agent2-backend-api → develop
@@ -236,7 +261,7 @@ develop                    → main (final release)
 Run local GPU verification on your RTX 2050:
 
 ```bash
-conda activate aquaguard_env
+.\aquaguard_env\Scripts\Activate.ps1
 python detection_engine/benchmark.py     # see actual inference ms
 python scripts/test_camera.py            # test your webcam
 python scripts/latency_test.py           # must be ≤ 3000ms
@@ -249,16 +274,16 @@ Then start all services to test the full system:
 mosquitto -c mqtt/mosquitto.conf
 
 # Terminal 2 — Flask backend
-cd backend && conda activate aquaguard_env && flask run --port=5000
+cd backend && .\..\..\aquaguard_env\Scripts\Activate.ps1 && flask run --port=5000
 
 # Terminal 3 — React dashboard
 cd frontend && npm start
 
 # Terminal 4 — Detection engine
-conda activate aquaguard_env && python detection_engine/main.py
+.\aquaguard_env\Scripts\Activate.ps1 && python detection_engine/main.py
 ```
 
-Open browser at http://localhost:3000 and verify the dashboard loads.
+Open browser at <http://localhost:3000> and verify the dashboard loads.
 
 ---
 
@@ -268,7 +293,8 @@ You still have ~10% of requests left this month.
 Use them for the two fastest sessions:
 
 **Right now:**
-1. `conda activate aquaguard_env`
+
+1. `.\aquaguard_env\Scripts\Activate.ps1`
 2. Open Copilot Chat → select Claude → select AquaGuard Orchestrator
 3. Run Session 1 (Orchestrator) — ~10 requests
 4. Run Session 2 (ESP32) — ~10 requests

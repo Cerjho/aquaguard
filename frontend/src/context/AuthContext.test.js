@@ -5,6 +5,7 @@ import api from '../hooks/useApi';
 
 jest.mock('../hooks/useApi', () => ({
   post: jest.fn(),
+  get: jest.fn(),
 }));
 
 function TestConsumer() {
@@ -31,6 +32,9 @@ function renderWithProvider() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  api.get.mockRejectedValue({
+    response: { status: 401 },
+  });
 });
 
 describe('AuthContext', () => {

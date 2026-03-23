@@ -14,8 +14,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authError, setAuthError] = useState(null);
-  const [loading, setLoading] = useState(true); // Start as true to prevent premature redirects
-  const [initialized, setInitialized] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [initializingSession, setInitializingSession] = useState(true);
 
   /**
    * Log in with username + password.
@@ -78,15 +78,12 @@ export function AuthProvider({ children }) {
         // Session invalid or no cookies — user is not authenticated
         setCurrentUser(null);
       } finally {
-        setLoading(false);
-        setInitialized(true);
+        setInitializingSession(false);
       }
     };
 
-    if (!initialized) {
-      restoreSession();
-    }
-  }, [initialized]);
+    restoreSession();
+  }, []);
 
   const isAuthenticated = Boolean(currentUser);
 
@@ -95,6 +92,7 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     authError,
     loading,
+    initializingSession,
     login,
     logout,
   };
@@ -104,7 +102,7 @@ export function AuthProvider({ children }) {
 
 /**
  * Hook to access auth context.
- * @returns {{ currentUser, isAuthenticated, authError, loading, login, logout }}
+ * @returns {{ currentUser, isAuthenticated, authError, loading, initializingSession, login, logout }}
  */
 export function useAuth() {
   const ctx = useContext(AuthContext);

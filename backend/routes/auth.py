@@ -36,6 +36,8 @@ def login():
     username = data.get('username', '').strip()
     password = data.get('password', '')
     remember_me = data.get('remember_me', False)
+    if not isinstance(remember_me, bool):
+        return jsonify({'error': 'remember_me must be a boolean'}), 400
 
     if not username or not password:
         return jsonify({'error': 'username and password required'}), 400

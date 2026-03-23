@@ -1,3 +1,6 @@
+from flask_jwt_extended import decode_token
+
+
 def test_login_success(client):
     resp = client.post('/api/v1/auth/login', json={
         'username': 'admin', 'password': 'adminpass'
@@ -104,10 +107,14 @@ def test_login_with_remember_me_false(client):
     assert 'access_token' in data
     assert 'refresh_token' in data
     assert data['user']['username'] == 'admin'
+    access_payload = decode_token(data['access_token'])
+    refresh_payload = decode_token(data['refresh_token'])
+    assert 3500 <= (access_payload['exp'] - access_payload['iat']) <= 3700
+    assert 604000 <= (refresh_payload['exp'] - refresh_payload['iat']) <= 605000
 
 
 def test_login_with_remember_me_true(client):
-    """Test that login with remember_me=true succeeds and returns tokens."""
+    """Test that login with remember_me=true uses 30-day token expiration."""
     resp = client.post('/api/v1/auth/login', json={
         'username': 'admin',
         'password': 'adminpass',
@@ -118,6 +125,10 @@ def test_login_with_remember_me_true(client):
     assert 'access_token' in data
     assert 'refresh_token' in data
     assert data['user']['username'] == 'admin'
+    access_payload = decode_token(data['access_token'])
+    refresh_payload = decode_token(data['refresh_token'])
+    assert 2590000 <= (access_payload['exp'] - access_payload['iat']) <= 2600000
+    assert 2590000 <= (refresh_payload['exp'] - refresh_payload['iat']) <= 2600000
 
 
 def test_login_remember_me_defaults_to_false(client):
@@ -129,3 +140,15 @@ def test_login_remember_me_defaults_to_false(client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert 'access_token' in data
+    access_payload = decode_token(data['access_token'])
+    assert 3500 <= (access_payload['exp'] - access_payload['iat']) <= 3700
+
+
+def test_login_rejects_non_boolean_remember_me(client):
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'admin',
+        'password': 'adminpass',
+        'remember_me': 'false',
+    })
+    assert resp.status_code == 400
+    assert resp.get_json()['error'] == 'remember_me must be a boolean'

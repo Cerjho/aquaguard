@@ -16,6 +16,7 @@ function LoginPage() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [fieldError, setFieldError] = useState('');
 
   // If already authenticated, skip login
@@ -38,7 +39,7 @@ function LoginPage() {
       return;
     }
 
-    const success = await login(username.trim(), password);
+    const success = await login(username.trim(), password, rememberMe);
     if (success) {
       navigate('/', { replace: true });
     }
@@ -102,7 +103,7 @@ function LoginPage() {
             </div>
 
             {/* Password */}
-            <div className="mb-6">
+            <div className="mb-4">
               <label
                 htmlFor="password"
                 className="block text-sm font-medium text-slate-600 mb-1"
@@ -119,6 +120,24 @@ function LoginPage() {
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-slate-800 placeholder-slate-400 disabled:bg-slate-100"
                 placeholder="Enter your password"
               />
+            </div>
+
+            {/* Remember Me */}
+            <div className="mb-6 flex items-center">
+              <input
+                id="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={loading}
+                className="w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 focus:ring-2 disabled:opacity-60"
+              />
+              <label
+                htmlFor="rememberMe"
+                className="ml-2 text-sm text-slate-600 select-none cursor-pointer"
+              >
+                Remember me for 30 days
+              </label>
             </div>
 
             {/* Submit */}

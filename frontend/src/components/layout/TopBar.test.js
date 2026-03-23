@@ -23,7 +23,11 @@ describe('TopBar connectivity health strip', () => {
   beforeEach(() => {
     useAuth.mockReturnValue({
       currentUser: { username: 'admin', role: 'admin' },
+      isAuthenticated: true,
+      authError: null,
+      loading: false,
       logout: jest.fn(),
+      login: jest.fn(),
     });
     useAlertState.mockReturnValue({
       unacknowledgedCount: 2,

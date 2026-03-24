@@ -27,10 +27,52 @@ describe('useApi (axios instance)', () => {
     expect(response.config.headers['X-CSRF-TOKEN']).toBe('csrf-token-123');
   });
 
-  test('keeps request rejection behavior on 401 response', async () => {
-    mock.onGet('/api/v1/protected').reply(401);
+  test('refreshes token and retries original request on 401', async () => {
+    mock.onGet('/api/v1/protected').replyOnce(401);
+    mock.onPost('/api/v1/auth/refresh').reply(200, { access_token: 'new-token' });
+    mock.onGet('/api/v1/protected').reply(200, { ok: true });
 
-    await expect(api.get('/api/v1/protected')).rejects.toThrow();
+    const response = await api.get('/api/v1/protected');
+
+    expect(response.status).toBe(200);
+    expect(response.data.ok).toBe(true);
+    expect(mock.history.post.some((req) => req.url === '/api/v1/auth/refresh')).toBe(true);
+    expect(mock.history.get.filter((req) => req.url === '/api/v1/protected')).toHaveLength(2);
+  });
+
+  test('deduplicates refresh for concurrent 401 responses', async () => {
+    mock.onGet('/api/v1/protected-a').replyOnce(401);
+    mock.onGet('/api/v1/protected-b').replyOnce(401);
+    mock.onPost('/api/v1/auth/refresh').reply(() => new Promise((resolve) => {
+      setTimeout(() => resolve([200, { access_token: 'new-token' }]), 25);
+    }));
+    mock.onGet('/api/v1/protected-a').reply(200, { ok: true, resource: 'a' });
+    mock.onGet('/api/v1/protected-b').reply(200, { ok: true, resource: 'b' });
+
+    const [resA, resB] = await Promise.all([
+      api.get('/api/v1/protected-a'),
+      api.get('/api/v1/protected-b'),
+    ]);
+
+    expect(resA.status).toBe(200);
+    expect(resB.status).toBe(200);
+    expect(
+      mock.history.post.filter((req) => req.url === '/api/v1/auth/refresh')
+    ).toHaveLength(1);
+    expect(mock.history.get.filter((req) => req.url === '/api/v1/protected-a')).toHaveLength(2);
+    expect(mock.history.get.filter((req) => req.url === '/api/v1/protected-b')).toHaveLength(2);
+  });
+
+  test('keeps request rejection behavior on auth endpoint 401 response', async () => {
+    window.history.pushState({}, '', '/login');
+    mock.onPost('/api/v1/auth/login').reply(401);
+
+    await expect(api.post('/api/v1/auth/login', {
+      username: 'admin',
+      password: 'wrong',
+    })).rejects.toThrow();
+
+    window.history.pushState({}, '', '/');
   });
 
   test('resolves successfully on 200 response', async () => {

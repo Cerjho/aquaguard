@@ -63,6 +63,20 @@ describe('useApi (axios instance)', () => {
     expect(mock.history.get.filter((req) => req.url === '/api/v1/protected-b')).toHaveLength(2);
   });
 
+  test('dispatches token-refreshed event after successful refresh', async () => {
+    const refreshedListener = jest.fn();
+    window.addEventListener('token-refreshed', refreshedListener);
+
+    mock.onGet('/api/v1/protected').replyOnce(401);
+    mock.onPost('/api/v1/auth/refresh').reply(200, { access_token: 'new-token' });
+    mock.onGet('/api/v1/protected').reply(200, { ok: true });
+
+    await api.get('/api/v1/protected');
+
+    expect(refreshedListener).toHaveBeenCalledTimes(1);
+    window.removeEventListener('token-refreshed', refreshedListener);
+  });
+
   test('keeps request rejection behavior on auth endpoint 401 response', async () => {
     window.history.pushState({}, '', '/login');
     mock.onPost('/api/v1/auth/login').reply(401);

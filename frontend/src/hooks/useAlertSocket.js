@@ -20,6 +20,14 @@ import { io } from 'socket.io-client';
 import { WS_URL } from '../utils/constants';
 import logger from '../utils/logger';
 
+function getToken() {
+  const csrfCookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('csrf_access_token='))
+    ?.split('=')[1];
+  return csrfCookie || null;
+}
+
 /**
  * @param {Object} options
  * @param {Function} [options.onAlert]        - Called when alert_event is received
@@ -40,6 +48,7 @@ function useAlertSocket({
   useEffect(() => {
     // Establish Socket.IO connection with credentialed cookie handshake.
     const socket = io(WS_URL, {
+      auth: { token: getToken() },
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,
@@ -104,8 +113,21 @@ function useAlertSocket({
       });
     }
 
+    const handleTokenRefresh = () => {
+      if (!socketRef.current) return;
+      socketRef.current.auth = {
+        ...(socketRef.current.auth || {}),
+        token: getToken(),
+      };
+      socketRef.current.disconnect();
+      socketRef.current.connect();
+    };
+
+    window.addEventListener('token-refreshed', handleTokenRefresh);
+
     // Cleanup on unmount
     return () => {
+      window.removeEventListener('token-refreshed', handleTokenRefresh);
       socket.disconnect();
       socketRef.current = null;
     };

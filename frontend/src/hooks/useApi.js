@@ -34,6 +34,12 @@ function isAuthEndpoint(url) {
 async function refreshAccessToken() {
   if (!refreshRequest) {
     refreshRequest = api.post(AUTH_REFRESH_PATH)
+      .then((response) => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('token-refreshed'));
+        }
+        return response;
+      })
       .finally(() => {
         refreshRequest = null;
       });

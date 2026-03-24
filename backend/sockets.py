@@ -13,16 +13,34 @@ def handle_connect(auth):
     Validate optional JWT on WebSocket handshake.
     auth dict may contain {'token': '<access_token>'}.
     """
-    token = (auth or {}).get('token')
-    if token:
+    auth_token = (auth or {}).get('token')
+    cookie_token = (
+        request.cookies.get('access_token_cookie')
+        or request.cookies.get('csrf_access_token')
+        or None
+    )
+
+    decoded = None
+    if auth_token:
         try:
             from flask_jwt_extended import decode_token
-            decoded = decode_token(token)
-            user_id = decoded.get('sub')
-            logger.info(f'WebSocket connect: user_id={user_id}')
+            decoded = decode_token(auth_token)
         except JWTExtendedException as exc:
-            logger.warning(f'WebSocket connect with invalid token: {exc}')
-            return False  # reject connection
+            logger.warning(f'WebSocket auth token invalid, trying cookie token: {exc}')
+
+    if decoded is None and cookie_token:
+        try:
+            from flask_jwt_extended import decode_token
+            decoded = decode_token(cookie_token)
+        except JWTExtendedException as exc:
+            logger.warning(f'WebSocket cookie token invalid: {exc}')
+
+    if auth_token and decoded is None:
+        return False  # reject explicitly invalid token handshakes
+
+    if decoded is not None:
+        user_id = decoded.get('sub')
+        logger.info(f'WebSocket connect: user_id={user_id}')
     else:
         logger.info('WebSocket connect: anonymous client')
 

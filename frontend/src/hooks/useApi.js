@@ -18,6 +18,29 @@ const api = axios.create({
   withCredentials: true,
 });
 
+const AUTH_LOGIN_PATH = '/api/v1/auth/login';
+const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
+const AUTH_LOGOUT_PATH = '/api/v1/auth/logout';
+const AUTH_ME_PATH = '/api/v1/auth/me';
+
+let refreshRequest = null;
+
+function isAuthEndpoint(url) {
+  if (!url) return false;
+  return [AUTH_LOGIN_PATH, AUTH_REFRESH_PATH, AUTH_LOGOUT_PATH, AUTH_ME_PATH]
+    .some((path) => String(url).includes(path));
+}
+
+async function refreshAccessToken() {
+  if (!refreshRequest) {
+    refreshRequest = api.post(AUTH_REFRESH_PATH)
+      .finally(() => {
+        refreshRequest = null;
+      });
+  }
+  return refreshRequest;
+}
+
 function getCookieValue(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
@@ -46,13 +69,30 @@ api.interceptors.request.use(
 // Global response error handler — redirect to login only on auth (401) failure
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
+  async (error) => {
+    const status = error.response?.status;
+    const originalRequest = error.config || {};
+
+    if (status === 401) {
+      const authRequest = isAuthEndpoint(originalRequest.url);
+      const alreadyRetried = Boolean(originalRequest._retry);
+
+      if (!authRequest && !alreadyRetried) {
+        originalRequest._retry = true;
+        try {
+          await refreshAccessToken();
+          return api(originalRequest);
+        } catch {
+          // Fallback to login redirect when refresh token is missing/expired.
+        }
+      }
+
       // Force auth boundary reset so protected pages do not keep firing requests.
       if (window.location.pathname !== '/login') {
         window.location.assign('/login');
       }
     }
+
     return Promise.reject(error);
   }
 );

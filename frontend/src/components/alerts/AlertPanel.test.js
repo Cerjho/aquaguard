@@ -44,6 +44,7 @@ beforeEach(() => {
 
 const sampleAlert = {
   id: 1,
+  zone_id: 'zone_01',
   zone_name: 'Pool A',
   confidence: 0.92,
   alerted_at: '2024-01-01T10:00:00Z',
@@ -56,51 +57,47 @@ describe('AlertPanel', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('renders alert dialog when activeAlert is set', () => {
+  test('renders non-blocking alert banner when activeAlert is set', () => {
     renderAlertPanel({ activeAlert: sampleAlert });
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByText(/drowning alert/i)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /active drowning alerts/i })).toBeInTheDocument();
+    expect(screen.getByText(/active alert/i)).toBeInTheDocument();
   });
 
-  test('displays zone name', () => {
+  test('displays active zone name chips', () => {
     renderAlertPanel({ activeAlert: sampleAlert });
-    expect(screen.getAllByText('Pool A').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Pool A' })).toBeInTheDocument();
   });
 
-  test('displays confidence as percentage', () => {
-    renderAlertPanel({ activeAlert: sampleAlert });
-    expect(screen.getAllByText('92.0%').length).toBeGreaterThan(0);
-  });
-
-  test('calls acknowledge with alert id when button is clicked', () => {
-    renderAlertPanel({ activeAlert: sampleAlert });
-    fireEvent.click(screen.getByRole('button', { name: /^acknowledge$/i }));
-    expect(mockAcknowledge).toHaveBeenCalledWith(sampleAlert);
-  });
-
-  test('renders multiple camera alert cards when activeAlerts has many entries', () => {
+  test('calls acknowledge with oldest unacknowledged alert id', () => {
     renderAlertPanel({
       activeAlert: sampleAlert,
       activeAlerts: [
-        { ...sampleAlert, id: 1, zone_name: 'Pool A' },
-        { ...sampleAlert, id: 2, zone_name: 'Pool B' },
+        { ...sampleAlert, id: 11, zone_id: 'zone_01', zone_name: 'Pool A' },
+        { ...sampleAlert, id: 22, zone_id: 'zone_02', zone_name: 'Pool B' },
       ],
     });
-    expect(screen.getAllByText('Pool A').length).toBeGreaterThan(0);
-    expect(screen.getByText('Pool B')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /acknowledge oldest/i }));
+    expect(mockAcknowledge).toHaveBeenCalledWith(22);
   });
 
-  test('shows dash for confidence when confidence is null', () => {
-    renderAlertPanel({ activeAlert: { ...sampleAlert, confidence: null } });
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-  });
-
-  test('shows loading state while acknowledge is in progress', () => {
+  test('keyboard A acknowledges the oldest unacknowledged alert', () => {
     renderAlertPanel({
       activeAlert: sampleAlert,
-      acknowledgingAlertId: '1',
+      activeAlerts: [
+        { ...sampleAlert, id: 10, zone_id: 'zone_01', zone_name: 'Pool A' },
+        { ...sampleAlert, id: 20, zone_id: 'zone_02', zone_name: 'Pool B' },
+      ],
     });
-    expect(screen.getAllByRole('button', { name: /acknowledging/i })[0]).toBeDisabled();
+    fireEvent.keyDown(window, { key: 'a' });
+    expect(mockAcknowledge).toHaveBeenCalledWith(20);
+  });
+
+  test('Esc dismisses banner without acknowledging', () => {
+    renderAlertPanel({ activeAlert: sampleAlert });
+    expect(screen.getByRole('status', { name: /active drowning alerts/i })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('status', { name: /active drowning alerts/i })).not.toBeInTheDocument();
+    expect(mockAcknowledge).not.toHaveBeenCalled();
   });
 
   test('shows acknowledge error banner when present', () => {
@@ -109,6 +106,19 @@ describe('AlertPanel', () => {
       acknowledgeError: 'Acknowledge failed.',
     });
     expect(screen.getByText('Acknowledge failed.')).toBeInTheDocument();
+  });
+
+  test('clicking zone chip scrolls to camera card', () => {
+    const scrollIntoView = jest.fn();
+    const getElementByIdSpy = jest.spyOn(document, 'getElementById').mockReturnValue({
+      scrollIntoView,
+    });
+
+    renderAlertPanel({ activeAlert: sampleAlert });
+    fireEvent.click(screen.getByRole('button', { name: 'Pool A' }));
+
+    expect(getElementByIdSpy).toHaveBeenCalledWith('camera-card-zone_01');
+    expect(scrollIntoView).toHaveBeenCalled();
   });
 
   describe('resolveSnapshotUrl', () => {

@@ -7,9 +7,60 @@
  * - Green/red status indicator based on camera.is_active
  */
 
-import React, { useEffect, useState, memo, useRef } from 'react';
+import React, { useEffect, useState, memo, useRef, useMemo } from 'react';
 import useWebRTCStream from '../../hooks/useWebRTCStream';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
+import { useAlertState } from '../../context/AlertContext';
+import { formatDateTime } from '../../utils/dateFormat';
+
+function normalizeBbox(bbox) {
+  if (!bbox) return null;
+
+  if (Array.isArray(bbox) && bbox.length === 4) {
+    const [x1, y1, x2, y2] = bbox.map(Number);
+    if ([x1, y1, x2, y2].some((value) => Number.isNaN(value))) return null;
+    const width = x2 - x1;
+    const height = y2 - y1;
+    if (x1 < 0 || y1 < 0 || width <= 0 || height <= 0) return null;
+    if (x2 <= 1 && y2 <= 1) {
+      return {
+        cx: x1 + (width / 2),
+        cy: y1 + (height / 2),
+      };
+    }
+    return null;
+  }
+
+  if (typeof bbox === 'object') {
+    const x = Number(bbox.x ?? bbox.left ?? bbox.x1);
+    const y = Number(bbox.y ?? bbox.top ?? bbox.y1);
+    const w = Number(bbox.w ?? bbox.width);
+    const h = Number(bbox.h ?? bbox.height);
+    if ([x, y, w, h].every((value) => !Number.isNaN(value))) {
+      if (x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 1 && y + h <= 1) {
+        return {
+          cx: x + (w / 2),
+          cy: y + (h / 2),
+        };
+      }
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function buildZoomStyle(bbox) {
+  const normalized = normalizeBbox(bbox);
+  if (!normalized) return undefined;
+  const tx = (0.5 - normalized.cx) * 100;
+  const ty = (0.5 - normalized.cy) * 100;
+
+  return {
+    transform: `translate(${tx.toFixed(2)}%, ${ty.toFixed(2)}%) scale(1.8)`,
+    transformOrigin: 'center center',
+  };
+}
 
 function CameraCard({
   camera,
@@ -22,6 +73,7 @@ function CameraCard({
   const imgRef = useRef(null);
   const streamToken = camera.stream_token || null;
   const streamSessionId = camera.stream_session_id || 0;
+  const { activeAlerts, acknowledge } = useAlertState();
   const videoRef = useRef(null);
   const detectionOnline = normalizeServiceStatus(camera.detection_engine_status) === 'online';
   const cameraOnline =
@@ -35,6 +87,19 @@ function CameraCard({
   });
   const showWebRTC = shouldRenderStream && isActive && transport === 'webrtc' && Boolean(videoStream);
   const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
+  const zoneAlerts = useMemo(
+    () => (activeAlerts || []).filter((alertItem) => alertItem?.zone_id === camera.zone_id),
+    [activeAlerts, camera.zone_id]
+  );
+  const activeZoneAlert = zoneAlerts[0] || null;
+  const hasActiveAlert = Boolean(activeZoneAlert);
+  const alertConfidence = activeZoneAlert?.confidence ?? activeZoneAlert?.final_confidence ?? null;
+  const alertConfidenceLabel = alertConfidence != null
+    ? `${(Number(alertConfidence) * 100).toFixed(0)}% confidence`
+    : '— confidence';
+  const alertTime = activeZoneAlert?.alerted_at || activeZoneAlert?.triggered_at || activeZoneAlert?.timestamp;
+  const alertLabelTime = alertTime ? formatDateTime(alertTime) : 'just now';
+  const zoomStyle = hasActiveAlert ? buildZoomStyle(activeZoneAlert?.bbox) : undefined;
 
   useEffect(() => {
     // Reset image fallback state whenever the stream token rotates.
@@ -86,6 +151,7 @@ function CameraCard({
 
   return (
     <article
+      id={`camera-card-${camera.zone_id}`}
       role="button"
       tabIndex={0}
       onClick={(e) => onFocus?.(camera, e.currentTarget)}
@@ -99,14 +165,19 @@ function CameraCard({
       aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
     >
       {/* Stream area */}
-      <div className="relative w-full bg-slate-900 aspect-video overflow-hidden">
+      <div
+        className={`relative w-full bg-slate-900 aspect-video overflow-hidden ${
+          hasActiveAlert ? 'ring-4 ring-red-500 animate-pulse' : ''
+        }`}
+      >
         {showWebRTC ? (
           <video
             ref={videoRef}
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300"
+            style={zoomStyle}
             aria-label={`Live feed — ${camera.zone_name}`}
           />
         ) : showFallbackStream ? (
@@ -115,7 +186,8 @@ function CameraCard({
             key={`${camera.zone_id}-${streamToken}-${streamSessionId}`}
             src={streamUrl}
             alt={`Live feed — ${camera.zone_name}`}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300"
+            style={zoomStyle}
             onLoad={() => {
               setImgError(false);
             }}
@@ -168,6 +240,27 @@ function CameraCard({
             </span>
           )}
         </div>
+
+        {hasActiveAlert && (
+          <>
+            <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-red-900/85 to-red-800/10 px-3 py-2 text-white">
+              <p className="text-[11px] font-bold tracking-wide uppercase">⚠ Drowning detected</p>
+              <p className="text-[11px] mt-0.5 opacity-95">{alertConfidenceLabel} · {alertLabelTime}</p>
+            </div>
+            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-slate-950/85 via-slate-900/40 to-transparent">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  acknowledge(activeZoneAlert?.alert_id || activeZoneAlert?.id || activeZoneAlert);
+                }}
+                className="w-full rounded-md bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider py-2"
+              >
+                Acknowledge Alert
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Camera info footer */}

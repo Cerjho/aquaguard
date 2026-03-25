@@ -3,12 +3,17 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { AlertProvider, useAlerts } from './AlertContext';
 import api from '../hooks/useApi';
 import useAlertSocket from '../hooks/useAlertSocket';
+import { useAuth } from './AuthContext';
 
 jest.mock('../hooks/useApi', () => ({
   post: jest.fn(),
 }));
 
 jest.mock('../hooks/useAlertSocket', () => jest.fn());
+
+jest.mock('./AuthContext', () => ({
+  useAuth: jest.fn(),
+}));
 
 let socketCallbacks = {};
 
@@ -49,6 +54,11 @@ describe('AlertContext payload normalization and acknowledge contract', () => {
   beforeEach(() => {
     socketCallbacks = {};
     jest.clearAllMocks();
+
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      initializingSession: false,
+    });
 
     useAlertSocket.mockImplementation((callbacks = {}) => {
       socketCallbacks = callbacks;

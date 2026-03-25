@@ -19,6 +19,7 @@ import React, {
 } from 'react';
 import useAlertSocket from '../hooks/useAlertSocket';
 import api from '../hooks/useApi';
+import { useAuth } from './AuthContext';
 import { normalizeServiceStatus } from '../utils/statusHelpers';
 import logger from '../utils/logger';
 import {
@@ -39,6 +40,7 @@ const FilterStateContext = createContext(null);
 const SocketStateContext = createContext(null);
 
 export function AlertProvider({ children }) {
+  const { isAuthenticated, initializingSession } = useAuth();
   const [activeAlert, setActiveAlert] = useState(null);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [alertHistory, setAlertHistory] = useState([]);
@@ -59,6 +61,7 @@ export function AlertProvider({ children }) {
   });
 
   const [triageFilters, setTriageFiltersState] = useState(DEFAULT_TRIAGE_FILTERS);
+  const realtimeEnabled = isAuthenticated && !initializingSession;
   const statusPollTimerRef = useRef(null);
   const statusPollFailuresRef = useRef(0);
   const detectionBufferRef = useRef([]);
@@ -179,6 +182,7 @@ export function AlertProvider({ children }) {
 
   // Connect WebSocket
   useAlertSocket({
+    enabled: realtimeEnabled,
     onAlert,
     onDetectionEvent,
     onCameraStatus,
@@ -187,6 +191,15 @@ export function AlertProvider({ children }) {
   });
 
   const refreshSystemStatus = useCallback(async () => {
+    if (!realtimeEnabled) {
+      setApiStatus((prev) => ({
+        ...prev,
+        connected: null,
+        lastCheckedAt: new Date().toISOString(),
+      }));
+      return false;
+    }
+
     try {
       const response = await api.get('/api/v1/system/status');
       const payload = response?.data || {};
@@ -214,10 +227,17 @@ export function AlertProvider({ children }) {
       }));
       return false;
     }
-  }, [onCameraStatus]);
+  }, [onCameraStatus, realtimeEnabled]);
 
   useEffect(() => {
     let unmounted = false;
+
+    if (!realtimeEnabled) {
+      if (statusPollTimerRef.current) clearTimeout(statusPollTimerRef.current);
+      return () => {
+        unmounted = true;
+      };
+    }
 
     const scheduleNextPoll = (delayMs) => {
       if (unmounted) return;
@@ -253,7 +273,7 @@ export function AlertProvider({ children }) {
       if (detectionFlushTimerRef.current) clearTimeout(detectionFlushTimerRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshSystemStatus]);
+  }, [refreshSystemStatus, realtimeEnabled]);
 
   /**
    * Acknowledge an alert by ID.

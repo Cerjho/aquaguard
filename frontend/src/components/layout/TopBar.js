@@ -19,11 +19,19 @@ import {
 import AlertBadge from '../alerts/AlertBadge';
 
 function TopBar() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, initializingSession } = useAuth();
   const { unacknowledgedCount } = useAlertState();
   const { socketConnected } = useSocketState();
   const { systemStatus, apiStatus } = useSystemState();
   const navigate = useNavigate();
+  const apiConnected = apiStatus?.connected;
+  const apiChecking = initializingSession || apiConnected === null || apiConnected === undefined;
+  const apiToneClass = apiChecking
+    ? 'text-slate-600'
+    : apiConnected
+      ? 'text-green-700'
+      : 'text-red-700';
+  const apiLabel = apiChecking ? 'Checking' : (apiConnected ? 'Online' : 'Offline');
   const detectionFreshness = systemStatus?.subsystems?.detection_engine?.freshness_seconds;
   const detectionThreshold = systemStatus?.subsystems?.detection_engine?.stale_threshold_seconds;
   const detectionStale = (
@@ -44,8 +52,8 @@ function TopBar() {
         role="status"
         aria-live="polite"
       >
-        <span className={`font-semibold ${apiStatus?.connected ? 'text-green-700' : 'text-red-700'}`}>
-          API: {apiStatus?.connected ? 'Online' : 'Offline'}
+        <span className={`font-semibold ${apiToneClass}`}>
+          API: {apiLabel}
         </span>
         <span className={`font-semibold ${socketConnected ? 'text-green-700' : 'text-amber-700'}`}>
           Socket: {socketConnected ? 'Connected' : 'Disconnected'}

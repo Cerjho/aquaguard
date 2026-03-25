@@ -24,6 +24,7 @@ const AUTH_LOGOUT_PATH = '/api/v1/auth/logout';
 const AUTH_ME_PATH = '/api/v1/auth/me';
 
 let refreshRequest = null;
+let logoutInProgress = false;
 
 function isAuthEndpoint(url) {
   if (!url) return false;
@@ -32,6 +33,10 @@ function isAuthEndpoint(url) {
 }
 
 async function refreshAccessToken() {
+  if (logoutInProgress) {
+    return Promise.reject(new Error('logout in progress'));
+  }
+
   if (!refreshRequest) {
     refreshRequest = api.post(AUTH_REFRESH_PATH)
       .then((response) => {
@@ -56,7 +61,12 @@ function getCookieValue(name) {
 // Attach CSRF token for cookie-authenticated mutating requests
 api.interceptors.request.use(
   (config) => {
+    const url = String(config.url || '');
     const method = (config.method || 'get').toLowerCase();
+    if (method === 'post' && url.includes(AUTH_LOGOUT_PATH)) {
+      logoutInProgress = true;
+    }
+
     const isMutating = ['post', 'put', 'patch', 'delete'].includes(method);
     if (isMutating) {
       const csrfCookieName = config.url?.includes('/api/v1/auth/refresh')
@@ -74,16 +84,29 @@ api.interceptors.request.use(
 
 // Global response error handler — redirect to login only on auth (401) failure
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const url = String(response?.config?.url || '');
+    if (url.includes(AUTH_LOGOUT_PATH) || url.includes(AUTH_LOGIN_PATH)) {
+      logoutInProgress = false;
+    }
+    return response;
+  },
   async (error) => {
     const status = error.response?.status;
     const originalRequest = error.config || {};
+    const requestUrl = String(originalRequest.url || '');
+    const onLoginRoute = window.location.pathname === '/login';
+
+    if (requestUrl.includes(AUTH_LOGOUT_PATH) || requestUrl.includes(AUTH_LOGIN_PATH)) {
+      logoutInProgress = false;
+    }
 
     if (status === 401) {
       const authRequest = isAuthEndpoint(originalRequest.url);
       const alreadyRetried = Boolean(originalRequest._retry);
+      const canAttemptRefresh = !authRequest && !alreadyRetried && !logoutInProgress && !onLoginRoute;
 
-      if (!authRequest && !alreadyRetried) {
+      if (canAttemptRefresh) {
         originalRequest._retry = true;
         try {
           await refreshAccessToken();

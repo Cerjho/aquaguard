@@ -26,6 +26,7 @@ describe('TopBar connectivity health strip', () => {
       isAuthenticated: true,
       authError: null,
       loading: false,
+      initializingSession: false,
       logout: jest.fn(),
       login: jest.fn(),
     });
@@ -58,6 +59,30 @@ describe('TopBar connectivity health strip', () => {
     expect(screen.getByText(/API: Offline/i)).toBeInTheDocument();
     expect(screen.getByText(/Socket: Disconnected/i)).toBeInTheDocument();
     expect(screen.getByText(/Detection freshness: 18s/i)).toBeInTheDocument();
+  });
+
+  test('shows API checking during auth bootstrap', () => {
+    useAuth.mockReturnValue({
+      currentUser: null,
+      isAuthenticated: false,
+      authError: null,
+      loading: false,
+      initializingSession: true,
+      logout: jest.fn(),
+      login: jest.fn(),
+    });
+    useSystemState.mockReturnValue({
+      apiStatus: { connected: null },
+      systemStatus: { subsystems: { detection_engine: {} } },
+    });
+
+    render(
+      <MemoryRouter>
+        <TopBar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/API: Checking/i)).toBeInTheDocument();
   });
 });
 

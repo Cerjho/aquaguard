@@ -11,6 +11,8 @@ import {
   WEBRTC_ICE_TRANSPORT_POLICY,
   WEBRTC_NEGOTIATION_TIMEOUT_MS,
   WEBRTC_STATUS_POLL_MS,
+  WEBRTC_STATUS_POLL_MAX_MS,
+  WEBRTC_STATUS_POLL_429_BACKOFF_FACTOR,
   WEBRTC_RETRY_INTERVAL_MS,
 } from '../utils/constants';
 
@@ -43,6 +45,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
   const stoppedRef = useRef(false);
   const retryScheduledRef = useRef(false);
   const pollFailureCountRef = useRef(0);
+  const pollIntervalMsRef = useRef(WEBRTC_STATUS_POLL_MS);
 
   const fallbackUrl = useMemo(() => {
     if (!zoneId || !streamToken) return null;
@@ -74,10 +77,11 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
     negotiatedRef.current = false;
     retryScheduledRef.current = false;
     pollFailureCountRef.current = 0;
+    pollIntervalMsRef.current = WEBRTC_STATUS_POLL_MS;
 
     const clearTimers = () => {
       if (statusTimerRef.current) {
-        clearInterval(statusTimerRef.current);
+        clearTimeout(statusTimerRef.current);
         statusTimerRef.current = null;
       }
       if (retryTimerRef.current) {
@@ -122,6 +126,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         const response = await api.get(`/api/v1/webrtc/session-status/${sessionIdRef.current}`);
         const status = response?.data?.status;
         pollFailureCountRef.current = 0;
+        pollIntervalMsRef.current = WEBRTC_STATUS_POLL_MS;
         if (status === 'fallback_active' && !negotiatedRef.current) {
           clearTimers();
           teardownPeer();
@@ -129,9 +134,25 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           setWebrtcState('fallback');
           setStreamUrl(fallbackUrlRef.current);
         }
-      } catch {
+      } catch (error) {
         pollFailureCountRef.current += 1;
+        if (error?.response?.status === 429) {
+          const nextDelay = Math.min(
+            Math.max(pollIntervalMsRef.current, WEBRTC_STATUS_POLL_MS)
+              * WEBRTC_STATUS_POLL_429_BACKOFF_FACTOR,
+            WEBRTC_STATUS_POLL_MAX_MS
+          );
+          pollIntervalMsRef.current = nextDelay;
+        }
       }
+    };
+
+    const scheduleStatusPoll = () => {
+      if (stoppedRef.current || !sessionIdRef.current) return;
+      statusTimerRef.current = setTimeout(async () => {
+        await pollStatus();
+        scheduleStatusPoll();
+      }, pollIntervalMsRef.current);
     };
 
     const fetchIceConfig = async () => {
@@ -226,7 +247,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           if (!negotiatedRef.current) scheduleRetry();
         }, WEBRTC_NEGOTIATION_TIMEOUT_MS);
 
-        statusTimerRef.current = setInterval(pollStatus, WEBRTC_STATUS_POLL_MS);
+        scheduleStatusPoll();
       } catch {
         scheduleRetry();
       }

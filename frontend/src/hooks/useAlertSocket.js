@@ -29,6 +29,7 @@ import logger from '../utils/logger';
  * @param {Function} [options.onConnectionChange] - Called on socket connect/disconnect/error
  */
 function useAlertSocket({
+  enabled = true,
   onAlert,
   onDetectionEvent,
   onCameraStatus,
@@ -38,6 +39,17 @@ function useAlertSocket({
   const socketRef = useRef(null);
 
   useEffect(() => {
+    if (!enabled) {
+      if (typeof onConnectionChange === 'function') {
+        onConnectionChange(false, {
+          at: new Date().toISOString(),
+          reason: 'disabled',
+          type: 'disabled',
+        });
+      }
+      return () => {};
+    }
+
     // Establish Socket.IO connection with credentialed cookie handshake.
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
@@ -104,15 +116,25 @@ function useAlertSocket({
       });
     }
 
+    const handleTokenRefresh = () => {
+      if (!socketRef.current) return;
+      // Force a reconnect so the Socket.IO handshake uses the latest cookies.
+      socketRef.current.disconnect();
+      socketRef.current.connect();
+    };
+
+    window.addEventListener('token-refreshed', handleTokenRefresh);
+
     // Cleanup on unmount
     return () => {
+      window.removeEventListener('token-refreshed', handleTokenRefresh);
       socket.disconnect();
       socketRef.current = null;
     };
     // Callbacks are intentionally excluded from deps to avoid reconnect on every render.
     // Consumers should memoize callbacks with useCallback if they need stability.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 
   return socketRef;
 }

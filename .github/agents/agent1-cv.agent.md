@@ -21,12 +21,11 @@ Do not write any code until all six are read.
 
 ## Git Setup — Run This First
 
-```text
+```
 git checkout dev
 git pull origin dev
 git checkout -b feature/agent1-cv-engine
-```text
-
+```
 ## Build Order (do not skip steps)
 
 1.  config/settings.py
@@ -61,14 +60,14 @@ Push every 3–5 commits: `git push origin feature/agent1-cv-engine`
 
 ## Verification
 
-```text
+```
 .\aquaguard_env\Scripts\Activate.ps1
 pytest detection_engine/tests/ -v
 python detection_engine/benchmark.py
-```text
-
+```
 ## Completion
 
 Open PR on GitHub: base=dev, compare=feature/agent1-cv-engine
 Title: feat(agent1): complete CV/AI detection engine — Phase 2
 Write agents/status/agent1_done.md
+

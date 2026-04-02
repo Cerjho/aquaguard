@@ -6,7 +6,7 @@
 
 ---
 
-```text
+```
 aquaguard/
 │
 ├── README.md
@@ -165,8 +165,7 @@ aquaguard/
     ├── start_dev.sh                 # Starts all services for local development
     ├── test_mqtt.py                 # Manually publish a test MQTT alert
     └── test_camera.py               # Verify RTSP stream connection
-```text
-
+```
 ---
 
 ## .gitignore Entries
@@ -212,8 +211,7 @@ frontend/build/
 # OS
 .DS_Store
 Thumbs.db
-```text
-
+```
 ---
 
 ## cameras.json Format
@@ -239,8 +237,7 @@ Thumbs.db
     }
   ]
 }
-```text
-
+```
 For local development with a webcam instead of RTSP:
 
 ```json
@@ -256,8 +253,7 @@ For local development with a webcam instead of RTSP:
     }
   ]
 }
-```text
-
+```
 ---
 
 ## Key Naming Conventions

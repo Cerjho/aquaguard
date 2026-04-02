@@ -21,12 +21,11 @@ Do not write any code until all six are read.
 
 ## Git Setup — Run This First
 
-```text
+```
 git checkout dev
 git pull origin dev
 git checkout -b feature/agent2-backend-api
-```text
-
+```
 ## Build Order (do not skip steps)
 
 1.  backend/.env (copy from .env.example, fill values)
@@ -63,15 +62,15 @@ Commit after each task. Push every 3–5 commits.
 
 ## Verification
 
-```text
+```
 .\aquaguard_env\Scripts\Activate.ps1
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
-```text
-
+```
 ## Completion
 
 Open PR: base=dev, compare=feature/agent2-backend-api
 Title: feat(agent2): complete Flask REST API and WebSocket backend — Phase 3
 Note in PR body: "Agent 3 and Agent 5 can now start."
 Write agents/status/agent2_done.md
+

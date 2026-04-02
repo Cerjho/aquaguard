@@ -93,7 +93,7 @@
 
 ## Architecture
 
-```text
+```
 CameraCapture (threaded, per zone)
     ↓
 DrowningDetector — YOLOv11s + ByteTrack (one instance per zone)
@@ -105,8 +105,7 @@ BehaviorAnalyzer — 5-indicator score [0.0–1.0] with temporal bonus
 ConfidenceFilter — rolling N=15 window, mean > T=0.75, K=10 hits
     ↓
 AlertEngine — JPEG snapshot + base64 + concurrent MQTT / API dispatch
-```text
-
+```
 ## Design Rules Satisfied
 
 - ✅ R6-A — One DrowningDetector per camera zone (ByteTrack state never shared)
@@ -130,3 +129,4 @@ AlertEngine — JPEG snapshot + base64 + concurrent MQTT / API dispatch
 
 - Agent 2 (Backend) can now receive alert payloads at `POST /api/v1/events` — `AlertPayload` schema is stable.
 - Agent 5 (Testing) can re-run `scripts/integration_test.py` — all stubs replaced by real implementations.
+

@@ -86,8 +86,7 @@ class EventService:
     def create_detection_event(self, event_data, snapshot_data):
         # Validation, file writing, DB operations
         pass
-```text
-
+```
 #### 4. Global Mutable State Without Synchronization (SEVERITY: HIGH)
 
 **Affected Files:**
@@ -151,8 +150,7 @@ class EventService:
 ```python
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-```text
-
+```
 **Locations:**
 - `/home/runner/work/aquaguard/aquaguard/detection_engine/alert/mqtt_client.py:10-11`
 - `/home/runner/work/aquaguard/aquaguard/detection_engine/analysis/behavior_analyzer.py:10-11`
@@ -168,8 +166,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 **Recommendation:** Use proper package installation with `setup.py` or `pyproject.toml`:
 ```bash
 pip install -e .
-```text
-
+```
 ### B. Dead Code
 
 #### CRITICAL: Unused Module — preprocessor.py
@@ -187,8 +184,7 @@ pip install -e .
 **Location:** `/home/runner/work/aquaguard/aquaguard/backend/routes/alerts.py:11`
 ```python
 logger = logging.getLogger(__name__)  # Declared but never used
-```text
-
+```
 **Action:** Remove or use it for error logging.
 
 #### LOW: Empty `__init__.py` Files
@@ -250,8 +246,7 @@ All `__init__.py` files in detection_engine are empty. While not technically wro
 ```javascript
 localStorage.setItem('token', access_token);
 localStorage.setItem('user', JSON.stringify(user));
-```text
-
+```
 JWT tokens stored in `localStorage` are accessible to any JavaScript code, including injected XSS payloads.
 
 **Impact:** If an XSS vulnerability is introduced anywhere in the frontend, attackers can steal tokens and impersonate users.
@@ -274,8 +269,7 @@ JWT tokens stored in `localStorage` are accessible to any JavaScript code, inclu
 **Issue:**
 ```python
 _REVOKED_JTIS = {}  # Process-local in-memory dict
-```text
-
+```
 **Problems:**
 - Tokens revoked on one server instance remain valid on others in multi-instance deployments
 - All revoked tokens lost on process restart (logged-out users can continue using tokens)
@@ -294,8 +288,7 @@ def revoke_jti(jti: str, expires_in_seconds: int):
 
 def is_jti_revoked(jti: str) -> bool:
     return redis_client.exists(f"revoked:{jti}") > 0
-```text
-
+```
 ---
 
 #### 3. CORS Misconfiguration (WebSocket Vulnerability)
@@ -306,8 +299,7 @@ def is_jti_revoked(jti: str) -> bool:
 **Issue:**
 ```python
 socketio = SocketIO(async_mode='threading', cors_allowed_origins="*")
-```text
-
+```
 SocketIO accepts connections from **ANY origin** while REST API restricts to localhost.
 
 **Impact:** WebSocket endpoints vulnerable to cross-origin attacks (CSRF, unauthorized subscriptions).
@@ -317,8 +309,7 @@ SocketIO accepts connections from **ANY origin** while REST API restricts to loc
 # Get CORS origins from environment
 ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 socketio = SocketIO(async_mode='threading', cors_allowed_origins=ALLOWED_ORIGINS)
-```text
-
+```
 ---
 
 #### 4. Unsafe Werkzeug in Production
@@ -329,8 +320,7 @@ socketio = SocketIO(async_mode='threading', cors_allowed_origins=ALLOWED_ORIGINS
 **Issue:**
 ```python
 socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
-```text
-
+```
 `allow_unsafe_werkzeug=True` bypasses safety checks when using Werkzeug development server in production.
 
 **Impact:** Insecure server, performance issues, potential DoS vulnerabilities.
@@ -347,8 +337,7 @@ from backend.extensions import socketio
 
 app = create_app()
 # Don't call socketio.run() — let gunicorn handle it
-```text
-
+```
 ---
 
 #### 5. Race Conditions in Shared State
@@ -377,8 +366,7 @@ def update_esp32_heartbeat(device_id: str, timestamp: str):
 def get_esp32_heartbeat(device_id: str) -> str:
     with _heartbeat_lock:
         return _ESP32_HEARTBEAT.get(device_id)
-```text
-
+```
 ---
 
 ### HIGH PRIORITY VULNERABILITIES
@@ -391,10 +379,9 @@ def get_esp32_heartbeat(device_id: str) -> str:
 **Issue:** `AQUAGUARD_API_KEY` not documented in example file. Internal endpoints unprotected if not configured.
 
 **Recommendation:** Add to `.env.example`:
-```text
+```
 AQUAGUARD_API_KEY=change-me-internal-api-key-min-32-chars
-```text
-
+```
 ---
 
 #### 7. Weak Default Credentials in Seed Script
@@ -406,8 +393,7 @@ AQUAGUARD_API_KEY=change-me-internal-api-key-min-32-chars
 ```python
 admin_password = os.getenv('SEED_ADMIN_PASSWORD', 'change-me-admin-password')
 guard_password = os.getenv('SEED_GUARD_PASSWORD', 'change-me-lifeguard-password')
-```text
-
+```
 **Impact:** Predictable default passwords if env vars not set.
 
 **Recommendation:** Require passwords via environment or prompt:
@@ -415,8 +401,7 @@ guard_password = os.getenv('SEED_GUARD_PASSWORD', 'change-me-lifeguard-password'
 admin_password = os.getenv('SEED_ADMIN_PASSWORD')
 if not admin_password:
     raise ValueError("SEED_ADMIN_PASSWORD environment variable required")
-```text
-
+```
 ---
 
 #### 8. Missing Rate Limiting
@@ -443,8 +428,7 @@ limiter = Limiter(
 @limiter.limit("5 per minute")
 def login():
     # ...
-```text
-
+```
 ---
 
 ### MEDIUM PRIORITY VULNERABILITIES
@@ -476,8 +460,7 @@ try:
     Image.open(io.BytesIO(img_bytes))
 except:
     return jsonify({'error': 'Invalid image data'}), 400
-```text
-
+```
 ---
 
 #### 10. API Key in Environment Variables
@@ -501,8 +484,7 @@ except:
 **Issue:**
 ```javascript
 return `${API_BASE_URL}/api/v1/cameras/${zoneId}/stream?token=${encodeURIComponent(token)}`;
-```text
-
+```
 Tokens in URL query parameters may be logged in browser history, server logs, proxy logs.
 
 **Recommendation:** Pass tokens in headers or use cookies for stream authentication.
@@ -518,8 +500,7 @@ Tokens in URL query parameters may be logged in browser history, server logs, pr
 ```c
 #define WIFI_SSID           "your_wifi_ssid"
 #define WIFI_PASSWORD       "your_wifi_password"
-```text
-
+```
 While intended to be changed before flashing, hardcoded credentials in version control is risky.
 
 **Recommendation:**
@@ -550,8 +531,7 @@ While intended to be changed before flashing, hardcoded credentials in version c
 **Recommendation:** Generic error messages for external endpoints:
 ```python
 return jsonify({'error': 'Invalid request'}), 400
-```text
-
+```
 ---
 
 ## 4. BUGS & LOGIC ERRORS
@@ -571,8 +551,7 @@ return jsonify({'error': 'Invalid request'}), 400
 ```python
 from datetime import datetime, timezone
 timestamp = datetime.now(timezone.utc).isoformat() + "Z"
-```text
-
+```
 ---
 
 #### 2. Memory Leak: No Track Cleanup in Filters
@@ -593,8 +572,7 @@ if len(active_track_ids) > 0:
     # Get all tracked IDs from last N frames
     # Remove tracks not seen in last 60 seconds
     confidence_filter.cleanup_stale_tracks(active_track_ids)
-```text
-
+```
 ---
 
 #### 3. Race Condition in Stream Token Refresh
@@ -634,8 +612,7 @@ try:
     cameras = CameraZone.query.filter_by(is_active=True).all()
 except Exception:
     cameras = []  # No db.session.rollback()
-```text
-
+```
 **Impact:** Potential connection leak on database errors.
 
 **Fix:**
@@ -645,8 +622,7 @@ try:
 except Exception:
     db.session.rollback()
     cameras = []
-```text
-
+```
 ---
 
 #### 6. File Descriptor Leak in MJPEG Stream
@@ -671,8 +647,7 @@ def generate():
     finally:
         if file and not file.closed:
             file.close()
-```text
-
+```
 ---
 
 ### LOW BUGS
@@ -707,8 +682,7 @@ def generate():
 ```python
 if frame_rate <= 0:
     raise ValueError("frame_rate must be positive")
-```text
-
+```
 ---
 
 ## 5. PERFORMANCE ISSUES
@@ -726,8 +700,7 @@ zones = CameraZone.query.all()  # 1 query
 for zone in zones:
     zone_detections = query.filter_by(zone_id=zone.zone_id).count()  # N queries
     zone_alerts = query.filter_by(zone_id=zone.zone_id, alert_triggered=True).count()  # N queries
-```text
-
+```
 **Impact:** 2N+1 queries instead of 1 aggregated query. Slow on large datasets.
 
 **Fix:** Use SQLAlchemy group_by aggregation:
@@ -739,8 +712,7 @@ stats = db.session.query(
     func.count(DetectionEvent.id).label('detections'),
     func.sum(case((DetectionEvent.alert_triggered == True, 1), else_=0)).label('alerts')
 ).filter(...).group_by(DetectionEvent.zone_id).all()
-```text
-
+```
 ---
 
 #### 2. Excessive Context Re-renders
@@ -775,8 +747,7 @@ class AlertEngine:
         self._thread_pool.submit(self._send_mqtt, ...)
         self._thread_pool.submit(self._send_api, ...)
         self._thread_pool.submit(self._log_alert, ...)
-```text
-
+```
 ---
 
 ### MEDIUM PRIORITY
@@ -811,8 +782,7 @@ class Alert(db.Model):
     __table_args__ = (
         db.Index('idx_status_triggered_at', 'status', 'triggered_at'),
     )
-```text
-
+```
 ---
 
 #### 6. Infinite Loop in MJPEG Stream
@@ -834,16 +804,14 @@ class Alert(db.Model):
 **Issue:**
 ```javascript
 setAlertHistory((prev) => [normalizedPayload, ...prev]); // No limit
-```text
-
+```
 **Impact:** Memory usage grows indefinitely.
 
 **Fix:** Add maximum size (like detection events):
 ```javascript
 const MAX_ALERT_HISTORY = 1000;
 setAlertHistory((prev) => [normalizedPayload, ...prev].slice(0, MAX_ALERT_HISTORY));
-```text
-
+```
 ---
 
 ### LOW PRIORITY
@@ -859,8 +827,7 @@ from requests.adapters import HTTPAdapter
 adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20)
 self._session.mount('http://', adapter)
 self._session.mount('https://', adapter)
-```text
-
+```
 ---
 
 ## 6. ERROR HANDLING & LOGGING
@@ -898,8 +865,7 @@ class ErrorBoundary extends React.Component {
         return this.props.children;
     }
 }
-```text
-
+```
 ---
 
 ### HIGH ISSUES
@@ -913,8 +879,7 @@ class ErrorBoundary extends React.Component {
 ```python
 except Exception as exc:
     logger.error("Some error: %s", exc)
-```text
-
+```
 **Issues:**
 - Catches `KeyboardInterrupt` and `SystemExit` (should not be caught)
 - Masks programming errors (AttributeError, TypeError)
@@ -927,8 +892,7 @@ except (ConnectionError, TimeoutError) as exc:
 except ValueError as exc:
     logger.error("Invalid data: %s", exc)
 # Don't catch Exception — let programming errors propagate
-```text
-
+```
 ---
 
 #### 3. Silent Failures in WebRTC
@@ -943,16 +907,14 @@ try {
 } catch {
     scheduleRetry(); // No logging or user feedback
 }
-```text
-
+```
 **Fix:** Log errors:
 ```javascript
 } catch (err) {
     console.error('WebRTC setRemoteDescription failed:', err);
     scheduleRetry();
 }
-```text
-
+```
 ---
 
 ### MEDIUM ISSUES
@@ -981,8 +943,7 @@ logger.error(
         'request_id': g.get('request_id')
     }
 )
-```text
-
+```
 ---
 
 #### 6. No Structured Logging
@@ -1174,8 +1135,7 @@ No guide for common issues:
 ```bash
 pip install safety
 safety check -r backend/requirements.txt
-```text
-
+```
 **Recommendations:**
 1. Add `httpx==0.27.2` to requirements.txt
 2. Run `pip-audit` to check for known vulnerabilities
@@ -1210,8 +1170,7 @@ safety check -r backend/requirements.txt
 **CRITICAL ISSUE:**
 ```json
 "axios": "1.7.7"
-```text
-
+```
 **Known Vulnerabilities:**
 - Check CVE database for axios 1.7.7 vulnerabilities
 - Latest is 1.7.9+ (as of review date)
@@ -1227,8 +1186,7 @@ cd frontend
 npm audit
 npm audit fix
 # Review breaking changes before major version updates
-```text
-
+```
 ---
 
 ### Unused Dependencies
@@ -1273,8 +1231,7 @@ npm audit fix
 flake8 backend/ detection_engine/ --max-line-length=100 --statistics
 black backend/ detection_engine/  # Auto-format
 isort backend/ detection_engine/  # Sort imports
-```text
-
+```
 ---
 
 ### JavaScript Code Style
@@ -1307,8 +1264,7 @@ def validate_config():
 
 # In create_app():
 validate_config()
-```text
-
+```
 2. **Environment-specific configs not separated**
    - Dev and prod configs mixed in same files
 
@@ -1325,8 +1281,7 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     # ... production overrides
-```text
-
+```
 ---
 
 ### Git Practices
@@ -1353,8 +1308,7 @@ class ProductionConfig(Config):
 .DS_Store
 .env.local
 .env.production.local
-```text
-
+```
 ---
 
 ### CI/CD Best Practices
@@ -1386,8 +1340,7 @@ class ProductionConfig(Config):
   uses: snyk/actions/python@master
   env:
     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-```text
-
+```
 ---
 
 ## PRIORITY RECOMMENDATIONS SUMMARY
@@ -1600,4 +1553,5 @@ However, **critical security vulnerabilities and reliability issues** prevent im
 **Report Generated:** 2026-03-21
 **Review Methodology:** Static analysis, architecture review, security audit, best practices assessment
 **Scope:** All source code, configuration files, documentation, CI/CD pipelines
+
 

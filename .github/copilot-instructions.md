@@ -10,15 +10,14 @@ Copilot assists with in this repository. Follow them strictly.
 - Always branch off `dev`, never off `main`
 - Branch names must follow this format:
 
-```text
+```
 feat/short-description
 fix/short-description
 refactor/short-description
 docs/short-description
 test/short-description
 chore/short-description
-```text
-
+```
 - Never create sub-PR branches (no `copilot/sub-pr-*` patterns)
 - Never create session or worktree branches
   (no `copilot/worktree-*` or `claude/*` patterns)
@@ -31,10 +30,9 @@ chore/short-description
 
 - Every commit message must follow Conventional Commits format:
 
-```text
+```
 type(scope): short description in lowercase
-```text
-
+```
 - Allowed types: `feat` `fix` `refactor` `docs`
   `test` `chore` `perf` `style`
 - The scope must refer to the module changed:
@@ -83,8 +81,7 @@ git merge --squash feat/your-feature-name
 git commit -m "feat(scope): describe the feature"
 git branch -d feat/your-feature-name
 git push origin --delete feat/your-feature-name
-```text
-
+```
 - Never use plain `git merge` into `dev` or `main`
 - Never use `git merge --no-ff` (creates noisy merge commits)
 - Delete the feature branch immediately after merging
@@ -104,8 +101,7 @@ git commit -m "release: AquaGuard vX.X.X"
 git tag vX.X.X
 git push origin main
 git push origin vX.X.X
-```text
-
+```
 ---
 
 ## 6. What Copilot Must Never Do
@@ -125,7 +121,7 @@ git push origin vX.X.X
 
 Every PR must include:
 
-```text
+```
 ## What
 One sentence describing what this PR does.
 
@@ -143,8 +139,7 @@ One sentence explaining why this change is needed.
 ## Single Responsibility Check
 Does this PR do only ONE thing? Yes / No
 If No — split it before opening.
-```text
-
+```
 ---
 
 ## 8. Quick Reference — Git
@@ -199,7 +194,7 @@ def get_camera(camera_id: int) -> Camera | None:
 
 # Bad
 def get_camera(camera_id):
-```text
+```
 - Use **f-strings** only — never `%` formatting or `.format()`
 - Always use **snake_case** for variables and functions
 - Always use **PascalCase** for classes
@@ -228,7 +223,7 @@ try:
     result = detect_frame(frame)
 except:
     pass
-```text
+```
 - Use **structured logging** — never `print()` in production code:
 ```python
 # Good
@@ -236,8 +231,7 @@ logger.info("Camera %s connected", camera_id)
 
 # Bad
 print(f"Camera {camera_id} connected")
-```text
-
+```
 ### Database
 
 - Never use raw SQL strings — always use SQLAlchemy ORM
@@ -275,8 +269,7 @@ const { alerts, isLoading } = useAlertFeed(cameraId)
 // Bad — logic dumped directly in component
 const [alerts, setAlerts] = useState([])
 useEffect(() => { /* 40 lines of logic */ }, [])
-```text
-
+```
 ### State Management
 
 - Keep state as **local as possible**
@@ -288,8 +281,7 @@ useEffect(() => {
   const socket = connectSocket()
   return () => socket.disconnect()
 }, [])
-```text
-
+```
 ### Error Handling
 
 - Always handle loading and error states in components
@@ -313,7 +305,7 @@ useEffect(() => {
 if frame is None or frame.size == 0:
     logger.warning("Empty frame received, skipping")
     return None
-```text
+```
 - Always validate positive values for frame rate,
   resolution, and confidence thresholds on initialization
 - Never block the main detection loop with I/O operations
@@ -332,7 +324,7 @@ if frame is None or frame.size == 0:
   "data": {},
   "message": "optional human readable string"
 }
-```text
+```
 - Never return raw exceptions or stack traces in API responses
 - Always return correct HTTP status codes:
   - `200` — success

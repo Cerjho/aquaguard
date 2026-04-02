@@ -77,8 +77,7 @@
 
 ```powershell
 docker compose config
-```text
-
+```
 **Result:** success.
 
 Output summary:
@@ -91,17 +90,15 @@ Output summary:
 
 ```powershell
 python scripts/verify_cuda.py
-```text
-
+```
 **Result:** success.
 
 Key output:
 
-```text
+```
 13/13 checks passed
 Environment is ready.
-```text
-
+```
 Additional note from output:
 
 - CUDA unavailable in this runtime (`PyTorch: 2.10.0+cpu`, `CUDA available: False`), but script-level infra checks all passed.
@@ -128,3 +125,4 @@ Additional note from output:
 
 - `agents/queue/fix_agent2.md`
 - `agents/queue/fix_agent3.md`
+

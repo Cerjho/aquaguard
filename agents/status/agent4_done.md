@@ -64,8 +64,7 @@ Task: P4-02"
 
 # 6. Push feature branch
 git push origin feature/agent4-esp32
-```text
-
+```
 ---
 
 ## Tests Run
@@ -111,3 +110,4 @@ None — all Phase 4 tasks complete.
 - **Agent 5 (Testing):** `scripts/test_mqtt.py` is ready. Agent 5 may extend `scripts/` with `test_camera.py` and `start_dev.sh` (P6-01 remaining tasks).
 - **Human:** Must flash `aquaguard_esp32.ino` to the physical ESP32-WROOM-32 and update `WIFI_SSID`, `WIFI_PASSWORD`, and `MQTT_BROKER` in `config.h` before the end-to-end test can return PASS.
 - **Orchestrator:** Open PR `feature/agent4-esp32 → develop` with title `feat(agent4): complete ESP32 firmware and MQTT test — Phase 4`.
+

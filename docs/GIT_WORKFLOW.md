@@ -22,15 +22,14 @@ git push -u origin main
 # Create dev branch — all feature work merges here first
 git checkout -b dev
 git push -u origin dev
-```text
-
+```
 After this, the Orchestrator sets up branch protection (see Section 6).
 
 ---
 
 ## Branch Strategy
 
-```text
+```
 main
  └── dev
       ├── feature/agent1-cv-engine
@@ -38,8 +37,7 @@ main
       ├── feature/agent3-frontend-dashboard
       ├── feature/agent4-esp32-firmware
       └── feature/agent5-testing
-```text
-
+```
 | Branch | Purpose | Who Pushes | Merges Into |
 |---|---|---|---|
 | `main` | Production-ready code only | Nobody directly | — |
@@ -71,8 +69,7 @@ git checkout -b feature/agent2-backend-api   # Agent 2
 git checkout -b feature/agent3-frontend      # Agent 3
 git checkout -b feature/agent4-esp32         # Agent 4
 git checkout -b feature/agent5-testing       # Agent 5
-```text
-
+```
 All work is done on your feature branch. Never commit directly to `dev`.
 
 ---
@@ -81,13 +78,12 @@ All work is done on your feature branch. Never commit directly to `dev`.
 
 ### Format
 
-```text
+```
 type(scope): short description (max 72 chars)
 
 Optional longer body explaining WHY, not WHAT.
 Reference task ID from TASK_BREAKDOWN.md.
-```text
-
+```
 ### Types
 
 | Type | When to Use |
@@ -102,7 +98,7 @@ Reference task ID from TASK_BREAKDOWN.md.
 
 ### Scope = the module or layer you're in
 
-```text
+```
 feat(detector): implement DrowningDetector with YOLOv11s CUDA inference
 feat(pose): add MediaPipe landmark extraction with ROI cropping
 feat(analyzer): implement 5-indicator drowning behavior scoring
@@ -121,8 +117,7 @@ feat(dashboard): implement AlertPanel with WebSocket integration
 feat(camera-ui): add CameraGrid with MJPEG stream display
 chore(deps): add mediapipe==0.10.14 to requirements.txt
 test(backend): add conftest.py with in-memory SQLite fixtures
-```text
-
+```
 ### One Commit Per TASK_BREAKDOWN Task
 
 ```bash
@@ -135,8 +130,7 @@ git commit -m "feat(detector): implement DrowningDetector with YOLOv11s CUDA inf
 Implements per-instance ByteTrack tracking with persist=True.
 One instance required per camera zone (see AGENT_RULES R6-A).
 Task: P2-04"
-```text
-
+```
 ---
 
 ## When to Commit
@@ -144,13 +138,12 @@ Task: P2-04"
 Commit after each completed, verified task — not after each file,
 not after the entire phase.
 
-```text
+```
 P2-04 done and verified → commit
 P2-05 done and verified → commit
 P2-06 done and verified → commit
 ...NOT: finish all of Phase 2 → one big commit
-```text
-
+```
 ---
 
 ## Pushing to GitHub
@@ -159,8 +152,7 @@ Push your feature branch regularly — after every 3–5 commits:
 
 ```bash
 git push origin feature/agent1-cv-engine
-```text
-
+```
 This ensures work is backed up and visible to the Orchestrator.
 
 ---
@@ -178,16 +170,14 @@ git checkout feature/agent1-cv-engine
 git rebase dev    # replay your commits on top of latest dev
 # Resolve any conflicts, then:
 git push origin feature/agent1-cv-engine --force-with-lease
-```text
-
+```
 ### Step 2 — Open Pull Request on GitHub
 
 PR title format:
 
-```text
+```
 feat(agent1): complete CV/AI detection engine — Phase 2
-```text
-
+```
 PR body template (use `.github/pull_request_template.md`):
 
 ```markdown
@@ -219,8 +209,7 @@ Brief description of what this PR implements.
 
 ## Notes
 Any known limitations or follow-up items.
-```text
-
+```
 ### Step 3 — Orchestrator Reviews and Merges
 
 The Orchestrator reviews the PR on GitHub:
@@ -363,8 +352,7 @@ jobs:
 
       - name: Lint Python (detection engine)
         run: flake8 detection_engine/ --max-line-length=100
-```text
-
+```
 ---
 
 ## GitHub Repository Files
@@ -392,11 +380,10 @@ The Orchestrator also creates these files during setup:
 
 ## Linked Issues
 <!-- Closes #issue-number if applicable -->
-```text
-
+```
 ### `.github/CODEOWNERS`
 
-```text
+```
 # Global owners — Orchestrator reviews all PRs
 * @{project-lead-github-username}
 
@@ -406,8 +393,7 @@ The Orchestrator also creates these files during setup:
 /frontend/            @{arabella-github-username}
 /esp32/               @{dranreb-github-username}
 docs/                 @{josiel-github-username}
-```text
-
+```
 ### `.github/ISSUE_TEMPLATE/bug_report.md`
 
 ```markdown
@@ -437,8 +423,7 @@ What actually happens.
 ```paste error here```
 
 **Agent Assigned:** Agent {N}
-```text
-
+```
 ---
 
 ## Branch Protection Rules
@@ -486,8 +471,7 @@ Complete system implementation:
 git tag -a v1.0.0 -m "AquaGuard v1.0.0 — Initial release"
 git push origin main
 git push origin v1.0.0
-```text
-
+```
 Then create a GitHub Release:
 
 - Tag: `v1.0.0`
@@ -523,8 +507,7 @@ git push origin feature/agent{N}-{scope} --force-with-lease
 
 # Then open PR on GitHub using the PR template
 
-```text
-
+```
 ---
 
 ## Git Commands Quick Reference
@@ -565,4 +548,4 @@ git rebase dev
 
 git add {resolved files}
 git rebase --continue
-```text
+```

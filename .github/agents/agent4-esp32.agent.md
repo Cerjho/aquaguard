@@ -21,12 +21,11 @@ You write Arduino C++ firmware. Never touch: backend/, frontend/, detection_engi
 
 ## Git Setup
 
-```text
+```
 git checkout dev
 git pull origin dev
 git checkout -b feature/agent4-esp32
-```text
-
+```
 ## Build Order
 
 1. esp32/aquaguard_esp32/config.h
@@ -48,7 +47,7 @@ git checkout -b feature/agent4-esp32
 
 ## Commits
 
-```text
+```
 git add esp32/aquaguard_esp32/config.h
 git commit -m "feat(esp32): add firmware configuration header  Task: P4-01"
 
@@ -59,14 +58,13 @@ git add scripts/test_mqtt.py
 git commit -m "test(mqtt): add mock alert publisher for broker verification  Task: P6-01"
 
 git push origin feature/agent4-esp32
-```text
-
+```
 ## Verification
 
-```text
+```
 .\aquaguard_env\Scripts\Activate.ps1
 python scripts/test_mqtt.py
-```text
+```
 Physical ESP32 flashing is done by the human — not this agent.
 
 ## Completion
@@ -74,3 +72,4 @@ Physical ESP32 flashing is done by the human — not this agent.
 Open PR: base=dev, compare=feature/agent4-esp32
 Title: feat(agent4): complete ESP32 firmware and MQTT test — Phase 4
 Write agents/status/agent4_done.md
+

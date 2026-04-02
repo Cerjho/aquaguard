@@ -60,24 +60,21 @@ git clone https://github.com/Cerjho/aquaguard.git
 Set-Location aquaguard
 python -m venv aquaguard_env
 .\aquaguard_env\Scripts\Activate.ps1
-```text
-
+```
 ### 2. Install Python dependencies
 
 ```powershell
 python -m pip install --upgrade pip
 python -m pip install -r .\backend\requirements.txt
 python -m pip install -r .\detection_engine\requirements.txt
-```text
-
+```
 ### 3. Install frontend dependencies
 
 ```powershell
 Set-Location .\frontend
 npm install
 Set-Location ..
-```text
-
+```
 ### 4. Configure environment variables
 
 ```powershell
@@ -86,8 +83,7 @@ Copy-Item .\.env.example .\backend\.env
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_WS_URL=http://localhost:5000
 "@ | Set-Content .\frontend\.env
-```text
-
+```
 Place the model weights file manually at `detection_engine/models/aquaguard_yolov11s.pt` before running the detection engine.
 
 ### 5. Initialize the database
@@ -98,28 +94,24 @@ $env:FLASK_APP = "wsgi.py"
 python -m flask db upgrade
 python seed.py
 Set-Location ..
-```text
-
+```
 ### 6. Start all services
 
 ```powershell
 .\scripts\start_dev.ps1
-```text
-
+```
 ### 7. Run the detection engine
 
 ```powershell
 & ".\aquaguard_env\Scripts\python.exe" .\detection_engine\main.py
-```text
-
+```
 ### 8. Production backend startup (Gunicorn)
 
 ```powershell
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
 Set-Location ..
-```text
-
+```
 ---
 
 ## Dashboard Features
@@ -149,16 +141,14 @@ Set-Location ..
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\pytest.exe" tests/ -v --cov=. --cov-report=term-missing
 Set-Location ..
-```text
-
+```
 Result: 27/27 passing.
 
 ### Detection Engine
 
 ```powershell
 & ".\aquaguard_env\Scripts\pytest.exe" .\detection_engine\tests\ -v
-```text
-
+```
 Result: 36/36 passing.
 
 ### Frontend
@@ -167,8 +157,7 @@ Result: 36/36 passing.
 Set-Location .\frontend
 npm test -- --watchAll=false
 Set-Location ..
-```text
-
+```
 Result: 22/22 passing.
 
 Total verified result: 85/85 tests passing.
@@ -191,9 +180,9 @@ See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
 See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
 
-## Security Guide
+## Security
 
-See [docs/SECURITY.md](docs/SECURITY.md)
+See [SECURITY.md](SECURITY.md) for the latest vulnerability report, and [docs/SECURITY.md](docs/SECURITY.md) for the security hardening guide.
 
 ## Troubleshooting
 

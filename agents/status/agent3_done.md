@@ -88,8 +88,7 @@ cd frontend
 npm install
 npm run build
 npm test -- --watchAll=false --passWithNoTests
-```text
-
+```
 ## Issues Encountered
 
 - `useRef` was imported but unused in `AlertContext.js` — fixed immediately before completion.
@@ -100,3 +99,4 @@ npm test -- --watchAll=false --passWithNoTests
 - Agent 5 (Testing) can now write frontend integration tests
 - Backend (Agent 2) must be running for API calls to work in development
 - The `alert.mp3` audio file should be added to `frontend/public/` for the alert sound (Backlog B-03)
+

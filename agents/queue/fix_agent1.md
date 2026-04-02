@@ -42,7 +42,7 @@ missing.  This prevents:
 
 Running `python scripts/integration_test.py`:
 
-```text
+```
 [WARN] detection_engine.vision.preprocessor   — module imported but is empty (no public symbols)
 [WARN] detection_engine.vision.detector       — module imported but is empty (no public symbols)
 [WARN] detection_engine.vision.pose_estimator — module imported but is empty (no public symbols)
@@ -53,13 +53,11 @@ Running `python scripts/integration_test.py`:
 [WARN] detection_engine.models_data.detection — module imported but is empty (no public symbols)
 [WARN] detection_engine.models_data.landmark  — module imported but is empty (no public symbols)
 [WARN] detection_engine.models_data.alert_payload — module imported but is empty (no public symbols)
-```text
-
+```
 Running `python -c "from detection_engine.vision.detector import DrowningDetector"`:
-```text
+```
 ImportError: cannot import name 'DrowningDetector' from 'detection_engine.vision.detector'
-```text
-
+```
 ---
 
 ## Required Actions (per TASK_BREAKDOWN.md / IMPLEMENTATION_PLAN.md)
@@ -97,3 +95,4 @@ Once the files are implemented, Agent 5 will:
 Python stubs for all empty detection-engine modules so Agent 5's test
 infrastructure still runs without crashing.  The stubs are clearly labelled
 `~ stub` in output — they do NOT substitute for the real implementation.
+

@@ -120,8 +120,7 @@ Fallback compatibility:
   "sdp": "v=0\r\no=- 46117357 2 IN IP4 127.0.0.1",
   "fallback_transport": "mjpeg"
 }
-```text
-
+```
 ### `POST /api/v1/webrtc/offer` response (202)
 
 ```json
@@ -139,8 +138,7 @@ Fallback compatibility:
     "active": false
   }
 }
-```text
-
+```
 ### `POST /api/v1/webrtc/ice-candidate` request
 
 ```json
@@ -150,8 +148,7 @@ Fallback compatibility:
   "sdpMid": "0",
   "sdpMLineIndex": 0
 }
-```text
-
+```
 ### `POST /api/v1/webrtc/ice-candidate` response (202)
 
 ```json
@@ -165,8 +162,7 @@ Fallback compatibility:
     "session_status_url": "/api/v1/webrtc/session-status/9ea0fca4-4df6-4ecf-8914-0bdb5de7132f"
   }
 }
-```text
-
+```
 ### `GET /api/v1/webrtc/session-status/<session_id>` response (200)
 
 ```json
@@ -196,8 +192,7 @@ Fallback compatibility:
     "retry_after_ms": 1500
   }
 }
-```text
-
+```
 ---
 
 ## 4) Files Changed and Checks Run
@@ -218,3 +213,4 @@ Fallback compatibility:
 
 - `python -m pytest backend/tests/test_webrtc.py -v` → **4 passed**
 - `python -m pytest backend/tests -v` → **59 passed**
+

@@ -8,8 +8,7 @@ Most dashboard endpoints require JWT access tokens in the `Authorization` header
 
 ```http
 Authorization: Bearer <access_token>
-```text
-
+```
 Token endpoints:
 
 - `POST /auth/login` returns `access_token` and `refresh_token`
@@ -32,8 +31,7 @@ Request body schema:
   "username": "string",
   "password": "string"
 }
-```text
-
+```
 Example request:
 
 ```json
@@ -41,8 +39,7 @@ Example request:
   "username": "admin",
   "password": "adminpass"
 }
-```text
-
+```
 Responses:
 
 - `200 OK`
@@ -59,24 +56,21 @@ Responses:
     "is_active": true
   }
 }
-```text
-
+```
 - `400 Bad Request`
 
 ```json
 {
   "error": "username and password required"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "error": "Invalid credentials"
 }
-```text
-
+```
 Notes:
 
 - Username is trimmed before lookup.
@@ -97,8 +91,7 @@ Example request header:
 
 ```http
 Authorization: Bearer <refresh_token>
-```text
-
+```
 Responses:
 
 - `200 OK`
@@ -107,24 +100,21 @@ Responses:
 {
   "access_token": "<new-jwt-access-token>"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - `404 Not Found`
 
 ```json
 {
   "error": "User not found"
 }
-```text
-
+```
 Notes:
 
 - Endpoint uses `@jwt_required(refresh=True)`.
@@ -149,8 +139,7 @@ Responses:
 {
   "message": "Logged out successfully"
 }
-```text
-
+```
 Notes:
 
 - Logout is stateless in current implementation.
@@ -185,16 +174,14 @@ Responses:
     "created_at": "2026-03-17T06:40:12.881125"
   }
 ]
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 Notes:
 
 - Returns only active cameras (`is_active = true`).
@@ -217,8 +204,7 @@ Request body schema:
   "frame_rate": "integer (optional, default 30)",
   "resolution": "string (optional, default 1280x720)"
 }
-```text
-
+```
 Example request:
 
 ```json
@@ -230,8 +216,7 @@ Example request:
   "frame_rate": 30,
   "resolution": "1280x720"
 }
-```text
-
+```
 Responses:
 
 - `201 Created`
@@ -248,40 +233,35 @@ Responses:
   "is_active": true,
   "created_at": "2026-03-17T10:18:54.162207"
 }
-```text
-
+```
 - `400 Bad Request`
 
 ```json
 {
   "error": "Missing fields: ['zone_id', 'zone_name', 'rtsp_url']"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - `403 Forbidden`
 
 ```json
 {
   "error": "Insufficient permissions"
 }
-```text
-
+```
 - `409 Conflict`
 
 ```json
 {
   "error": "zone_id already exists"
 }
-```text
-
+```
 Notes:
 
 - Role enforcement uses JWT claim `role=admin`.
@@ -303,16 +283,14 @@ Request body schema:
   "frame_rate": "integer (optional)",
   "resolution": "string (optional)"
 }
-```text
-
+```
 Example request:
 
 ```json
 {
   "zone_name": "Main Pool - East Updated"
 }
-```text
-
+```
 Responses:
 
 - `200 OK`
@@ -329,32 +307,28 @@ Responses:
   "is_active": true,
   "created_at": "2026-03-17T06:40:12.881125"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - `403 Forbidden`
 
 ```json
 {
   "error": "Insufficient permissions"
 }
-```text
-
+```
 - `404 Not Found`
 
 ```json
 {
   "error": "Camera zone not found"
 }
-```text
-
+```
 Notes:
 
 - Implementation uses `first_or_404()` for lookup.
@@ -378,32 +352,28 @@ Responses:
 {
   "message": "Camera zone_01 deactivated"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - `403 Forbidden`
 
 ```json
 {
   "error": "Insufficient permissions"
 }
-```text
-
+```
 - `404 Not Found`
 
 ```json
 {
   "error": "Camera zone not found"
 }
-```text
-
+```
 Notes:
 
 - Camera is soft-deleted (`is_active=false`), not physically removed.
@@ -427,35 +397,31 @@ Responses:
 {
   "error": "stream token is required"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "error": "Stream token expired"
 }
-```text
-
+```
 - `200 OK` (`multipart/x-mixed-replace; boundary=frame`)
 
 Example response chunk:
 
-```text
+```
 --frame
 Content-Type: image/jpeg
 
 <binary-jpeg-bytes>
-```text
-
+```
 - `404 Not Found`
 
 ```json
 {
   "error": "Camera zone not found"
 }
-```text
-
+```
 Notes:
 
 - Streams MJPEG frames generated from latest zone snapshot (`backend/snapshots/live/{zone_id}_latest.jpg`).
@@ -488,24 +454,21 @@ Responses:
   "expires_at": "2026-03-20T10:42:33.512000+00:00",
   "expires_in_seconds": 30
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - `404 Not Found`
 
 ```json
 {
   "error": "Camera zone not found"
 }
-```text
-
+```
 Notes:
 
 - Token is zone-scoped and time-limited (`STREAM_TOKEN_TTL_SECONDS`, default 30s).
@@ -530,8 +493,7 @@ Request body schema:
   "detected_at": "ISO-8601 datetime string",
   "snapshot_base64": "string (optional)"
 }
-```text
-
+```
 Example request:
 
 ```json
@@ -547,8 +509,7 @@ Example request:
   "detected_at": "2026-03-17T10:42:33.512000",
   "snapshot_base64": "<base64-jpeg>"
 }
-```text
-
+```
 Responses:
 
 - `201 Created`
@@ -579,24 +540,21 @@ Responses:
     "notes": null
   }
 }
-```text
-
+```
 - `400 Bad Request`
 
 ```json
 {
   "error": "Missing fields: ['zone_id']"
 }
-```text
-
+```
 - `500 Internal Server Error`
 
 ```json
 {
   "error": "Database error"
 }
-```text
-
+```
 Notes:
 
 - If `alert_triggered=true`, backend inserts alert then emits `alert_event` over Socket.IO after commit.
@@ -642,16 +600,14 @@ Responses:
     }
   ]
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 Notes:
 
 - Invalid datetime query values are ignored (non-fatal).
@@ -690,16 +646,14 @@ Responses:
     "notes": null
   }
 ]
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 Notes:
 
 - Results are ordered by newest `triggered_at` first.
@@ -718,16 +672,14 @@ Request body schema:
 {
   "notes": "string (optional)"
 }
-```text
-
+```
 Example request:
 
 ```json
 {
   "notes": "handled"
 }
-```text
-
+```
 Responses:
 
 - `200 OK`
@@ -744,32 +696,28 @@ Responses:
   "acknowledged_at": "2026-03-17T10:43:02.121745",
   "notes": "handled"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - `404 Not Found`
 
 ```json
 {
   "error": "Alert not found"
 }
-```text
-
+```
 - `409 Conflict`
 
 ```json
 {
   "error": "Alert already acknowledged"
 }
-```text
-
+```
 Notes:
 
 - `acknowledged_by` is derived from JWT identity (`sub`).
@@ -811,16 +759,14 @@ Responses:
     }
   ]
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 Notes:
 
 - Invalid date values are ignored and do not produce 400.
@@ -836,8 +782,7 @@ Headers:
 
 ```http
 X-API-Key: <AQUAGUARD_API_KEY>
-```text
-
+```
 Responses:
 
 - `200 OK`
@@ -856,16 +801,14 @@ Responses:
     }
   ]
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "error": "Unauthorized"
 }
-```text
-
+```
 ---
 
 ### GET /system/status
@@ -886,8 +829,7 @@ Responses:
   "camera_status": [],
   "generated_at": "2026-03-23T10:00:00+00:00"
 }
-```text
-
+```
 ---
 
 ### POST /system/heartbeat
@@ -899,8 +841,7 @@ Headers:
 
 ```http
 X-API-Key: <AQUAGUARD_API_KEY>
-```text
-
+```
 Request body schema:
 
 ```json
@@ -910,8 +851,7 @@ Request body schema:
   "uptime_ms": 12345,
   "timestamp": "2026-03-23T10:00:00+00:00"
 }
-```text
-
+```
 Responses:
 
 - `200 OK`
@@ -920,24 +860,21 @@ Responses:
 {
   "message": "heartbeat accepted"
 }
-```text
-
+```
 - `400 Bad Request`
 
 ```json
 {
   "error": "device_id is required"
 }
-```text
-
+```
 - `401 Unauthorized`
 
 ```json
 {
   "error": "Unauthorized"
 }
-```text
-
+```
 ---
 
 ### POST /webrtc/offer
@@ -954,8 +891,7 @@ Request body schema:
   "sdp": "v=0...",
   "session_id": "optional-uuid"
 }
-```text
-
+```
 Responses:
 
 - `202 Accepted` with answer/fallback metadata
@@ -978,8 +914,7 @@ Request body schema:
   "sdpMid": "0",
   "sdpMLineIndex": 0
 }
-```text
-
+```
 Responses:
 
 - `202 Accepted`
@@ -1024,8 +959,7 @@ Responses:
   "force_relay": false,
   "auth_type": "jwt"
 }
-```text
-
+```
 ---
 
 ## WebSocket Events
@@ -1034,8 +968,7 @@ Connection:
 
 ```javascript
 io(WS_URL, { auth: { token: <access_token> } })
-```text
-
+```
 ### Server -> Client Events
 
 - `alert_event`
@@ -1054,8 +987,7 @@ io(WS_URL, { auth: { token: <access_token> } })
   "acknowledged_at": null,
   "notes": null
 }
-```text
-
+```
 - `camera_status`
   - Status payload for camera connectivity.
 
@@ -1064,8 +996,7 @@ io(WS_URL, { auth: { token: <access_token> } })
   "zone_id": "zone_01",
   "status": "online"
 }
-```text
-
+```
 - `system_status`
   - Status payload for subsystem health.
 
@@ -1075,8 +1006,7 @@ io(WS_URL, { auth: { token: <access_token> } })
   "status": "degraded",
   "message": "MQTT reconnecting"
 }
-```text
-
+```
 Notes:
 
 - WebSocket `connect` handler accepts optional JWT token in handshake auth.
@@ -1103,36 +1033,32 @@ Common patterns used by the API:
 {
   "error": "Missing fields: ['zone_id']"
 }
-```text
-
+```
 - Auth error (`401`)
 
 ```json
 {
   "msg": "Missing Authorization Header"
 }
-```text
-
+```
 - Permission error (`403`)
 
 ```json
 {
   "error": "Insufficient permissions"
 }
-```text
-
+```
 - Conflict (`409`)
 
 ```json
 {
   "error": "Alert already acknowledged"
 }
-```text
-
+```
 - Server/DB failure (`500`)
 
 ```json
 {
   "error": "Database error"
 }
-```text
+```

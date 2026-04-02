@@ -7,7 +7,7 @@ Copilot assists with in this repository. Follow them strictly.
 
 ## 1. Branch Rules
 
-- Always branch off `develop`, never off `main`
+- Always branch off `dev`, never off `main`
 - Branch names must follow this format:
 
 ```text
@@ -75,17 +75,17 @@ type(scope): short description in lowercase
 
 ## 4. Merge Rules
 
-- Always use `--squash` merge into `develop`:
+- Always use `--squash` merge into `dev`:
 
 ```bash
-git checkout develop
+git checkout dev
 git merge --squash feat/your-feature-name
 git commit -m "feat(scope): describe the feature"
 git branch -d feat/your-feature-name
 git push origin --delete feat/your-feature-name
 ```text
 
-- Never use plain `git merge` into `develop` or `main`
+- Never use plain `git merge` into `dev` or `main`
 - Never use `git merge --no-ff` (creates noisy merge commits)
 - Delete the feature branch immediately after merging
 
@@ -95,11 +95,11 @@ git push origin --delete feat/your-feature-name
 
 - Never push directly to `main`
 - `main` is only updated on releases
-- Merging develop into main must use `--squash`:
+- Merging dev into main must use `--squash`:
 
 ```bash
 git checkout main
-git merge --squash develop
+git merge --squash dev
 git commit -m "release: AquaGuard vX.X.X"
 git tag vX.X.X
 git push origin main
@@ -114,7 +114,7 @@ git push origin vX.X.X
 - Never create `claude/*` branches
 - Never create worktree or session branches
 - Never push a stash ref to remote
-- Never force-push to `main` or `develop`
+- Never force-push to `main` or `dev`
 - Never combine unrelated changes in one commit or PR
 - Never write `Initial plan` as a standalone commit
 - Never open a sub-PR off another PR branch

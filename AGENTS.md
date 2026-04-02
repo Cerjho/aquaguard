@@ -16,8 +16,8 @@ This is the AquaGuard IoT drowning detection system.
 ## Git Rules
 
 - `main` is for releases only — never commit or push directly
-  to `main` or `develop`
-- Always work on a feature branch branched off `develop`
+  to `main` or `dev`
+- Always work on a feature branch branched off `dev`
 - Branch names must follow this format:
   `feat/` `fix/` `refactor/` `docs/` `test/` `chore/`
 - Never create `copilot/*` `claude/*` or `worktree/*` branches

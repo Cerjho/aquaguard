@@ -26,8 +26,8 @@ Do not create your branch or write any code until agent2_done.md exists.
 ## Git Setup — Run After Prerequisite Met
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent3-frontend
 ```text
 
@@ -73,6 +73,6 @@ npm test -- --watchAll=false --passWithNoTests
 
 ## Completion
 
-Open PR: base=develop, compare=feature/agent3-frontend
+Open PR: base=dev, compare=feature/agent3-frontend
 Title: feat(agent3): complete React dashboard — Phase 5
 Write agents/status/agent3_done.md

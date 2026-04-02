@@ -19,9 +19,9 @@ git add docs/ agents/ .gitignore README.md
 git commit -m "chore(repo): initial project structure and documentation"
 git push -u origin main
 
-# Create develop branch — all feature work merges here first
-git checkout -b develop
-git push -u origin develop
+# Create dev branch — all feature work merges here first
+git checkout -b dev
+git push -u origin dev
 ```text
 
 After this, the Orchestrator sets up branch protection (see Section 6).
@@ -32,7 +32,7 @@ After this, the Orchestrator sets up branch protection (see Section 6).
 
 ```text
 main
- └── develop
+ └── dev
       ├── feature/agent1-cv-engine
       ├── feature/agent2-backend-api
       ├── feature/agent3-frontend-dashboard
@@ -43,16 +43,16 @@ main
 | Branch | Purpose | Who Pushes | Merges Into |
 |---|---|---|---|
 | `main` | Production-ready code only | Nobody directly | — |
-| `develop` | Integration branch | Via PR from feature | `main` (via PR) |
-| `feature/agent{N}-*` | Each agent's work | The agent | `develop` (via PR) |
-| `fix/agent{N}-*` | Bug fixes after review | The agent | `develop` (via PR) |
+| `dev` | Integration branch | Via PR from feature | `main` (via PR) |
+| `feature/agent{N}-*` | Each agent's work | The agent | `dev` (via PR) |
+| `fix/agent{N}-*` | Bug fixes after review | The agent | `dev` (via PR) |
 
 **Rules:**
 
-- No agent pushes directly to `main` or `develop`
-- Every merge to `develop` goes through a Pull Request
-- Every merge to `main` goes through a Pull Request from `develop`
-- Feature branches are created from `develop`, not from `main`
+- No agent pushes directly to `main` or `dev`
+- Every merge to `dev` goes through a Pull Request
+- Every merge to `main` goes through a Pull Request from `dev`
+- Feature branches are created from `dev`, not from `main`
 
 ---
 
@@ -61,9 +61,9 @@ main
 Before writing any code, every agent creates their feature branch:
 
 ```bash
-# Make sure you're on develop and it's up to date
-git checkout develop
-git pull origin develop
+# Make sure you're on dev and it's up to date
+git checkout dev
+git pull origin dev
 
 # Create your feature branch
 git checkout -b feature/agent1-cv-engine     # Agent 1
@@ -73,7 +73,7 @@ git checkout -b feature/agent4-esp32         # Agent 4
 git checkout -b feature/agent5-testing       # Agent 5
 ```text
 
-All work is done on your feature branch. Never commit directly to `develop`.
+All work is done on your feature branch. Never commit directly to `dev`.
 
 ---
 
@@ -169,13 +169,13 @@ This ensures work is backed up and visible to the Orchestrator.
 
 When an agent completes their full phase and all tests pass:
 
-### Step 1 — Sync with develop before opening PR
+### Step 1 — Sync with dev before opening PR
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout feature/agent1-cv-engine
-git rebase develop    # replay your commits on top of latest develop
+git rebase dev    # replay your commits on top of latest dev
 # Resolve any conflicts, then:
 git push origin feature/agent1-cv-engine --force-with-lease
 ```text
@@ -242,9 +242,9 @@ name: AquaGuard CI
 
 on:
   push:
-    branches: [ develop, 'feature/**', 'fix/**' ]
+    branches: [ dev, 'feature/**', 'fix/**' ]
   pull_request:
-    branches: [ develop, main ]
+    branches: [ dev, main ]
 
 jobs:
 
@@ -453,7 +453,7 @@ The Orchestrator configures these on GitHub after the first push:
 - Require branches to be up to date ✅
 - Restrict who can push: nobody directly ✅
 
-**For `develop` branch:**
+**For `dev` branch:**
 
 - Require pull request before merging ✅
 - Require status checks to pass (all 4 CI jobs) ✅
@@ -466,15 +466,15 @@ Set these at:
 
 ## Release Workflow (End of Project)
 
-When Agent 5 writes `agent5_done.md` and all PRs are merged to `develop`:
+When Agent 5 writes `agent5_done.md` and all PRs are merged to `dev`:
 
 ```bash
 
-# Orchestrator merges develop → main
+# Orchestrator merges dev → main
 
 git checkout main
 git pull origin main
-git merge --no-ff develop -m "release: AquaGuard v1.0.0
+git merge --no-ff dev -m "release: AquaGuard v1.0.0
 
 Complete system implementation:
 - YOLOv11s drowning detection engine
@@ -503,8 +503,8 @@ Then create a GitHub Release:
 # Start of work session
 
 git checkout feature/agent{N}-{scope}
-git pull origin develop
-git rebase develop   # stay current with other agents' merged work
+git pull origin dev
+git rebase dev   # stay current with other agents' merged work
 
 # During work — after each completed task
 
@@ -518,7 +518,7 @@ git push origin feature/agent{N}-{scope}
 
 # End of phase — open PR
 
-git rebase develop
+git rebase dev
 git push origin feature/agent{N}-{scope} --force-with-lease
 
 # Then open PR on GitHub using the PR template
@@ -559,7 +559,7 @@ git push origin --delete feature/agent1-cv-engine
 
 # Resolve rebase conflict
 
-git rebase develop
+git rebase dev
 
 # → edit conflicted files
 

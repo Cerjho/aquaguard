@@ -43,8 +43,8 @@ Do not write any file until all five are read.
 ## Git Setup — Run This First
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent6-devops
 ```text
 
@@ -561,7 +561,7 @@ git push origin feature/agent6-devops
 ```text
 
 Open PR on GitHub:
-- Base: `develop`
+- Base: `dev`
 - Compare: `feature/agent6-devops`
 - Title: `feat(agent6): complete DevOps setup — CI, Docker, Windows scripts — Phase 7`
 

@@ -40,8 +40,8 @@ Do not begin code review until all five are read.
 ## Git Setup
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent8-code-review
 ```text
 
@@ -507,7 +507,7 @@ git push origin feature/agent8-code-review
 ```text
 
 Open PR on GitHub:
-- Base: `develop`
+- Base: `dev`
 - Compare: `feature/agent8-code-review`
 - Title: `review(agent8): complete code review report — Phase 9`
 

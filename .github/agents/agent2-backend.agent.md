@@ -22,8 +22,8 @@ Do not write any code until all six are read.
 ## Git Setup — Run This First
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent2-backend-api
 ```text
 
@@ -71,7 +71,7 @@ pytest tests/ -v --cov=. --cov-report=term-missing
 
 ## Completion
 
-Open PR: base=develop, compare=feature/agent2-backend-api
+Open PR: base=dev, compare=feature/agent2-backend-api
 Title: feat(agent2): complete Flask REST API and WebSocket backend — Phase 3
 Note in PR body: "Agent 3 and Agent 5 can now start."
 Write agents/status/agent2_done.md

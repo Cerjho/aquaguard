@@ -22,8 +22,8 @@ You write Arduino C++ firmware. Never touch: backend/, frontend/, detection_engi
 ## Git Setup
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent4-esp32
 ```text
 
@@ -71,6 +71,6 @@ Physical ESP32 flashing is done by the human — not this agent.
 
 ## Completion
 
-Open PR: base=develop, compare=feature/agent4-esp32
+Open PR: base=dev, compare=feature/agent4-esp32
 Title: feat(agent4): complete ESP32 firmware and MQTT test — Phase 4
 Write agents/status/agent4_done.md

@@ -28,8 +28,8 @@ If either is missing, wait and check again every 2 minutes.
 ## Git Setup — After Prerequisites Met
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent5-testing
 ```text
 
@@ -74,6 +74,6 @@ git push origin feature/agent5-testing
 
 ## Completion
 
-Open PR: base=develop, compare=feature/agent5-testing
+Open PR: base=dev, compare=feature/agent5-testing
 Title: test(agent5): complete integration testing and QA report — Phase 6
 Write agents/status/agent5_done.md

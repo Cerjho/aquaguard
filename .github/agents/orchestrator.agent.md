@@ -27,8 +27,8 @@ git remote add origin https://github.com/{username}/aquaguard.git
 git add docs/ .github/ AGENTS.md .gitignore README.md .env.example
 git commit -m "chore(repo): initial project structure, docs, and agent configuration"
 git push -u origin main
-git checkout -b develop
-git push -u origin develop
+git checkout -b dev
+git push -u origin dev
 ```text
 
 Create GitHub workflow files exactly as defined in docs/GIT_WORKFLOW.md:
@@ -41,12 +41,12 @@ Commit them:
 ```text
 git add .github/workflows/ .github/pull_request_template.md .github/CODEOWNERS .github/ISSUE_TEMPLATE/
 git commit -m "chore(ci): add GitHub Actions CI, PR template, and CODEOWNERS"
-git push origin develop
+git push origin dev
 ```text
 
 Set branch protection on GitHub (Settings → Branches):
 - main: require PR, require CI pass, no direct push
-- develop: require PR, require CI pass
+- dev: require PR, require CI pass
 
 Create coordination directories:
 ```text
@@ -69,11 +69,11 @@ When an agent opens a PR:
 3. Verify PR template is filled in
 4. Merge using Squash and Merge
 
-## Release Sequence (after all PRs merged to develop)
+## Release Sequence (after all PRs merged to dev)
 
 ```text
 git checkout main && git pull origin main
-git merge --no-ff develop -m "release: AquaGuard v1.0.0"
+git merge --no-ff dev -m "release: AquaGuard v1.0.0"
 git tag -a v1.0.0 -m "AquaGuard v1.0.0 — Initial release"
 git push origin main && git push origin v1.0.0
 ```text

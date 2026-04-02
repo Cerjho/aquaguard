@@ -82,7 +82,7 @@ python -c "import torch; print(torch.cuda.is_available())"
 ```text
 Initialize the AquaGuard GitHub repository.
 Follow your startup sequence — create .github/workflows/ci.yml,
-develop branch, branch protection, and agents/status/ directory.
+dev branch, branch protection, and agents/status/ directory.
 Commit everything to GitHub.
 ```text
 
@@ -245,12 +245,12 @@ Since you are alone, you review and merge your own PRs:
 Merge order:
 
 ```text
-feature/agent4-esp32       → develop (any time)
-feature/agent1-cv-engine   → develop
-feature/agent2-backend-api → develop
-feature/agent3-frontend    → develop (after agent2 merged)
-feature/agent5-testing     → develop (last)
-develop                    → main (final release)
+feature/agent4-esp32       → dev (any time)
+feature/agent1-cv-engine   → dev
+feature/agent2-backend-api → dev
+feature/agent3-frontend    → dev (after agent2 merged)
+feature/agent5-testing     → dev (last)
+dev                        → main (final release)
 ```text
 
 ---

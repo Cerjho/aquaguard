@@ -22,8 +22,8 @@ Do not write any code until all six are read.
 ## Git Setup — Run This First
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent1-cv-engine
 ```text
 
@@ -69,6 +69,6 @@ python detection_engine/benchmark.py
 
 ## Completion
 
-Open PR on GitHub: base=develop, compare=feature/agent1-cv-engine
+Open PR on GitHub: base=dev, compare=feature/agent1-cv-engine
 Title: feat(agent1): complete CV/AI detection engine — Phase 2
 Write agents/status/agent1_done.md

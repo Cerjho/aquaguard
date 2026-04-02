@@ -44,8 +44,8 @@ Do not write any file until all eight are read.
 ## Git Setup — Run This First
 
 ```text
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent7-docs
 ```text
 
@@ -424,7 +424,7 @@ git push origin feature/agent7-docs
 ```text
 
 Open PR on GitHub:
-- Base: `develop`
+- Base: `dev`
 - Compare: `feature/agent7-docs`
 - Title: `docs(agent7): complete project documentation — README, API, setup, architecture`
 

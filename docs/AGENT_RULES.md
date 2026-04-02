@@ -321,12 +321,12 @@ the non-negotiable requirements. Violations will be caught in PR review.
 
 ### R10-A — Branch Before You Code
 
-Every agent creates their feature branch from `develop` before writing
+Every agent creates their feature branch from `dev` before writing
 any application code:
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent{N}-{scope}
 # examples:
 # feature/agent1-cv-engine
@@ -336,7 +336,7 @@ git checkout -b feature/agent{N}-{scope}
 # feature/agent5-testing
 ```text
 
-Never commit directly to `main` or `develop`.
+Never commit directly to `main` or `dev`.
 
 ### R10-B — One Commit Per Task
 
@@ -373,12 +373,12 @@ Orchestrator monitor progress:
 git push origin feature/agent{N}-{scope}
 ```text
 
-### R10-E — Sync With develop Before Opening PR
+### R10-E — Sync With dev Before Opening PR
 
 ```bash
-git checkout develop && git pull origin develop
+git checkout dev && git pull origin dev
 git checkout feature/agent{N}-{scope}
-git rebase develop
+git rebase dev
 git push origin feature/agent{N}-{scope} --force-with-lease
 ```text
 
@@ -386,7 +386,7 @@ git push origin feature/agent{N}-{scope} --force-with-lease
 
 When your phase is done and all tests pass, open a PR on GitHub:
 
-- Base branch: `develop`
+- Base branch: `dev`
 - Compare branch: your `feature/agent{N}-{scope}`
 - Title format: `feat(agent{N}): complete {scope} — Phase {N}`
 - Fill in the PR template from `.github/pull_request_template.md`

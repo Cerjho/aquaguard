@@ -34,9 +34,10 @@ Branch: feature/agent7-docs
 
 ## Commits
 
-- 4b736ff chore(deps): add backend requirements.txt for Docker build  Task: P8-01
-- 2600928 docs(readme): add complete project README with setup and test results  Task: P8-02
-- f04afed docs(setup): add complete Windows developer setup guide  Task: P8-03
-- e29b55a docs(api): add complete REST API and WebSocket reference  Task: P8-04
-- f5fde73 docs(openapi): add OpenAPI 3.0 spec for all API endpoints  Task: P8-05
-- d3cd077 docs(arch): add system architecture reference document  Task: P8-06
+- 4b736ff chore(deps): add backend requirements.txt for Docker build Task: P8-01
+- 2600928 docs(readme): add complete project README with setup and test
+  results Task: P8-02
+- f04afed docs(setup): add complete Windows developer setup guide Task: P8-03
+- e29b55a docs(api): add complete REST API and WebSocket reference Task: P8-04
+- f5fde73 docs(openapi): add OpenAPI 3.0 spec for all API endpoints Task: P8-05
+- d3cd077 docs(arch): add system architecture reference document Task: P8-06

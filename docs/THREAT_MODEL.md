@@ -83,12 +83,15 @@ Mitigations:
 
 ## Residual Risks
 
-- React test warnings around async state updates indicate potential future brittle behavior
-- Stream-token lifecycle race windows can still surface under extreme latency conditions
+- React test warnings around async state updates indicate potential future
+  brittle behavior
+- Stream-token lifecycle race windows can still surface under extreme latency
+  conditions
 - CI currently does not lint scripts folder by default
 
 ## Next Mitigations
 
 1. Add script lint stage in CI with targeted allowlist
-2. Add fault-injection integration tests for camera/network failures
-3. Add centralized security event dashboarding for repeated auth/API-key failures
+1. Add fault-injection integration tests for camera/network failures
+1. Add centralized security event dashboarding for repeated auth/API-key
+   failures

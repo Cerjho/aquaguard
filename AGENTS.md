@@ -2,7 +2,7 @@
 
 This is the AquaGuard IoT drowning detection system.
 
----
+______________________________________________________________________
 
 ## Before Any Action
 
@@ -11,7 +11,7 @@ This is the AquaGuard IoT drowning detection system.
 - Always read `.github/copilot-instructions.md` for full coding
   and git rules
 
----
+______________________________________________________________________
 
 ## Git Rules
 
@@ -29,7 +29,7 @@ This is the AquaGuard IoT drowning detection system.
 - Allowed types:
   `feat` `fix` `refactor` `docs` `test` `chore` `perf` `style`
 
----
+______________________________________________________________________
 
 ## Python Environment
 
@@ -40,19 +40,19 @@ This is the AquaGuard IoT drowning detection system.
 - Never use `print()` in backend or detection code —
   use structured logging
 
----
+______________________________________________________________________
 
 ## Never Commit These
 
 - `*.pt` model files
 - `.env` files
-- `__pycache__`
+- `**pycache**`
 - `node_modules`
 - `snapshots/*.jpg`
 - `*.db` database files
 - Any file containing secrets or API keys
 
----
+______________________________________________________________________
 
 ## Detection Engine Rules
 
@@ -61,12 +61,12 @@ This is the AquaGuard IoT drowning detection system.
 - One `DrowningDetector` instance per camera zone —
   never share across cameras
 - Snapshot path must be resolved with
-  `os.path.abspath(__file__)` in `main.py`
+  `os.path.abspath(**file**)` in `main.py`
 - Always validate frame input before processing —
   skip if frame is None or empty
 - Cap all in-memory buffers to prevent unbounded memory growth
 
----
+______________________________________________________________________
 
 ## Backend Rules
 
@@ -84,7 +84,7 @@ This is the AquaGuard IoT drowning detection system.
 - Never use `Query.get()` — use `db.session.get()` instead
 - Never expose database errors or stack traces in API responses
 
----
+______________________________________________________________________
 
 ## Frontend Rules
 
@@ -94,7 +94,7 @@ This is the AquaGuard IoT drowning detection system.
 - Always clean up `useEffect` subscriptions and timers
 - Never use `var` — use `const` or `let` only
 
----
+______________________________________________________________________
 
 ## Testing Rules
 

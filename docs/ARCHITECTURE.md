@@ -2,14 +2,18 @@
 
 Related artifacts:
 
-- See [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) for additional visual diagrams.
-- See [THREAT_MODEL.md](THREAT_MODEL.md) for security-oriented architecture risks and mitigations.
+- See [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) for additional
+  visual diagrams.
+- See [THREAT_MODEL.md](THREAT_MODEL.md) for security-oriented architecture
+  risks and mitigations.
 
 ## 1. System Overview Diagram
 
-AquaGuard is a layered edge-AI + IoT system. Video is processed locally on the detection server, then distributed to physical and dashboard alert channels.
+AquaGuard is a layered edge-AI + IoT system. Video is processed locally on the
+detection server, then distributed to physical and dashboard alert channels.
 
-```
+```text
+
 Camera (RTSP/USB)
       |
       v
@@ -32,8 +36,11 @@ AlertEngine (bounded worker pool)
    +-- MQTTClient --> ESP32 GPIO alarm
    +-- APIClient  --> Flask POST /events --> DB + SocketIO --> React dashboard
    +-- Logger     --> system logs
+
 ```
+
 ```mermaid
+
 flowchart TD
       cam[Camera RTSP/USB] --> cap[CameraCapture per zone]
       cap --> det[DrowningDetector YOLO + Track]
@@ -49,7 +56,9 @@ flowchart TD
       backend --> db[(PostgreSQL/SQLite)]
       backend --> ws[Socket.IO]
       ws --> ui[React Dashboard]
+
 ```
+
 ## 2. Component Descriptions
 
 ### CameraCapture and CameraRegistry
@@ -97,8 +106,10 @@ flowchart TD
 ### React Dashboard
 
 - Receives `alert_event`, `camera_status`, `system_status` via Socket.IO.
-- Uses stream-token flow for camera feeds (`POST /stream-token` -> `GET /stream?token=...`) with periodic token refresh.
-- Supports camera focus mode for zone-level triage (expanded live view + recent events/alerts).
+- Uses stream-token flow for camera feeds (`POST /stream-token` -> `GET
+  /stream?token=...`) with periodic token refresh.
+- Supports camera focus mode for zone-level triage (expanded live view +
+  recent events/alerts).
 - Displays live incidents/history with filter-driven triage interactions.
 - Acknowledges alerts through REST endpoint.
 
@@ -110,15 +121,16 @@ flowchart TD
 ## 3. End-to-End Data Flow
 
 1. Camera streams frame to OpenCV capture loop.
-2. Frame is sent to YOLOv11s detector for tracked person detections.
-3. Person ROI is processed by MediaPipe to extract landmarks.
-4. Behavior analyzer computes confidence score per tracked person.
-5. Confidence filter evaluates N/T/K window conditions.
-6. When confirmed, AlertEngine dispatches event in parallel using a bounded worker pool:
+1. Frame is sent to YOLOv11s detector for tracked person detections.
+1. Person ROI is processed by MediaPipe to extract landmarks.
+1. Behavior analyzer computes confidence score per tracked person.
+1. Confidence filter evaluates N/T/K window conditions.
+1. When confirmed, AlertEngine dispatches event in parallel using a bounded
+   worker pool:
    - MQTT message to ESP32 alarm
    - REST `POST /api/v1/events` to backend
    - Local log line for observability
-7. Backend writes event/alert data, emits `alert_event` to dashboard clients.
+1. Backend writes event/alert data, emits `alert_event` to dashboard clients.
 
 ## 4. Detection Pipeline (5 Stages)
 
@@ -143,31 +155,40 @@ Important: landmark coordinates are normalized in `[0.0, 1.0]`.
 
 Raw score is computed as weighted indicators:
 
-```
+```text
+
 raw_score =
   0.30 * vertical_orientation
 + 0.25 * arms_elevated
 + 0.20 * no_limb_motion
 + 0.15 * face_submerged
 + 0.10 * yolo_class_score
-```
-Temporal consistency bonus:
 
 ```
+
+Temporal consistency bonus:
+
+```text
+
 temporal_ratio = count(last_5_raw_scores > 0.5) / 5
 final_score = min(1.0, raw_score * (1.0 + 0.1 * temporal_ratio))
+
 ```
+
 ### Stage 4: Rolling Confidence Filter
 
 For each `track_id`, maintain `deque(maxlen=15)`.
 
 Trigger condition:
 
-```
+```text
+
 mean(last_15_scores) > 0.75
 AND
 count(last_10_scores > 0.65) >= 10
+
 ```
+
 On trigger, track buffer is cleared to avoid immediate retrigger loops.
 
 ### Stage 5: Alert Dispatch
@@ -180,12 +201,13 @@ Alert dispatch uses a bounded `ThreadPoolExecutor` with three workers:
 
 1. MQTT dispatch task
    - Publishes alert payload to `aquaguard/alert` (QoS 1).
-2. API dispatch task
+1. API dispatch task
    - Sends detection/alert payload to Flask `POST /api/v1/events`.
-3. Logger dispatch task
+1. Logger dispatch task
    - Writes audit/observability logs.
 
-This design prevents slow API or broker operations from blocking the detection loop.
+This design prevents slow API or broker operations from blocking the detection
+loop.
 
 ## 6. Database Schema (5 Tables)
 
@@ -269,7 +291,8 @@ Server to client events:
 
 - `alert_event`
   - emitted when alert record is committed
-  - payload: alert object (`alert_id`, `event_id`, `zone_id`, `status`, timestamps)
+  - payload: alert object (`alert_id`, `event_id`, `zone_id`, `status`,
+    timestamps)
 - `camera_status`
   - payload: `{ zone_id, status }`
 - `system_status`
@@ -279,7 +302,8 @@ Connection model:
 
 - Client connects with `io(WS_URL, { auth: { token } })`
 - Backend validates token during handshake when provided
-- Backend also emits initial `system_status` and `camera_status` snapshot to the connecting session for immediate UI hydration
+- Backend also emits initial `system_status` and `camera_status` snapshot to
+  the connecting session for immediate UI hydration
 
 ## 9. Key Design Decisions
 
@@ -300,7 +324,8 @@ Connection model:
 - Matches current Flask application model and deployment style.
 - Avoids event loop incompatibilities in this stack.
 - Ensures stable real-time event push with existing backend setup.
-- Keeps compatibility with current dashboard strategy that combines socket-first updates plus REST polling fallback for status continuity.
+- Keeps compatibility with current dashboard strategy that combines
+  socket-first updates plus REST polling fallback for status continuity.
 
 ### Why rolling confidence filter
 
@@ -310,7 +335,8 @@ Connection model:
 ### Why one detector per camera zone
 
 - ByteTrack state is stream-specific.
-- Shared detector state across zones causes ID contamination and unstable tracking.
+- Shared detector state across zones causes ID contamination and unstable
+  tracking.
 
 ## 10. Performance Characteristics
 
@@ -323,7 +349,7 @@ Verified test outcomes:
 
 Latency targets and measured values:
 
-- End-to-end target: <= 3000 ms
+- End-to-end target: \<= 3000 ms
 - Mean detection latency: 2623 ms
 - P95 latency: 1932 ms
 
@@ -335,10 +361,16 @@ Pipeline latency profile (design budget view):
 - Behavior + confidence evaluation: ~2-6 ms
 - Alert dispatch and backend persistence: typically sub-second on local LAN
 
-The dominant contribution to total end-to-end alert time is temporal confirmation across the rolling detection window, which is intentional to suppress false positives while staying under the 3-second safety target.
+The dominant contribution to total end-to-end alert time is temporal
+confirmation across the rolling detection window, which is intentional to
+suppress false positives while staying under the 3-second safety target.
 
 ## 11. Known Gaps from Latest Review
 
-- **Alert history contract mismatch:** frontend alert history still carries compatibility mapping for `alerted_at` and generic confidence aliases, while backend canonical fields are `triggered_at` (alert timestamp) and `DetectionEvent.confidence_score` (confidence source).
-- **WebSocket anonymous connect currently allowed:** `backend/sockets.py` accepts socket connections with no token and only rejects explicitly invalid provided tokens.
-
+- **Alert history contract mismatch:** frontend alert history still carries
+  compatibility mapping for `alerted_at` and generic confidence aliases, while
+  backend canonical fields are `triggered_at` (alert timestamp) and
+  `DetectionEvent.confidence_score` (confidence source).
+- **WebSocket anonymous connect currently allowed:** `backend/sockets.py`
+  accepts socket connections with no token and only rejects explicitly invalid
+  provided tokens.

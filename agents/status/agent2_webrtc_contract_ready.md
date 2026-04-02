@@ -1,10 +1,11 @@
 # Agent 2 — WebRTC Contract Ready
 
-**Status:** READY  
-**Scope:** Backend signaling/session/fallback compatibility implemented in `backend/`  
+**Status:** READY\
+**Scope:** Backend signaling/session/fallback compatibility implemented in
+`backend/`\
 **Date:** 2026-03-21
 
----
+______________________________________________________________________
 
 ## 1) Endpoint Contract
 
@@ -14,13 +15,13 @@ Base path: `/api/v1/webrtc`
 
 Registers/updates a WebRTC session offer and creates a session record.
 
-**Required JSON fields**
+### Required JSON fields
 
 - `zone_id` (string)
 - `type` (must be `"offer"`)
 - `sdp` (string)
 
-**Optional JSON fields**
+### Optional JSON fields
 
 - `session_id` (string UUID-like; if omitted backend generates one)
 - `client_id` (string)
@@ -28,18 +29,18 @@ Registers/updates a WebRTC session offer and creates a session record.
 
 **Success response:** `202 Accepted`
 
----
+______________________________________________________________________
 
 ### B. `POST /api/v1/webrtc/ice-candidate`
 
 Accepts ICE candidates for an existing or pre-created session.
 
-**Required JSON fields**
+### Required JSON fields (2)
 
 - `session_id` (string)
 - `candidate` (string/object; accepted as provided)
 
-**Optional JSON fields**
+### Optional JSON fields (2)
 
 - `zone_id`
 - `client_id`
@@ -49,7 +50,7 @@ Accepts ICE candidates for an existing or pre-created session.
 
 **Success response:** `202 Accepted`
 
----
+______________________________________________________________________
 
 ### C. `GET /api/v1/webrtc/session-status/<session_id>`
 
@@ -59,13 +60,13 @@ and
 
 Returns normalized session status plus fallback compatibility metadata.
 
-**Optional query param**
+### Optional query param
 
 - `force_fallback=true|1|yes` → marks session as `fallback_active`
 
 **Success response:** `200 OK`
 
----
+______________________________________________________________________
 
 ## 2) Auth + Validation Behavior
 
@@ -93,7 +94,8 @@ Session handling:
 
 - in-memory session store with lock (`_SESSIONS`, `_SESSION_LOCK`)
 - TTL cleanup on each request
-- TTL configurable via `WEBRTC_SESSION_TTL_SECONDS` (fallback to `SESSION_TTL_SECONDS`, default `300`, min `30`)
+- TTL configurable via `WEBRTC_SESSION_TTL_SECONDS` (fallback to
+  `SESSION_TTL_SECONDS`, default `300`, min `30`)
 
 Fallback compatibility:
 
@@ -106,13 +108,14 @@ Fallback compatibility:
   - `fallbackMode`
   - `retry_after_ms`
 
----
+______________________________________________________________________
 
 ## 3) Sample Request / Response JSON
 
 ### `POST /api/v1/webrtc/offer` request
 
 ```json
+
 {
   "zone_id": "zone_01",
   "client_id": "dashboard-1",
@@ -120,10 +123,13 @@ Fallback compatibility:
   "sdp": "v=0\r\no=- 46117357 2 IN IP4 127.0.0.1",
   "fallback_transport": "mjpeg"
 }
+
 ```
+
 ### `POST /api/v1/webrtc/offer` response (202)
 
 ```json
+
 {
   "session_id": "9ea0fca4-4df6-4ecf-8914-0bdb5de7132f",
   "status": "offer_received",
@@ -138,20 +144,26 @@ Fallback compatibility:
     "active": false
   }
 }
+
 ```
+
 ### `POST /api/v1/webrtc/ice-candidate` request
 
 ```json
+
 {
   "session_id": "9ea0fca4-4df6-4ecf-8914-0bdb5de7132f",
   "candidate": "candidate:0 1 UDP 2122252543 192.168.1.2 54400 typ host",
   "sdpMid": "0",
   "sdpMLineIndex": 0
 }
+
 ```
+
 ### `POST /api/v1/webrtc/ice-candidate` response (202)
 
 ```json
+
 {
   "session_id": "9ea0fca4-4df6-4ecf-8914-0bdb5de7132f",
   "status": "collecting_candidates",
@@ -162,10 +174,13 @@ Fallback compatibility:
     "session_status_url": "/api/v1/webrtc/session-status/9ea0fca4-4df6-4ecf-8914-0bdb5de7132f"
   }
 }
+
 ```
+
 ### `GET /api/v1/webrtc/session-status/<session_id>` response (200)
 
 ```json
+
 {
   "session_id": "9ea0fca4-4df6-4ecf-8914-0bdb5de7132f",
   "zone_id": "zone_01",
@@ -192,8 +207,10 @@ Fallback compatibility:
     "retry_after_ms": 1500
   }
 }
+
 ```
----
+
+______________________________________________________________________
 
 ## 4) Files Changed and Checks Run
 
@@ -213,4 +230,3 @@ Fallback compatibility:
 
 - `python -m pytest backend/tests/test_webrtc.py -v` → **4 passed**
 - `python -m pytest backend/tests -v` → **59 passed**
-

@@ -3,36 +3,42 @@
 These rules apply to every task, PR, branch, and commit
 Copilot assists with in this repository. Follow them strictly.
 
----
+______________________________________________________________________
 
 ## 1. Branch Rules
 
 - Always branch off `dev`, never off `main`
 - Branch names must follow this format:
 
-```
+```text
+
 feat/short-description
 fix/short-description
 refactor/short-description
 docs/short-description
 test/short-description
 chore/short-description
+
 ```
+
 - Never create sub-PR branches (no `copilot/sub-pr-*` patterns)
 - Never create session or worktree branches
   (no `copilot/worktree-*` or `claude/*` patterns)
 - One branch = one concern. If a task touches multiple
   concerns, create separate branches for each.
 
----
+______________________________________________________________________
 
 ## 2. Commit Rules
 
 - Every commit message must follow Conventional Commits format:
 
-```
+```text
+
 type(scope): short description in lowercase
+
 ```
+
 - Allowed types: `feat` `fix` `refactor` `docs`
   `test` `chore` `perf` `style`
 - The scope must refer to the module changed:
@@ -45,13 +51,14 @@ type(scope): short description in lowercase
   - `WIP`
   - `fix stuff`
 
----
+______________________________________________________________________
 
 ## 3. Pull Request Rules — Single Responsibility
 
 **One PR = One concern. No exceptions.**
 
 - A PR must do exactly one of the following:
+
   - Add a feature
   - Fix a bug
   - Refactor existing code
@@ -63,30 +70,34 @@ type(scope): short description in lowercase
   two separate PRs.
 
 - Never combine these in one PR:
+
   - A fix + a refactor
   - A feature + a chore
   - A bug fix + dependency upgrade
   - Frontend changes + backend changes
     (unless tightly coupled by contract)
 
----
+______________________________________________________________________
 
 ## 4. Merge Rules
 
 - Always use `--squash` merge into `dev`:
 
 ```bash
+
 git checkout dev
 git merge --squash feat/your-feature-name
 git commit -m "feat(scope): describe the feature"
 git branch -d feat/your-feature-name
 git push origin --delete feat/your-feature-name
+
 ```
+
 - Never use plain `git merge` into `dev` or `main`
 - Never use `git merge --no-ff` (creates noisy merge commits)
 - Delete the feature branch immediately after merging
 
----
+______________________________________________________________________
 
 ## 5. Main Branch Rules
 
@@ -95,14 +106,17 @@ git push origin --delete feat/your-feature-name
 - Merging dev into main must use `--squash`:
 
 ```bash
+
 git checkout main
 git merge --squash dev
 git commit -m "release: AquaGuard vX.X.X"
 git tag vX.X.X
 git push origin main
 git push origin vX.X.X
+
 ```
----
+
+______________________________________________________________________
 
 ## 6. What Copilot Must Never Do
 
@@ -115,20 +129,24 @@ git push origin vX.X.X
 - Never write `Initial plan` as a standalone commit
 - Never open a sub-PR off another PR branch
 
----
+______________________________________________________________________
 
 ## 7. PR Description Template
 
 Every PR must include:
 
-```
+```text
+
 ## What
+
 One sentence describing what this PR does.
 
 ## Why
+
 One sentence explaining why this change is needed.
 
 ## Type
+
 - [ ] feat
 - [ ] fix
 - [ ] refactor
@@ -137,15 +155,18 @@ One sentence explaining why this change is needed.
 - [ ] chore
 
 ## Single Responsibility Check
+
 Does this PR do only ONE thing? Yes / No
 If No — split it before opening.
+
 ```
----
+
+______________________________________________________________________
 
 ## 8. Quick Reference — Git
 
 | Rule | Good | Bad |
-|---|---|---|
+| --- | --- | --- |
 | Branch name | `feat/remember-me` | `copilot/sub-pr-74` |
 | Commit message | `feat(auth): add remember me flag` | `Initial plan` |
 | PR scope | Auth only | Auth + WebRTC + deps |
@@ -153,16 +174,16 @@ If No — split it before opening.
 | Push to main | Release only | Direct push |
 | Sub-PRs | Never | Never |
 
----
+______________________________________________________________________
 
----
+______________________________________________________________________
 
-# AquaGuard — Coding Rules
+## AquaGuard — Coding Rules
 
 These rules apply to every file Copilot generates or edits
 in this repository. Follow them strictly across all modules.
 
----
+______________________________________________________________________
 
 ## 9. General Principles (All Languages)
 
@@ -179,7 +200,7 @@ in this repository. Follow them strictly across all modules.
 - **No TODOs in merged code** — resolve or create a
   tracked issue before merging
 
----
+______________________________________________________________________
 
 ## 10. Python Rules (Backend + Detection Engine)
 
@@ -188,13 +209,19 @@ in this repository. Follow them strictly across all modules.
 - Follow **PEP 8** strictly — max line length is **88 chars**
   (Black formatter standard)
 - Use **type hints** on all function signatures:
+
 ```python
+
 # Good
+
 def get_camera(camera_id: int) -> Camera | None:
 
 # Bad
+
 def get_camera(camera_id):
+
 ```
+
 - Use **f-strings** only — never `%` formatting or `.format()`
 - Always use **snake_case** for variables and functions
 - Always use **PascalCase** for classes
@@ -205,33 +232,45 @@ def get_camera(camera_id):
 - One class per file unless tightly coupled
 - Group imports in this order with a blank line between:
   1. Standard library
-  2. Third-party packages
-  3. Local modules
+  1. Third-party packages
+  1. Local modules
 
 ### Error Handling
 
 - Always catch **specific** exceptions — never bare `except:`
+
 ```python
+
 # Good
+
 try:
     result = detect_frame(frame)
 except cv2.error as e:
     logger.error("Frame detection failed: %s", e)
 
 # Bad
+
 try:
     result = detect_frame(frame)
 except:
     pass
+
 ```
+
 - Use **structured logging** — never `print()` in production code:
+
 ```python
+
 # Good
+
 logger.info("Camera %s connected", camera_id)
 
 # Bad
+
 print(f"Camera {camera_id} connected")
+
 ```
+
 ### Database
 
 - Never use raw SQL strings — always use SQLAlchemy ORM
@@ -246,11 +285,11 @@ print(f"Camera {camera_id} connected")
 - Always validate and sanitize all user inputs
 - Always use parameterized queries — never string-concat SQL
 
----
+______________________________________________________________________
 
 ## 11. React / Frontend Rules
 
-### Style
+### Style (2)
 
 - Use **functional components** only — never class components
 - Use **TypeScript types** or PropTypes on all component props
@@ -262,27 +301,35 @@ print(f"Camera {camera_id} connected")
 
 - Never call hooks inside conditions or loops
 - Extract complex hook logic into **custom hooks**:
+
 ```javascript
+
 // Good
 const { alerts, isLoading } = useAlertFeed(cameraId)
 
 // Bad — logic dumped directly in component
 const [alerts, setAlerts] = useState([])
 useEffect(() => { /* 40 lines of logic */ }, [])
+
 ```
+
 ### State Management
 
 - Keep state as **local as possible**
 - Never store derived data in state — compute it instead
 - Always clean up `useEffect` subscriptions and timers:
+
 ```javascript
+
 // Good
 useEffect(() => {
   const socket = connectSocket()
   return () => socket.disconnect()
 }, [])
+
 ```
-### Error Handling
+
+### Error Handling (2)
 
 - Always handle loading and error states in components
 - Never let an unhandled promise rejection reach the user
@@ -294,18 +341,22 @@ useEffect(() => {
 - Use `useCallback` for handlers passed to child components
 - Use `useMemo` for expensive computations
 
----
+______________________________________________________________________
 
 ## 12. Detection Engine Rules (CV / Python)
 
 - Never mutate shared state across camera threads
   — each camera must have its own isolated detector instance
 - Always validate frame input before processing:
+
 ```python
+
 if frame is None or frame.size == 0:
     logger.warning("Empty frame received, skipping")
     return None
+
 ```
+
 - Always validate positive values for frame rate,
   resolution, and confidence thresholds on initialization
 - Never block the main detection loop with I/O operations
@@ -313,18 +364,22 @@ if frame is None or frame.size == 0:
 - Cap all in-memory buffers (frame queues, alert histories)
   to prevent unbounded memory growth
 
----
+______________________________________________________________________
 
 ## 13. API Contract Rules
 
 - All API responses must follow this structure:
+
 ```json
+
 {
   "status": "success" | "error",
   "data": {},
   "message": "optional human readable string"
 }
+
 ```
+
 - Never return raw exceptions or stack traces in API responses
 - Always return correct HTTP status codes:
   - `200` — success
@@ -337,7 +392,7 @@ if frame is None or frame.size == 0:
 - Always validate UUIDs, IDs, and required fields
   before processing any request
 
----
+______________________________________________________________________
 
 ## 14. Testing Rules
 
@@ -351,7 +406,7 @@ if frame is None or frame.size == 0:
   (database, MQTT, WebRTC, camera feeds)
 - Never use real credentials or live camera URLs in tests
 
----
+______________________________________________________________________
 
 ## 15. What Copilot Must Never Generate
 
@@ -366,12 +421,12 @@ if frame is None or frame.size == 0:
   components longer than 150 lines (React)
 - TODOs without an associated issue number
 
----
+______________________________________________________________________
 
 ## 16. Quick Reference — Coding
 
 | Rule | Good | Bad |
-|---|---|---|
+| --- | --- | --- |
 | Python logging | `logger.info(...)` | `print(...)` |
 | Exception handling | `except cv2.error` | `except:` |
 | Secrets | `os.getenv("SECRET")` | `SECRET = "abc123"` |

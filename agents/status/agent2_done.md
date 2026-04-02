@@ -75,8 +75,7 @@ flask db upgrade
 
 # Seed default users and camera:
 python seed.py
-```text
-
+```
 ---
 
 ## Test Execution
@@ -85,8 +84,7 @@ python seed.py
 .\aquaguard_env\Scripts\Activate.ps1
 cd backend
 pytest tests/ -v --cov=. --cov-report=term-missing
-```text
-
+```
 ---
 
 ## API Summary
@@ -135,3 +133,4 @@ pytest tests/ -v --cov=. --cov-report=term-missing
 - The `config/` directory was empty — created `cameras.json` and `settings.py` as part of P3-03
   (Note: config/ is owned by Agent 1 per AGENT_RULES, but task spec P3-03 explicitly requires
   creating these files; they were created as a backend dependency)
+

@@ -19,13 +19,12 @@
 You cannot run agents in parallel (one account, limited requests).
 Run them in this exact order — each phase depends on the previous.
 
-```text
+```
 Week 1:  Orchestrator → Agent 1 (CV) → Agent 4 (ESP32)
 Week 2:  Agent 2 (Backend)
 Week 3:  Agent 3 (Frontend)
 Week 4:  Agent 5 (Testing) + Integration
-```text
-
+```
 Or faster if your request limit resets mid-build:
 check github.com/settings/copilot for your reset date.
 
@@ -39,8 +38,7 @@ check github.com/settings/copilot for your reset date.
 cd AquaGuard
 .\aquaguard_env\Scripts\Activate.ps1
 code .
-```text
-
+```
 ### Reload VS Code to detect agent files
 
 `Ctrl+Shift+P` → `Developer: Reload Window`
@@ -55,8 +53,7 @@ All AquaGuard agents should appear in the list.
 ```bash
 python -c "import torch; print(torch.cuda.is_available())"
 # Must print: True
-```text
-
+```
 ---
 
 ## How to Run Each Agent
@@ -79,13 +76,12 @@ python -c "import torch; print(torch.cuda.is_available())"
 **Agent:** AquaGuard Orchestrator
 **Starting prompt:**
 
-```text
+```
 Initialize the AquaGuard GitHub repository.
 Follow your startup sequence — create .github/workflows/ci.yml,
-develop branch, branch protection, and agents/status/ directory.
+dev branch, branch protection, and agents/status/ directory.
 Commit everything to GitHub.
-```text
-
+```
 **Done when:** `.github/workflows/ci.yml` exists and is pushed to GitHub.
 **Estimated requests:** ~10
 
@@ -96,12 +92,11 @@ Commit everything to GitHub.
 **Agent:** AquaGuard ESP32 Engineer
 **Starting prompt:**
 
-```text
+```
 Begin Phase 4. Build config.h, the firmware sketch, and
 scripts/test_mqtt.py in order. Follow TASK_BREAKDOWN.md tasks
 P4-01 and P4-02.
-```text
-
+```
 **Done when:** `agents/status/agent4_done.md` exists and PR is open.
 **Estimated requests:** ~10
 
@@ -112,13 +107,12 @@ P4-01 and P4-02.
 **Agent:** AquaGuard CV Engineer
 **Starting prompt:**
 
-```text
+```
 Begin Phase 2. Read all required docs first, then build every
 file in the exact order listed in TASK_BREAKDOWN.md tasks
 P1-03 through P2-11. Verify each file before moving to the next.
 Run pytest detection_engine/tests/ -v when all files are done.
-```text
-
+```
 **Done when:** `agents/status/agent1_done.md` exists and PR is open.
 **Estimated requests:** ~40
 **Note:** If you run out of requests mid-session, just send
@@ -132,13 +126,12 @@ Run pytest detection_engine/tests/ -v when all files are done.
 **Prerequisite:** agent1_done.md must exist (check Explorer panel)
 **Starting prompt:**
 
-```text
+```
 Begin Phase 3. Read all required docs first, then build every
 file in order from TASK_BREAKDOWN.md tasks P3-01 through P3-10.
 Create conftest.py before any test file.
 Run pytest backend/tests/ -v --cov=. when all files are done.
-```text
-
+```
 **Done when:** `agents/status/agent2_done.md` exists and PR is open.
 **Estimated requests:** ~40
 
@@ -150,13 +143,12 @@ Run pytest backend/tests/ -v --cov=. when all files are done.
 **Prerequisite:** agent2_done.md must exist
 **Starting prompt:**
 
-```text
+```
 Check that agents/status/agent2_done.md exists, then begin
 Phase 5. Build every file in order from TASK_BREAKDOWN.md
 tasks P5-01 through P5-10. Run npm run build when done —
 it must complete with 0 errors.
-```text
-
+```
 **Done when:** `agents/status/agent3_done.md` exists and PR is open.
 **Estimated requests:** ~40
 
@@ -168,12 +160,11 @@ it must complete with 0 errors.
 **Prerequisite:** agent1_done.md AND agent2_done.md must both exist
 **Starting prompt:**
 
-```text
+```
 Check that both agents/status/agent1_done.md and agent2_done.md
 exist. Then build scripts/test_camera.py and scripts/latency_test.py,
 run all test suites, and write the integration report.
-```text
-
+```
 **Done when:** `agents/status/agent5_integration_report.md` exists.
 **Estimated requests:** ~20
 
@@ -222,12 +213,11 @@ which you likely still have available.
 If Copilot stops mid-phase, start a new chat conversation,
 select the same agent, and send:
 
-```text
+```
 I was in the middle of Phase {N}. The last completed task
 was {task ID} in TASK_BREAKDOWN.md. Read the current state
 of the codebase and continue from the next incomplete task.
-```text
-
+```
 The agent will read the existing files and pick up where it left off.
 
 ---
@@ -244,15 +234,14 @@ Since you are alone, you review and merge your own PRs:
 
 Merge order:
 
-```text
-feature/agent4-esp32       → develop (any time)
-feature/agent1-cv-engine   → develop
-feature/agent2-backend-api → develop
-feature/agent3-frontend    → develop (after agent2 merged)
-feature/agent5-testing     → develop (last)
-develop                    → main (final release)
-```text
-
+```
+feature/agent4-esp32       → dev (any time)
+feature/agent1-cv-engine   → dev
+feature/agent2-backend-api → dev
+feature/agent3-frontend    → dev (after agent2 merged)
+feature/agent5-testing     → dev (last)
+dev                        → main (final release)
+```
 ---
 
 ## After All Sessions Complete
@@ -264,8 +253,7 @@ Run local GPU verification on your RTX 2050:
 python detection_engine/benchmark.py     # see actual inference ms
 python scripts/test_camera.py            # test your webcam
 python scripts/latency_test.py           # must be ≤ 3000ms
-```text
-
+```
 Then start all services to test the full system:
 
 ```bash
@@ -280,8 +268,7 @@ cd frontend && npm start
 
 # Terminal 4 — Detection engine
 .\aquaguard_env\Scripts\Activate.ps1 && python detection_engine/main.py
-```text
-
+```
 Open browser at <http://localhost:3000> and verify the dashboard loads.
 
 ---
@@ -301,3 +288,4 @@ Use them for the two fastest sessions:
 **After your limit resets:**
 5. Run Session 3 (CV Engine) — biggest phase, needs full budget
 6. Continue Sessions 4, 5, 6 in order
+

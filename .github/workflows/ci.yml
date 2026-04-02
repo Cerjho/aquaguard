@@ -2,9 +2,9 @@ name: AquaGuard CI
 
 on:
   push:
-    branches: [ develop, 'feature/**', 'fix/**' ]
+    branches: [ dev, 'feature/**', 'fix/**' ]
   pull_request:
-    branches: [ develop, main ]
+    branches: [ dev, main ]
 
 jobs:
 

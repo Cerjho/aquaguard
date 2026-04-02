@@ -18,13 +18,13 @@ You READ, AUDIT, and REPORT. If you find a bug, you write a fix request to
 
 ## Prerequisites — All Agents Must Be Done First
 
-```text
+```
 ls agents/status/agent1_done.md
 ls agents/status/agent2_done.md
 ls agents/status/agent3_done.md
 ls agents/status/agent4_done.md
 ls agents/status/agent5_done.md
-```text
+```
 If any are missing, wait. Do not begin review until all five exist.
 
 ## Your First Actions (in order)
@@ -39,12 +39,11 @@ Do not begin code review until all five are read.
 
 ## Git Setup
 
-```text
-git checkout develop
-git pull origin develop
+```
+git checkout dev
+git pull origin dev
 git checkout -b feature/agent8-code-review
-```text
-
+```
 ---
 
 ## Review Process
@@ -57,14 +56,13 @@ Work through each section below in order. For every issue found:
 - 🟢 INFO — style, minor inconsistency, or improvement suggestion
 
 For each finding write:
-```text
+```
 [SEVERITY] File: path/to/file.py Line: N
 Issue: what is wrong
 Spec: what the spec requires (cite IMPLEMENTATION_PLAN.md or AGENT_RULES.md section)
 Fix: what needs to change
 Owner: Agent N
-```text
-
+```
 ---
 
 ## Section 1 — Critical Rules Audit (R6-A through R6-J)
@@ -81,8 +79,7 @@ FAIL if: a single detector instance is passed to multiple cameras.
 # CORRECT pattern to look for:
 detectors = {zone_id: DrowningDetector(model_path)
              for zone_id in registry.cameras.keys()}
-```text
-
+```
 ### R6-B — MediaPipe normalized coordinates
 
 Open `detection_engine/analysis/behavior_analyzer.py`.
@@ -110,7 +107,7 @@ Search all files in `backend/routes/` for:
 ```python
 from flask_socketio import SocketIO
 socketio = SocketIO()
-```text
+```
 FAIL if this pattern exists anywhere in routes/ — it creates a second unconnected instance.
 PASS only if routes import via: `from extensions import socketio`
 
@@ -147,10 +144,10 @@ FAIL if any password hash is stored without decoding.
 
 Check file creation timestamps or git log to verify `backend/tests/conftest.py`
 was committed before any `test_*.py` file.
-```text
+```
 git log --oneline -- backend/tests/conftest.py
 git log --oneline -- backend/tests/test_auth.py
-```text
+```
 Verify conftest commit is older.
 
 ---
@@ -160,11 +157,11 @@ Verify conftest commit is older.
 ### 2.1 No secrets in source code
 
 Search entire repo for patterns that should never be committed:
-```text
+```
 grep -r "password" --include="*.py" | grep -v "hash\|check\|test\|seed\|example\|generate"
 grep -r "SECRET_KEY\s*=" --include="*.py"
 grep -r "JWT_SECRET" --include="*.py"
-```text
+```
 FAIL if any real secret value (not a reference to os.environ or .env) appears
 in any committed Python file.
 
@@ -186,10 +183,10 @@ FAIL if admin-only routes accept any authenticated user.
 ### 2.4 SQL injection risk
 
 AquaGuard uses SQLAlchemy ORM — verify no raw SQL strings exist:
-```text
+```
 grep -r "execute(" --include="*.py" backend/
 grep -r "text(" --include="*.py" backend/
-```text
+```
 FAIL if raw SQL strings with user input are found.
 
 ### 2.5 CORS configuration
@@ -207,18 +204,18 @@ Flag as INFO if wildcard CORS is present — recommend restricting in production
 
 Open `detection_engine/analysis/behavior_analyzer.py`.
 Verify the scoring formula matches IMPLEMENTATION_PLAN.md Section 2.4 exactly:
-```text
+```
 score += 0.30  if is_vertical_orientation(landmarks)
 score += 0.25  if are_arms_elevated(landmarks)
 score += 0.20  if no_limb_motion(track_id, landmarks)
 score += 0.15  if is_face_submerged(landmarks)
 score += 0.10  if (yolo_class == "drowning" and yolo_confidence > 0.6)
-```text
+```
 Verify temporal consistency bonus formula:
-```text
+```
 temporal_ratio = count(last 5 history > 0.5) / 5
 score = min(1.0, score * (1.0 + 0.1 * temporal_ratio))
-```text
+```
 FAIL if any weight differs from spec. FAIL if temporal bonus is missing.
 
 ### 3.2 ConfidenceFilter — dual condition
@@ -369,10 +366,10 @@ FAIL if None landmarks would cause an AttributeError.
 ### 6.1 Dead imports
 
 Run:
-```text
+```
 flake8 backend/ --select=F401 --exclude=migrations/
 flake8 detection_engine/ --select=F401
-```text
+```
 Report any unused imports as WARNING.
 
 ### 6.2 Missing type hints
@@ -387,24 +384,24 @@ Report missing type hints as INFO.
 Verify every module has:
 ```python
 logger = logging.getLogger(__name__)
-```text
+```
 And uses it for key events. Report missing loggers as WARNING.
 
 ### 6.4 Magic numbers
 
 Search for numeric literals that should be in `config/settings.py`:
-```text
+```
 grep -rn "[0-9]\+\.[0-9]\+" detection_engine/ --include="*.py" | grep -v "test\|#\|settings"
-```text
+```
 Report any threshold values (0.75, 0.65, 0.015, etc.) that appear hardcoded
 in application code instead of imported from settings. FAIL severity.
 
 ### 6.5 Print statements in production code
 
-```text
+```
 grep -rn "^    print(" backend/ detection_engine/ --include="*.py"
 grep -rn "^print(" backend/ detection_engine/ --include="*.py"
-```text
+```
 Report any `print()` in non-test code as WARNING — should use logger instead.
 
 ---
@@ -464,14 +461,13 @@ Create `agents/status/agent8_review_report.md` with this structure:
 ---
 
 ## Conclusion
-```text
-
+```
 ---
 
 ## If Critical Issues Are Found
 
 Write a fix request for each one:
-```text
+```
 cat > agents/queue/fix_agent{N}.md << EOF
 # Fix Request from Agent 8 (Code Review)
 
@@ -491,8 +487,7 @@ cat > agents/queue/fix_agent{N}.md << EOF
 **Verification:**
 [how to confirm the fix is correct]
 EOF
-```text
-
+```
 Then commit the fix requests and notify the relevant agent to address them
 before the PR is merged.
 
@@ -500,14 +495,13 @@ before the PR is merged.
 
 ## Push and Open PR
 
-```text
+```
 git add agents/status/agent8_review_report.md agents/queue/
 git commit -m "review(agent8): complete code review — findings and fix requests  Task: P9-01"
 git push origin feature/agent8-code-review
-```text
-
+```
 Open PR on GitHub:
-- Base: `develop`
+- Base: `dev`
 - Compare: `feature/agent8-code-review`
 - Title: `review(agent8): complete code review report — Phase 9`
 
@@ -519,3 +513,4 @@ The PR is complete when:
 - [ ] Fix requests have been addressed by their target agents
 - [ ] Final verdict in report is PASS or PASS WITH WARNINGS (no CRITICAL remaining)
 Write `agents/status/agent8_done.md`.
+

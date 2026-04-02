@@ -41,15 +41,13 @@ Example (Linux):
 cd backend
 source ../aquaguard_env/bin/activate
 gunicorn -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
-```text
-
+```
 Example (Windows service shell):
 
 ```powershell
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
-```text
-
+```
 ## 4. Nginx Reverse Proxy Baseline
 
 Minimum recommendations:
@@ -67,8 +65,7 @@ Run migrations before releasing each version:
 ```bash
 cd backend
 flask db upgrade
-```text
-
+```
 Backup policy (minimum):
 
 - Nightly full backup
@@ -109,3 +106,4 @@ If release health degrades:
 - Re-run previous migration state only if schema change is incompatible
 - Keep detection engine on last known-good model and code package
 - Verify system status and camera streams before reopening traffic
+

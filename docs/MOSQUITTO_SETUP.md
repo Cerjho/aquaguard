@@ -4,8 +4,7 @@
 
 ```powershell
 winget install EclipseFoundation.Mosquitto
-```text
-
+```
 If winget fails, download directly from:
 [https://mosquitto.org/download/](https://mosquitto.org/download/)
 Choose: mosquitto-2.x.x-install-win64.exe
@@ -19,12 +18,11 @@ C:\Program Files\mosquitto\
 
 ```powershell
 mosquitto --version
-```text
-
+```
 ## Run
 
 ```powershell
 mosquitto -c mqtt/mosquitto.conf
-```text
-
+```
 Run this in a separate terminal before starting the backend or detection engine.
+

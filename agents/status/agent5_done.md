@@ -16,14 +16,13 @@
 
 **Command:**
 
-```text
+```
 Set-Location "C:\Users\Jhocer Barcela\Desktop\AquaGuard\backend"
 & "...\aquaguard_env\Scripts\pytest.exe" tests/ -v --cov=. --cov-report=term-missing
-```text
-
+```
 **Result: ✅ 27 passed, 1 warning in 11.69s**
 
-```text
+```
 platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.6.0
 collected 27 items
 
@@ -56,16 +55,14 @@ tests/test_reports.py::test_summary_date_range PASSED                [ 96%]
 tests/test_reports.py::test_summary_invalid_dates PASSED             [100%]
 
 27 passed, 1 warning in 11.69s
-```text
-
+```
 **Warning (non-fatal):**
-```text
+```
 routes\auth.py:42: LegacyAPIWarning: The Query.get() method is considered legacy as of the
 1.x series of SQLAlchemy and becomes a legacy construct in 2.0.
-```text
-
+```
 **Coverage:**
-```text
+```
 Name                    Stmts   Miss  Cover   Missing
 -----------------------------------------------------
 app.py                     29      0   100%
@@ -82,14 +79,12 @@ seed.py                    34     34     0%   6-66
 sockets.py                 19     12    37%   13-24, 29
 tests\conftest.py          41      2    95%   51-52
 TOTAL                     628    126    80%
-```text
-
+```
 **Notes:**
 
 ```bash
 cd backend && python -m pytest tests/ -v --cov=. --cov-report=term-missing -p no:cacheprovider
-```text
-
+```
 **Last Run:** 2026-03-17 14:08
 
 **Results:**
@@ -100,15 +95,14 @@ cd backend && python -m pytest tests/ -v --cov=. --cov-report=term-missing -p no
 - **Coverage:** 56%
 
 **Test breakdown:**
-```text
+```
 backend/tests/conftest.py       ✓ exists
 backend/tests/test_auth.py      5 tests (4 passed, 1 failed)
 backend/tests/test_events.py    6 tests (3 passed, 3 errors)
 backend/tests/test_alerts.py    5 tests (1 passed, 4 errors)
 backend/tests/test_cameras.py   7 tests (3 passed, 4 errors)
 backend/tests/test_reports.py   4 tests (1 passed, 3 errors)
-```text
-
+```
 **Coverage by module:**
 - `routes/auth.py` — 97%
 - `routes/events.py` — 49%
@@ -126,23 +120,21 @@ backend/tests/test_reports.py   4 tests (1 passed, 3 errors)
 
 **Command:**
 
-```text
+```
 Set-Location "C:\Users\Jhocer Barcela\Desktop\AquaGuard"
 & "...\aquaguard_env\Scripts\pytest.exe" detection_engine/tests/ -v
-```text
-
+```
 **Result: ✅ 36 passed in 19.70s**
 
 ```bash
 pytest detection_engine/tests/ -v
-```text
-
+```
 **Status: NO UNIT TESTS CREATED**
 
 `detection_engine/tests/__init__.py` exists but no test files have been created.
 The following test files from P6-03 are still **missing**:
 
-```text
+```
 platform win32 -- Python 3.11.9, pytest-8.3.3, pluggy-1.6.0
 collected 36 items
 
@@ -187,21 +179,19 @@ detection_engine/tests/test_pose_estimator.py::TestPoseEstimatorEstimate::test_l
 **Recommendation:** Agent 1 should add unit tests for their modules in a follow-up task.
 
 36 passed in 19.70s
-```text
-
+```
 ---
 
 ## 3. Frontend Tests
 
 **Command:**
-```text
+```
 Set-Location "C:\Users\Jhocer Barcela\Desktop\AquaGuard\frontend"
 npm test -- --watchAll=false
-```text
-
+```
 **Result: ✅ 22 passed, 4 suites, in 3.762s**
 
-```text
+```
 PASS src/context/AuthContext.test.js
 PASS src/hooks/useApi.test.js
 PASS src/pages/LoginPage.test.js
@@ -211,12 +201,11 @@ Test Suites: 4 passed, 4 total
 Tests:       22 passed, 22 total
 Snapshots:   0 total
 Time:        3.762 s
-```text
-
+```
 **Console warnings (non-fatal, expected in jsdom):**
-```text
+```
 console.warn: [AlertPanel] Could not play alert audio: audio.play is not a function
-```text
+```
 This is expected — jsdom does not implement the Web Audio API. The component handles the error gracefully and no test fails.
 
 #### 2. Detection Engine Module Imports
@@ -299,8 +288,7 @@ This is expected — jsdom does not implement the Web Audio API. The component h
 **Command:**
 ```bash
 python scripts/latency_test.py --iterations 30
-```text
-
+```
 **Last Run:** 2026-03-17 14:08
 
 **Modules used:** ✓ REAL DETECTION ENGINE (all modules implemented)
@@ -485,3 +473,4 @@ Optional follow-up tasks (non-blocking):
 - No frontend component tests (Agent 3's scope to add)
 
 **System is ready for deployment with the understanding that additional test coverage is recommended but not required for MVP.**
+

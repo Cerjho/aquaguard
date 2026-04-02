@@ -203,8 +203,7 @@ graph TB
     ESP --> ALARM
     WS --> DASH
     FLASK --> DASH
-```text
-
+```
 ---
 
 # 4. End-to-End System Workflow
@@ -276,8 +275,7 @@ sequenceDiagram
         DASH->>FLASK: POST /api/acknowledge-alert (lifeguard confirms)
         FLASK->>DB: UPDATE alert status = acknowledged
     end
-```text
-
+```
 ---
 
 # 5. Core System Components
@@ -417,8 +415,7 @@ The final confidence score is a weighted combination of these five indicators, n
   "alert_type": "drowning_confirmed",
   "status": "unacknowledged"
 }
-```text
-
+```
 ---
 
 ## 5.7 ESP32 IoT Controller
@@ -529,8 +526,7 @@ flowchart LR
     DB -->|Query results| FLASK
     FLASK -->|JSON response| DASH
     WS -->|WebSocket event| DASH
-```text
-
+```
 ---
 
 # 7. AI / Computer Vision Pipeline
@@ -599,20 +595,18 @@ while cap.isOpened():
         # Stage 6: False positive filter
         if evaluate_rolling_window(confidence_buffers[track_id]):
             dispatch_alert(track_id, score, frame)
-```text
-
+```
 ## 7.3 Detection Confidence Logic
 
 The confidence scoring logic combines three weighted signals:
 
-```text
+```
 final_score = (
     0.40 × pose_behavior_score     +   # Landmark-based posture rules
     0.35 × yolo_class_confidence   +   # YOLOv11 'drowning' class score
     0.25 × temporal_consistency_score  # Consistency across last 5 frames
 )
-```text
-
+```
 The **temporal consistency score** is computed as the ratio of frames in the last 5 entries of the deque that exceeded 0.5, rewarding sustained detections over spike detections.
 
 ---
@@ -663,7 +657,7 @@ The second condition prevents a scenario where 5 very high-confidence frames (e.
 
 ## 8.5 Rolling Frame Window Pseudocode
 
-```text
+```
 ALGORITHM: DrowningConfirmationFilter
 INPUT: confidence_score (float), track_id (string), camera_zone_id (string)
 OUTPUT: alert_triggered (boolean)
@@ -690,11 +684,10 @@ BEGIN
     ELSE
         RETURN False
 END
-```text
-
+```
 ## 8.6 Full Drowning Detection Logic Pseudocode
 
-```text
+```
 ALGORITHM: AquaGuardDetectionCycle
 INPUT: video_frame (BGR image), camera_zone_id (string)
 OUTPUT: none (side effects: alert dispatch, database log)
@@ -740,8 +733,7 @@ BEGIN
             END PARALLEL
     END FOR
 END
-```text
-
+```
 ---
 
 # 9. Data Structures Used
@@ -876,8 +868,7 @@ erDiagram
     CAMERA_ZONES ||--o{ ALERTS : "sources"
     CAMERA_ZONES ||--o{ SYSTEM_LOGS : "associated with"
     DETECTION_EVENTS ||--|| ALERTS : "escalates to"
-```text
-
+```
 ## 10.4 Key Indexing Strategy
 
 ```sql
@@ -887,8 +878,7 @@ CREATE INDEX idx_events_alert_triggered ON detection_events (alert_triggered);
 CREATE INDEX idx_alerts_status ON alerts (status);
 CREATE INDEX idx_alerts_alerted_at ON alerts (alerted_at);
 CREATE INDEX idx_logs_level_time ON system_logs (log_level, logged_at);
-```text
-
+```
 ---
 
 # 11. API Design
@@ -914,8 +904,7 @@ Authenticates a user and returns a JWT access token.
   "username": "lifeguard_01",
   "password": "secure_password"
 }
-```text
-
+```
 **Response (200 OK):**
 
 ```json
@@ -928,14 +917,12 @@ Authenticates a user and returns a JWT access token.
   },
   "expires_in": 3600
 }
-```text
-
+```
 **Response (401 Unauthorized):**
 
 ```json
 { "error": "Invalid credentials" }
-```text
-
+```
 ---
 
 ### `GET /cameras`
@@ -958,8 +945,7 @@ Returns all registered camera zones. Requires authentication.
     }
   ]
 }
-```text
-
+```
 ---
 
 ### `GET /events`
@@ -989,8 +975,7 @@ Returns paginated detection event history. Supports filtering by zone, date rang
     }
   ]
 }
-```text
-
+```
 ---
 
 ### `GET /alerts`
@@ -1015,8 +1000,7 @@ Returns current and historical alert records. Supports `?status=unacknowledged` 
     }
   ]
 }
-```text
-
+```
 ---
 
 ### `POST /alerts/{alert_id}/acknowledge`
@@ -1034,8 +1018,7 @@ Marks an alert as acknowledged by the requesting user.
   "acknowledged_by": "lifeguard_01",
   "acknowledged_at": "2026-03-12T10:42:59Z"
 }
-```text
-
+```
 ---
 
 ### `POST /events`
@@ -1056,14 +1039,12 @@ Internal endpoint — called by the Alert Decision Engine to log a confirmed det
   "frame_snapshot_b64": "<base64-encoded JPEG>",
   "alert_triggered": true
 }
-```text
-
+```
 **Response (201 Created):**
 
 ```json
 { "event_id": 112, "alert_id": 55 }
-```text
-
+```
 ---
 
 ### `GET /reports/summary`
@@ -1085,8 +1066,7 @@ Returns aggregated incident counts for report generation.
     { "zone_id": 2, "zone_name": "Kiddie Pool", "alerts": 2 }
   ]
 }
-```text
-
+```
 ---
 
 # 12. IoT Communication Architecture
@@ -1122,11 +1102,10 @@ AquaGuard uses MQTT (Message Queuing Telemetry Transport) as the IoT communicati
   "confidence_score": 0.87,
   "person_track_id": "track_003"
 }
-```text
-
+```
 ## 12.4 ESP32 Message Flow
 
-```text
+```
 ESP32 Boot Sequence:
   1. Connect to Wi-Fi SSID (stored in firmware config)
   2. Connect to MQTT broker at 192.168.1.x:1883
@@ -1143,8 +1122,7 @@ On aquaguard/alert/reset received:
   1. Drive GPIO_PIN_ALARM LOW
   2. Stop alarm immediately
   3. Publish reset acknowledgment
-```text
-
+```
 ## 12.5 ESP32 Arduino Firmware Sketch (Abbreviated)
 
 ```cpp
@@ -1183,8 +1161,7 @@ void loop() {
   client.loop();
   // Heartbeat publish every 30s
 }
-```text
-
+```
 ---
 
 # 13. Real-Time Dashboard Architecture
@@ -1242,8 +1219,7 @@ export function useAlertSocket(onAlertReceived) {
     return () => socket.disconnect();
   }, [onAlertReceived]);
 }
-```text
-
+```
 ---
 
 # 14. Hardware Architecture
@@ -1296,19 +1272,17 @@ graph TB
     FLASK_S -->|WebSocket| ROUTER
     ROUTER -->|WebSocket| BROWSER
     BROWSER -->|HTTP REST| FLASK_S
-```text
-
+```
 ## 14.3 Wiring Notes for ESP32 Alarm Circuit
 
-```text
+```
 ESP32 GPIO 26  →  IN pin of 5V Relay Module
 3.3V           →  VCC of Relay Module
 GND            →  GND of Relay Module
 Relay NO pin   →  Positive terminal of Buzzer/Siren
 Buzzer GND     →  GND
 5V power supply → Buzzer VCC (via relay switch)
-```text
-
+```
 For facilities requiring louder alarms, the relay module can switch a 220V siren via its mains-capable contacts. Standard ESP32 GPIO cannot drive a siren directly — the relay is mandatory for mains-powered alarm systems.
 
 ---
@@ -1399,8 +1373,7 @@ services:
 
 volumes:
   aquaguard_db_data:
-```text
-
+```
 ## 15.3 Deployment Diagram
 
 ```mermaid
@@ -1422,8 +1395,7 @@ graph TB
     MQTT -->|"Wi-Fi MQTT"| ESP32["ESP32 Alarm"]
     FLASK -->|"WebSocket"| BROWSER["Lifeguard\nBrowser"]
     REACT -->|"Served to"| BROWSER
-```text
-
+```
 ---
 
 # 16. Scalability Design
@@ -1444,13 +1416,12 @@ For larger facilities requiring more cameras, the detection engine can be upgrad
 
 For multi-facility deployments (e.g., a resort chain with 5 pools across 3 locations), AquaGuard can be extended with a **central cloud management layer**:
 
-```text
+```
 [Facility A Edge Server] ─── VPN tunnel ──→
 [Facility B Edge Server] ─── VPN tunnel ──→  [Cloud Dashboard Server]
 [Facility C Edge Server] ─── VPN tunnel ──→       (Multi-facility React UI
                                                     + Aggregated MySQL DB)
-```text
-
+```
 Each facility edge server retains its full local processing and alarm capability. The cloud layer receives alert events via secure MQTT-over-TLS forwarding or REST API calls and provides a centralized view across all facilities.
 
 ## 16.3 Edge AI vs. Cloud AI
@@ -1481,8 +1452,7 @@ All Flask API endpoints (except `POST /auth/login`) require a valid JWT access t
 @role_required('admin')
 def add_camera():
     ...
-```text
-
+```
 ## 17.2 Encrypted Video Streams
 
 Camera RTSP streams should be configured with RTSP over TLS (RTSPS) where supported by the camera hardware. For cameras not supporting RTSPS, RTSP streams are isolated to the internal LAN VLAN and are not exposed to any external network interface. The React dashboard displays video via a Flask-proxied MJPEG endpoint rather than exposing camera IPs directly to browser clients.
@@ -1495,7 +1465,7 @@ The Mosquitto broker is configured with:
 - TLS/SSL encryption on port 8883 for all MQTT traffic.
 - ACL (Access Control List) rules restricting ESP32 clients to subscribe-only on `aquaguard/alert` and publish-only on `aquaguard/device/status`.
 
-```text
+```
 # mosquitto.conf security settings
 listener 8883
 cafile /etc/mosquitto/certs/ca.crt
@@ -1505,8 +1475,7 @@ require_certificate false
 allow_anonymous false
 password_file /etc/mosquitto/passwd
 acl_file /etc/mosquitto/acl
-```text
-
+```
 ## 17.4 Network Isolation
 
 The detection server, cameras, ESP32 devices, and dashboard client are deployed on an isolated LAN VLAN separated from the facility's general internet-facing Wi-Fi. The MQTT broker and Flask API are bound to LAN IP addresses only, not exposed to external networks. A firewall rule blocks all inbound connections to port 1883 and 5000 from non-LAN addresses.
@@ -1530,8 +1499,7 @@ The RTX 2050 (4GB GDDR6) is the primary performance enabler. YOLOv11 inference i
 model = YOLO("aquaguard_yolov11s.pt")
 model.to("cuda")  # Moves model to GPU
 results = model(frame, device="cuda")
-```text
-
+```
 CUDA reduces inference time from ~400ms (CPU for YOLOv11s) to ~21–25ms per frame — a ~16–19× speedup that is essential for real-time operation.
 
 ## 18.2 Frame Skipping
@@ -1555,8 +1523,7 @@ For multi-camera deployments, frames from different cameras can be batched into 
 # Batch inference across 2 cameras
 frames_batch = [frame_cam1, frame_cam2]
 results = model(frames_batch, device="cuda")  # Single GPU call
-```text
-
+```
 This improves GPU utilization and reduces per-camera overhead when multiple streams are active simultaneously.
 
 ## 18.5 Asynchronous Alert Dispatch
@@ -1569,8 +1536,7 @@ def dispatch_alert(payload):
     threading.Thread(target=_send_mqtt, args=(payload,), daemon=True).start()
     threading.Thread(target=_send_websocket, args=(payload,), daemon=True).start()
     threading.Thread(target=_post_to_api, args=(payload,), daemon=True).start()
-```text
-
+```
 ---
 
 # 19. Fault Tolerance
@@ -1783,3 +1749,4 @@ _Academic Year 2025–2026 | Defense Date: March 12, 2026_
 
 > **Document prepared by:** Joshua Gutierrez (System Designer / Architect) with contributions from the full AquaGuard development team.  
 > **Standards Compliance:** ISO/IEC 12207 (Software Life Cycle Processes), ISO/IEC 25010 (System and Software Quality Models), IEEE 29148 (Requirements Engineering), IEEE 1016 (Software Design Descriptions).
+

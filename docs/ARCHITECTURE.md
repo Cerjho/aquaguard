@@ -9,7 +9,7 @@ Related artifacts:
 
 AquaGuard is a layered edge-AI + IoT system. Video is processed locally on the detection server, then distributed to physical and dashboard alert channels.
 
-```text
+```
 Camera (RTSP/USB)
       |
       v
@@ -32,8 +32,7 @@ AlertEngine (bounded worker pool)
    +-- MQTTClient --> ESP32 GPIO alarm
    +-- APIClient  --> Flask POST /events --> DB + SocketIO --> React dashboard
    +-- Logger     --> system logs
-```text
-
+```
 ```mermaid
 flowchart TD
       cam[Camera RTSP/USB] --> cap[CameraCapture per zone]
@@ -50,8 +49,7 @@ flowchart TD
       backend --> db[(PostgreSQL/SQLite)]
       backend --> ws[Socket.IO]
       ws --> ui[React Dashboard]
-```text
-
+```
 ## 2. Component Descriptions
 
 ### CameraCapture and CameraRegistry
@@ -145,34 +143,31 @@ Important: landmark coordinates are normalized in `[0.0, 1.0]`.
 
 Raw score is computed as weighted indicators:
 
-```text
+```
 raw_score =
   0.30 * vertical_orientation
 + 0.25 * arms_elevated
 + 0.20 * no_limb_motion
 + 0.15 * face_submerged
 + 0.10 * yolo_class_score
-```text
-
+```
 Temporal consistency bonus:
 
-```text
+```
 temporal_ratio = count(last_5_raw_scores > 0.5) / 5
 final_score = min(1.0, raw_score * (1.0 + 0.1 * temporal_ratio))
-```text
-
+```
 ### Stage 4: Rolling Confidence Filter
 
 For each `track_id`, maintain `deque(maxlen=15)`.
 
 Trigger condition:
 
-```text
+```
 mean(last_15_scores) > 0.75
 AND
 count(last_10_scores > 0.65) >= 10
-```text
-
+```
 On trigger, track buffer is cleared to avoid immediate retrigger loops.
 
 ### Stage 5: Alert Dispatch
@@ -346,3 +341,4 @@ The dominant contribution to total end-to-end alert time is temporal confirmatio
 
 - **Alert history contract mismatch:** frontend alert history still carries compatibility mapping for `alerted_at` and generic confidence aliases, while backend canonical fields are `triggered_at` (alert timestamp) and `DetectionEvent.confidence_score` (confidence source).
 - **WebSocket anonymous connect currently allowed:** `backend/sockets.py` accepts socket connections with no token and only rejects explicitly invalid provided tokens.
+

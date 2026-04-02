@@ -14,8 +14,7 @@
 
 ```python
 Python 3.11.x  (3.11.8 recommended)
-```text
-
+```
 Do not use Python 3.12+ — some MediaPipe builds are not yet stable on 3.12.
 
 ---
@@ -29,8 +28,7 @@ Always activate before running any Python command:
 
 ```bash
 .\aquaguard_env\Scripts\Activate.ps1
-```text
-
+```
 ---
 
 ## requirements.txt — Detection Engine + Backend (shared venv)
@@ -85,8 +83,7 @@ pytest==8.3.3
 pytest-cov==5.0.0
 pytest-mock==3.14.0
 httpx==0.27.2                 # Async-compatible HTTP client for Flask testing
-```text
-
+```
 ---
 
 ## requirements-dev.txt — Development Only
@@ -98,8 +95,7 @@ flake8==7.1.1                 # Linter
 isort==5.13.2                 # Import sorter
 ipykernel==6.29.5             # Jupyter kernel for benchmarking notebooks
 jupyter==1.1.1                # Jupyter notebook for benchmark.py development
-```text
-
+```
 ---
 
 ## Node.js Version
@@ -107,8 +103,7 @@ jupyter==1.1.1                # Jupyter notebook for benchmark.py development
 ```node
 Node.js 20.x LTS  (20.17.0 recommended)
 npm 10.x
-```text
-
+```
 ---
 
 ## package.json — React Frontend
@@ -136,8 +131,7 @@ npm 10.x
     "autoprefixer": "10.4.20"
   }
 }
-```text
-
+```
 ---
 
 ## Arduino Libraries — ESP32 Firmware
@@ -197,8 +191,7 @@ Verify CUDA install:
 nvidia-smi                  # Shows driver version and CUDA version
 nvcc --version              # Shows CUDA compiler version
 python -c "import torch; print(torch.version.cuda)"   # Should print: 12.1
-```text
-
+```
 ---
 
 ## Python Installation Command Reference
@@ -225,8 +218,7 @@ python -c "import mediapipe; print('MediaPipe OK')"
 python -c "import cv2; print('OpenCV:', cv2.__version__)"
 python -c "import flask; print('Flask:', flask.__version__)"
 python -c "import paho.mqtt; print('paho-mqtt OK')"
-```text
-
+```
 ---
 
 ## Known Compatibility Notes
@@ -260,3 +252,4 @@ python -c "import paho.mqtt; print('paho-mqtt OK')"
   ```
 
   Using the old 3- or 4-argument signatures will raise `TypeError` at runtime with paho-mqtt 2.x.
+

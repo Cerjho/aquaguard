@@ -15,7 +15,7 @@
  *   });
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { WS_URL } from '../utils/constants';
 import logger from '../utils/logger';
@@ -37,9 +37,32 @@ function useAlertSocket({
   onConnectionChange,
 } = {}) {
   const socketRef = useRef(null);
+  const isDisconnectingRef = useRef(false);
+
+  const disconnectSocket = useCallback(() => {
+    if (socketRef.current) {
+      isDisconnectingRef.current = true;
+      // Disable reconnection before disconnecting to prevent reconnection attempts
+      socketRef.current.io.opts.reconnection = false;
+      // Close the underlying engine to prevent WebSocket frame errors
+      if (socketRef.current.io?.engine) {
+        socketRef.current.io.engine.close();
+      }
+      socketRef.current.disconnect();
+      socketRef.current = null;
+      // Reset after a short delay
+      setTimeout(() => {
+        isDisconnectingRef.current = false;
+      }, 100);
+    }
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
+      // Disconnect existing socket when disabled
+      if (socketRef.current) {
+        disconnectSocket();
+      }
       if (typeof onConnectionChange === 'function') {
         onConnectionChange(false, {
           at: new Date().toISOString(),
@@ -51,13 +74,16 @@ function useAlertSocket({
     }
 
     // Establish Socket.IO connection with credentialed cookie handshake.
+    // Use polling-first to avoid WebSocket frame header errors during auth transitions
     const socket = io(WS_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 5,
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
+      timeout: 10000,
+      upgrade: true,
     });
 
     socketRef.current = socket;
@@ -70,6 +96,8 @@ function useAlertSocket({
     });
 
     socket.on('connect_error', (err) => {
+      // Suppress error logging during intentional disconnect
+      if (isDisconnectingRef.current) return;
       logger.warn('[AquaGuard WS] Connection error:', err.message);
       if (typeof onConnectionChange === 'function') {
         onConnectionChange(false, {
@@ -81,7 +109,10 @@ function useAlertSocket({
     });
 
     socket.on('disconnect', (reason) => {
-      logger.info('[AquaGuard WS] Disconnected:', reason);
+      // Suppress logging during intentional disconnect
+      if (!isDisconnectingRef.current) {
+        logger.info('[AquaGuard WS] Disconnected:', reason);
+      }
       if (typeof onConnectionChange === 'function') {
         onConnectionChange(false, {
           at: new Date().toISOString(),
@@ -89,6 +120,12 @@ function useAlertSocket({
           type: 'disconnect',
         });
       }
+    });
+
+    // Handle transport errors gracefully
+    socket.io.on('error', () => {
+      // Suppress transport errors during disconnect - these are expected
+      // when the server invalidates the session before websocket closes
     });
 
     if (typeof onAlert === 'function') {
@@ -117,26 +154,31 @@ function useAlertSocket({
     }
 
     const handleTokenRefresh = () => {
-      if (!socketRef.current) return;
+      if (!socketRef.current || isDisconnectingRef.current) return;
       // Force a reconnect so the Socket.IO handshake uses the latest cookies.
       socketRef.current.disconnect();
       socketRef.current.connect();
     };
 
+    const handleLogout = () => {
+      disconnectSocket();
+    };
+
     window.addEventListener('token-refreshed', handleTokenRefresh);
+    window.addEventListener('user-logout', handleLogout);
 
     // Cleanup on unmount
     return () => {
       window.removeEventListener('token-refreshed', handleTokenRefresh);
-      socket.disconnect();
-      socketRef.current = null;
+      window.removeEventListener('user-logout', handleLogout);
+      disconnectSocket();
     };
     // Callbacks are intentionally excluded from deps to avoid reconnect on every render.
     // Consumers should memoize callbacks with useCallback if they need stability.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, disconnectSocket]);
 
-  return socketRef;
+  return { socketRef, disconnectSocket };
 }
 
 export default useAlertSocket;

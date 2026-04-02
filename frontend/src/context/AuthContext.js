@@ -55,6 +55,10 @@ export function AuthProvider({ children }) {
     * Clears auth cookies on backend and resets in-memory state.
    */
   const logout = useCallback(async () => {
+    // Dispatch event to disconnect WebSocket before clearing auth state
+    window.dispatchEvent(new Event('user-logout'));
+    // Small delay to allow socket to disconnect cleanly before invalidating cookies
+    await new Promise(resolve => setTimeout(resolve, 50));
     try {
       await api.post('/api/v1/auth/logout');
     } catch {

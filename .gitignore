@@ -56,6 +56,9 @@ htmlcov/
 # Pytest
 .pytest_cache/
 
+# Playwright MCP
+.playwright-mcp/
+
 # Alembic
 backend/migrations/versions/__pycache__/
 

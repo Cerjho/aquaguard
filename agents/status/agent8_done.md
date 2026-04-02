@@ -8,7 +8,8 @@
   - Agent 1 commit `9f1925e`
   - Agent 2 commit `7660d33`
   - Agent 3 commit `89f1728`
-- Updated `agents/status/agent8_review_report.md` with resolved statuses, summary counts, and final verdict.
+- Updated `agents/status/agent8_review_report.md` with resolved statuses,
+  summary counts, and final verdict.
 
 ## Verification Outcome
 

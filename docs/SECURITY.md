@@ -75,10 +75,10 @@ Do not log secrets or raw credentials.
 If compromise is suspected:
 
 1. Rotate `JWT_SECRET_KEY`, `SECRET_KEY`, and `AQUAGUARD_API_KEY`
-2. Revoke active sessions and restart services
-3. Audit logs for unauthorized access patterns
-4. Rebuild from trusted artifacts and redeploy
-5. Document root cause and remediation actions
+1. Revoke active sessions and restart services
+1. Audit logs for unauthorized access patterns
+1. Rebuild from trusted artifacts and redeploy
+1. Document root cause and remediation actions
 
 ## 9. Secure Development Checklist
 

@@ -5,7 +5,7 @@
  * Columns: time, zone, confidence, status, acknowledged by.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useFilterState } from '../../context/AlertContext';
@@ -21,6 +21,7 @@ function AlertHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [draftFilters, setDraftFilters] = useState(triageFilters || {});
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     setDraftFilters(triageFilters || {});
@@ -45,6 +46,8 @@ function AlertHistory() {
   }, [draftFilters, triageFilters, setTriageFilters]);
 
   const fetchAlerts = useCallback(async (pageNum) => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     if (alerts.length === 0) {
       setLoading(true);
     } else {
@@ -65,6 +68,7 @@ function AlertHistory() {
         },
       });
       const data = res.data;
+      if (requestId !== requestIdRef.current) return;
       // Backend may return { alerts: [...], total: N } or directly an array
       if (Array.isArray(data)) {
         setAlerts(data);
@@ -74,10 +78,13 @@ function AlertHistory() {
         setTotal(data.total || 0);
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(err.response?.data?.message || 'Failed to load alert history.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [triageFilters, alerts.length]);
 

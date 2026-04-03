@@ -5,7 +5,7 @@
  * Columns: time, zone, class, confidence, alert triggered.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useFilterState } from '../../context/AlertContext';
@@ -26,6 +26,7 @@ function IncidentHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [draftFilters, setDraftFilters] = useState(triageFilters || {});
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     setDraftFilters(triageFilters || {});
@@ -50,6 +51,8 @@ function IncidentHistory() {
   }, [draftFilters, triageFilters, setTriageFilters]);
 
   const fetchEvents = useCallback(async (pageNum) => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     if (events.length === 0) {
       setLoading(true);
     } else {
@@ -70,6 +73,7 @@ function IncidentHistory() {
         },
       });
       const data = res.data;
+      if (requestId !== requestIdRef.current) return;
       if (Array.isArray(data)) {
         setEvents(data);
         setTotal(data.length);
@@ -78,14 +82,17 @@ function IncidentHistory() {
         setTotal(data.total || 0);
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(
         err.response?.data?.message
         || err.response?.data?.error
         || 'Failed to load incident history.'
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [triageFilters, events.length]);
 

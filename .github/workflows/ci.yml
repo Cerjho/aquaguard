@@ -171,6 +171,7 @@ jobs:
           JWT_SECRET_KEY: ci-test-secret-key-not-for-production
           SECRET_KEY: ci-test-secret-key
           AQUAGUARD_API_KEY: ci-test-api-key
+          SEED_ADMIN_PASSWORD: aquaguard2026
 
       - name: Start backend server
         run: |

@@ -447,7 +447,7 @@ describe('CameraGrid stream token auth flow', () => {
       });
 
       await act(async () => {
-        jest.advanceTimersByTime(31000);
+        jest.advanceTimersByTime(11000);
         await Promise.resolve();
       });
 

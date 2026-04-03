@@ -14,8 +14,8 @@ import { API_BASE_URL } from '../../utils/constants';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
-const STREAM_REFRESH_CHECK_MS = 30000;
-const HIDDEN_TOKEN_REFRESH_CHECK_MS = 60000;
+const STREAM_REFRESH_CHECK_MS = 5000;
+const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
 const MAX_GRID_STREAMS = 4;
 
 function CameraGrid({ reloadToken = 0 }) {

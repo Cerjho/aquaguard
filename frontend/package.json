@@ -13,11 +13,13 @@
     "socket.io-client": "4.8.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "6.5.0",
     "@testing-library/react": "16.0.0",
     "@testing-library/user-event": "14.5.2",
     "autoprefixer": "10.4.20",
     "axios-mock-adapter": "^2.1.0",
+    "playwright": "^1.59.1",
     "postcss": "8.4.47",
     "react-scripts": "5.0.1",
     "tailwindcss": "3.4.13",
@@ -34,6 +36,14 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:unit": "react-scripts test --watchAll=false",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:debug": "npx playwright test --debug",
+    "test:all": "npm run test:unit && npm run test:e2e",
+    "playwright:install": "npx playwright install",
+    "playwright:report": "npx playwright show-report",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

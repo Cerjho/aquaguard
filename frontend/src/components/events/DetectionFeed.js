@@ -15,11 +15,11 @@ import {
   mapEventTimestamp,
 } from '../../utils/eventMappers';
 
-const POLL_INTERVAL_MS = 5000;
-const HIDDEN_POLL_INTERVAL_MS = 30000;
+const POLL_INTERVAL_MS = 15000;
+const HIDDEN_POLL_INTERVAL_MS = 60000;
 const MAX_DISPLAY = 20;
-const STALE_AFTER_MS = 15000;
-const MAX_BACKOFF_MS = 60000;
+const STALE_AFTER_MS = 20000;
+const MAX_BACKOFF_MS = 120000;
 
 function DetectionFeed() {
   const { detectionEvents } = useAlertState();
@@ -32,7 +32,7 @@ function DetectionFeed() {
   const failureCountRef = useRef(0);
 
   useEffect(() => {
-    const tick = setInterval(() => setNowTick(Date.now()), 1000);
+    const tick = setInterval(() => setNowTick(Date.now()), 5000);
     return () => clearInterval(tick);
   }, []);
 
@@ -55,6 +55,9 @@ function DetectionFeed() {
   }, []);
 
   useEffect(() => {
+    // Skip polling if socket provides real-time events
+    if (socketConnected) return undefined;
+
     let cancelled = false;
     const schedule = (delay) => {
       if (cancelled) return;
@@ -86,7 +89,7 @@ function DetectionFeed() {
       if (intervalRef.current) clearTimeout(intervalRef.current);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [fetchLatest]);
+  }, [fetchLatest, socketConnected]);
 
   const hasRealtimeEvents = detectionEvents.length > 0;
   const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;

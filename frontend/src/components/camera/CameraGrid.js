@@ -14,8 +14,8 @@ import { API_BASE_URL } from '../../utils/constants';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
-const STREAM_REFRESH_CHECK_MS = 5000;
-const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
+const STREAM_REFRESH_CHECK_MS = 30000;
+const HIDDEN_TOKEN_REFRESH_CHECK_MS = 60000;
 const MAX_GRID_STREAMS = 4;
 
 function CameraGrid({ reloadToken = 0 }) {
@@ -148,29 +148,6 @@ function CameraGrid({ reloadToken = 0 }) {
     setStreamTokens(next);
   }, [mintStreamToken]);
 
-  const fetchRuntimeStatus = useCallback(async () => {
-    try {
-      const res = await api.get('/api/v1/system/status');
-      const payload = res.data || {};
-      const engine = payload.detection_engine || {};
-      setDetectionEngineStatus(normalizeServiceStatus(engine.status));
-
-      const runtimeCameras = payload.camera_status || payload.cameras || [];
-      const runtimeMap = {};
-      if (Array.isArray(runtimeCameras)) {
-        runtimeCameras.forEach((camera) => {
-          if (camera?.zone_id) {
-            runtimeMap[camera.zone_id] = normalizeServiceStatus(camera.status);
-          }
-        });
-      }
-      setCameraRuntimeMap(runtimeMap);
-    } catch {
-      setDetectionEngineStatus('unknown');
-      setCameraRuntimeMap({});
-    }
-  }, []);
-
   const refreshSingleToken = useCallback(async (zoneId) => {
     if (!zoneId) return;
     if (tokenRefreshInFlightRef.current.has(zoneId)) return;
@@ -190,8 +167,7 @@ function CameraGrid({ reloadToken = 0 }) {
 
   useEffect(() => {
     fetchCameras();
-    fetchRuntimeStatus();
-  }, [fetchCameras, fetchRuntimeStatus, reloadToken]);
+  }, [fetchCameras, reloadToken]);
 
   const activeStreamZoneIds = useMemo(() => {
     if (!Array.isArray(cameras) || cameras.length === 0) return new Set();
@@ -377,7 +353,6 @@ function CameraGrid({ reloadToken = 0 }) {
         <button
           onClick={() => {
             fetchCameras();
-            fetchRuntimeStatus();
           }}
           className="text-xs text-sky-600 hover:text-sky-800 transition-colors"
           title="Refresh cameras"

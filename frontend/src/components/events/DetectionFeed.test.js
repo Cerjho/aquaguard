@@ -84,11 +84,8 @@ describe('DetectionFeed mapping resilience', () => {
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/Live \(socket\)/)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith('/api/v1/events', {
-        params: { limit: 20, page: 1 },
-      });
-    });
+    // With socket connected, polling is skipped - events come via WebSocket
+    expect(api.get).not.toHaveBeenCalledWith('/api/v1/events', expect.anything());
   });
 
   test('pauses aggressive polling when tab is hidden', async () => {

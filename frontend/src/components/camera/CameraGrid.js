@@ -307,6 +307,16 @@ function CameraGrid({ reloadToken = 0 }) {
     return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}&session=${encodeURIComponent(streamSessionId)}`;
   }, [focusedCamera, streamTokens, streamSessionId]);
 
+  const isDetectionEngineOnline = useMemo(() => {
+    const subsystems = systemStatus?.subsystems;
+    const freshness = subsystems?.detection_engine?.freshness_seconds;
+    const threshold = subsystems?.detection_engine?.stale_threshold_seconds;
+    if (typeof freshness === 'number' && typeof threshold === 'number') {
+      return freshness <= threshold;
+    }
+    return detectionEngineStatus === 'online';
+  }, [systemStatus, detectionEngineStatus]);
+
   useEffect(() => {
     if (!focusedCamera && lastFocusedTriggerRef.current?.focus) {
       lastFocusedTriggerRef.current.focus();
@@ -429,8 +439,16 @@ function CameraGrid({ reloadToken = 0 }) {
               </div>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 p-3 sm:p-4">
-              <div className="xl:col-span-8 rounded-lg overflow-hidden bg-slate-900 aspect-video min-h-[240px] sm:min-h-[320px]">
-                {focusedStreamUrl ? (
+              <div className="xl:col-span-8 rounded-lg overflow-hidden bg-slate-900 aspect-video min-h-[240px] sm:min-h-[320px] relative">
+                {!isDetectionEngineOnline ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+                    <svg className="w-12 h-12 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <span className="text-sm font-medium">Detection engine offline</span>
+                    <span className="text-xs text-slate-500">Live snapshots unavailable</span>
+                  </div>
+                ) : focusedStreamUrl ? (
                   <img
                     src={focusedStreamUrl}
                     alt={`Focused live feed — ${focusedCamera.zone_name || focusedCamera.zone_id}`}

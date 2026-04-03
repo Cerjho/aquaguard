@@ -56,11 +56,9 @@
     "transformIgnorePatterns": [
       "/node_modules/(?!axios/)"
     ],
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/e2e/",
-      "src/__tests__/utils/",
-      "src/__tests__/fixtures/"
+    "testMatch": [
+      "**/__tests__/**/*.test.js",
+      "**/?(*.)+(spec|test).[jt]s?(x)"
     ]
   },
   "browserslist": {

@@ -172,6 +172,7 @@ jobs:
           SECRET_KEY: ci-test-secret-key
           AQUAGUARD_API_KEY: ci-test-api-key
           SEED_ADMIN_PASSWORD: aquaguard2026
+          SEED_GUARD_PASSWORD: lifeguard2026
 
       - name: Start backend server
         run: |

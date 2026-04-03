@@ -396,19 +396,79 @@ ______________________________________________________________________
 
 ## 14. Testing Rules
 
+### General Testing Requirements
+
 - Every new feature must include at least **one unit test**
 - Every bug fix must include a **regression test**
 - Never commit code that causes existing tests to fail
 - Test file naming:
   - Python: `test_<module_name>.py`
   - React: `<ComponentName>.test.jsx`
+  - E2E: `<feature>.spec.ts`
 - Mock all external dependencies in unit tests
   (database, MQTT, WebRTC, camera feeds)
 - Never use real credentials or live camera URLs in tests
 
+### Frontend Testing (React)
+
+- **Unit Tests**: Place in `src/__tests__/` mirroring source structure
+- **Test Utilities**: Use `renderWithProviders` from `src/__tests__/utils/testUtils.js`
+- **Mock Data**: Use fixtures from `src/__tests__/fixtures/mockData.js`
+- **Run**: `npm run test:unit` (63 tests must pass)
+
+### E2E Testing (Playwright)
+
+- **Location**: All E2E tests in `frontend/e2e/tests/`
+- **Page Objects**: Use POM pattern from `frontend/e2e/pages/`
+- **Authentication**: Use `authenticatedPage` fixture for protected routes
+- **Run locally**: `npm run test:e2e` (runs all browsers)
+- **Run in CI**: `npm run test:e2e -- --project=chromium`
+- **Debug**: `npm run test:e2e:debug`
+- **Test Structure**:
+  - `auth.spec.ts` - Login, logout, protected routes
+  - `dashboard.spec.ts` - Main dashboard functionality
+  - `camera-management.spec.ts` - Camera CRUD operations
+  - `incidents.spec.ts` - Alerts, filters, pagination
+  - `analytics.spec.ts` - Charts and data visualization
+
+### Test Credentials
+
+- Username: `admin`
+- Password: `aquaguard2026`
+- **Never** use production credentials in tests
+
 ______________________________________________________________________
 
-## 15. What Copilot Must Never Generate
+## 15. CI/CD Rules
+
+### Continuous Integration
+
+- All tests must pass before merging to `dev`
+- CI runs on every push to `dev`, `feature/**`, `fix/**`
+- CI jobs:
+  - **Backend Tests**: pytest with coverage
+  - **Detection Engine Tests**: pytest (CPU mode)
+  - **Frontend Unit Tests**: Jest (63 tests)
+  - **Frontend E2E Tests**: Playwright (Chromium only in CI)
+  - **Lint**: flake8 for Python
+  - **Security Scan**: pip-audit and npm audit (non-blocking)
+
+### E2E Tests in CI
+
+- Only Chromium browser runs in CI (faster)
+- Backend seeded with test data before E2E tests
+- Playwright reports uploaded as artifacts on failure
+- Tests run with `CI=true` environment variable
+
+### Local Development
+
+- Run all tests before pushing: `npm run test:all` (frontend)
+- Run linters: `flake8 backend/` and `flake8 detection_engine/`
+- Run E2E tests with UI mode: `npm run test:e2e:ui`
+
+______________________________________________________________________
+
+## 16. What Copilot Must Never Generate
 
 - `print()` statements in backend or detection code
 - Bare `except:` or `except Exception: pass` blocks
@@ -423,7 +483,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-## 16. Quick Reference — Coding
+## 17. Quick Reference — Coding
 
 | Rule | Good | Bad |
 | --- | --- | --- |

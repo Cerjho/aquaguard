@@ -1,19 +1,19 @@
 import React from 'react';
 import { render, waitFor, fireEvent, screen } from '@testing-library/react';
-import AnalyticsChart from './AnalyticsChart';
-import api from '../../hooks/useApi';
-import { useFilterState } from '../../context/AlertContext';
+import AnalyticsChart from '../../../components/analytics/AnalyticsChart';
+import api from '../../../hooks/useApi';
+import { useFilterState } from '../../../context/AlertContext';
 
 const mockNavigate = jest.fn();
 
-jest.mock('../../hooks/useApi', () => ({
+jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
   },
 }));
 
-jest.mock('../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext', () => ({
   useFilterState: jest.fn(),
 }));
 

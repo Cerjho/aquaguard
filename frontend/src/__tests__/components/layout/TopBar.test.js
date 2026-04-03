@@ -1,19 +1,19 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import TopBar from './TopBar';
-import { useAuth } from '../../context/AuthContext';
+import TopBar from '../../../components/layout/TopBar';
+import { useAuth } from '../../../context/AuthContext';
 import {
   useAlertState,
   useSocketState,
   useSystemState,
-} from '../../context/AlertContext';
+} from '../../../context/AlertContext';
 
-jest.mock('../../context/AuthContext', () => ({
+jest.mock('../../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext', () => ({
   useAlertState: jest.fn(),
   useSocketState: jest.fn(),
   useSystemState: jest.fn(),

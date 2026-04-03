@@ -1,17 +1,17 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { AlertProvider, useAlerts } from './AlertContext';
-import api from '../hooks/useApi';
-import useAlertSocket from '../hooks/useAlertSocket';
-import { useAuth } from './AuthContext';
+import { AlertProvider, useAlerts } from '../../context/AlertContext';
+import api from '../../hooks/useApi';
+import useAlertSocket from '../../hooks/useAlertSocket';
+import { useAuth } from '../../context/AuthContext';
 
-jest.mock('../hooks/useApi', () => ({
+jest.mock('../../hooks/useApi', () => ({
   post: jest.fn(),
 }));
 
-jest.mock('../hooks/useAlertSocket', () => jest.fn());
+jest.mock('../../hooks/useAlertSocket', () => jest.fn());
 
-jest.mock('./AuthContext', () => ({
+jest.mock('../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 

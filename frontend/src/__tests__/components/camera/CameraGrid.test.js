@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import CameraGrid from './CameraGrid';
-import api from '../../hooks/useApi';
-import { useSystemState, useAlertState } from '../../context/AlertContext';
+import CameraGrid from '../../../components/camera/CameraGrid';
+import api from '../../../hooks/useApi';
+import { useSystemState, useAlertState } from '../../../context/AlertContext';
 
-jest.mock('../../hooks/useApi', () => ({
+jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
@@ -12,7 +12,7 @@ jest.mock('../../hooks/useApi', () => ({
   },
 }));
 
-jest.mock('../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext', () => ({
   useSystemState: jest.fn(),
   useAlertState: jest.fn(),
 }));

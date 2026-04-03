@@ -1,17 +1,17 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import DetectionFeed from './DetectionFeed';
-import api from '../../hooks/useApi';
-import { useAlertState, useSocketState } from '../../context/AlertContext';
+import DetectionFeed from '../../../components/events/DetectionFeed';
+import api from '../../../hooks/useApi';
+import { useAlertState, useSocketState } from '../../../context/AlertContext';
 
-jest.mock('../../hooks/useApi', () => ({
+jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
   },
 }));
 
-jest.mock('../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext', () => ({
   useAlertState: jest.fn(),
   useSocketState: jest.fn(),
 }));

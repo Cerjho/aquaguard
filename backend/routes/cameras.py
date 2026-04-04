@@ -227,3 +227,91 @@ def stream_camera(zone_id):
         generate(),
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
+
+
+# ── Camera Health API ─────────────────────────────────────────────────────────
+
+@cameras_bp.route('/cameras/<zone_id>/health', methods=['GET'])
+@jwt_required()
+def get_camera_health(zone_id):
+    """Return real-time health metrics for a camera.
+
+    Health data is read from the detection engine's status file.
+    """
+    CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
+
+    status_path = os.path.join(LIVE_DIR, f'{zone_id}_status.json')
+    if not os.path.exists(status_path):
+        return jsonify({
+            'zone_id': zone_id,
+            'status': 'unknown',
+            'error': 'No health data available - detection engine may not be running',
+        }), 200
+
+    try:
+        with open(status_path, 'r', encoding='utf-8') as f:
+            import json
+            health_data = json.load(f)
+        return jsonify(health_data), 200
+    except (OSError, json.JSONDecodeError) as exc:
+        current_app.logger.warning(f'Failed to read health data for {zone_id}: {exc}')
+        return jsonify({
+            'zone_id': zone_id,
+            'status': 'error',
+            'error': 'Failed to read health data',
+        }), 200
+
+
+@cameras_bp.route('/cameras/health', methods=['GET'])
+@jwt_required()
+def get_all_cameras_health():
+    """Return health metrics for all active cameras."""
+    cameras = CameraZone.query.filter_by(is_active=True).all()
+    health_results = []
+
+    for camera in cameras:
+        status_path = os.path.join(LIVE_DIR, f'{camera.zone_id}_status.json')
+        if os.path.exists(status_path):
+            try:
+                with open(status_path, 'r', encoding='utf-8') as f:
+                    import json
+                    health_data = json.load(f)
+                health_results.append(health_data)
+            except (OSError, json.JSONDecodeError):
+                health_results.append({
+                    'zone_id': camera.zone_id,
+                    'status': 'error',
+                    'error': 'Failed to read health data',
+                })
+        else:
+            health_results.append({
+                'zone_id': camera.zone_id,
+                'status': 'unknown',
+                'error': 'No health data available',
+            })
+
+    return jsonify({'cameras': health_results}), 200
+
+
+@cameras_bp.route('/internal/cameras/<zone_id>/health', methods=['GET'])
+def get_internal_camera_health(zone_id):
+    """Internal API for detection engine to report health (no JWT required)."""
+    if not validate_internal_api_key():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    status_path = os.path.join(LIVE_DIR, f'{zone_id}_status.json')
+    if not os.path.exists(status_path):
+        return jsonify({
+            'zone_id': zone_id,
+            'status': 'unknown',
+        }), 200
+
+    try:
+        with open(status_path, 'r', encoding='utf-8') as f:
+            import json
+            return jsonify(json.load(f)), 200
+    except (OSError, json.JSONDecodeError):
+        return jsonify({
+            'zone_id': zone_id,
+            'status': 'error',
+        }), 200

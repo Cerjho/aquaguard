@@ -34,10 +34,23 @@ MQTT_RESET_TOPIC = "aquaguard/alert/reset"
 MQTT_TOPIC_RESET = MQTT_RESET_TOPIC
 MQTT_TOPIC_DETECTION = "aquaguard/detection"
 MQTT_TOPIC_DEVICE_STATUS = "aquaguard/device/status"
+MQTT_TOPIC_CAMERA_HEALTH = "aquaguard/camera/health"
 
 # ── Camera Reconnect ──────────────────────────────────────────────────────────
 RECONNECT_BACKOFF_SECONDS = [1, 2, 4, 8, 30]
 RECONNECT_MAX_CONSECUTIVE_FAILURES = 5
+
+# ── RTSP Stream Settings ──────────────────────────────────────────────────────
+RTSP_TRANSPORT = os.environ.get('RTSP_TRANSPORT', 'tcp')  # 'tcp' or 'udp'
+RTSP_CONNECT_TIMEOUT_SECONDS = int(os.environ.get('RTSP_CONNECT_TIMEOUT', '10'))
+RTSP_READ_TIMEOUT_SECONDS = int(os.environ.get('RTSP_READ_TIMEOUT', '5'))
+RTSP_STALL_THRESHOLD_SECONDS = int(os.environ.get('RTSP_STALL_THRESHOLD', '10'))
+RTSP_BUFFER_SIZE = int(os.environ.get('RTSP_BUFFER_SIZE', '1'))
+
+# ── Camera Health Monitoring ──────────────────────────────────────────────────
+CAMERA_HEALTH_LOG_INTERVAL_SECONDS = 60
+CAMERA_FPS_DEGRADED_THRESHOLD = 0.5  # Alert if FPS drops below 50% of target
+CAMERA_CORRUPTION_WARN_THRESHOLD = 0.10  # 10% corruption rate triggers warning
 
 # ── Alert ─────────────────────────────────────────────────────────────────────
 ALARM_DURATION_SECONDS = 30
@@ -119,6 +132,14 @@ def validate_runtime_settings():
         raise ValueError('RECONNECT_MAX_CONSECUTIVE_FAILURES must be >= 1')
     if not RECONNECT_BACKOFF_SECONDS or any(delay <= 0 for delay in RECONNECT_BACKOFF_SECONDS):
         raise ValueError('RECONNECT_BACKOFF_SECONDS must contain positive values')
+    if RTSP_TRANSPORT not in ('tcp', 'udp'):
+        raise ValueError('RTSP_TRANSPORT must be "tcp" or "udp"')
+    if RTSP_CONNECT_TIMEOUT_SECONDS < 1:
+        raise ValueError('RTSP_CONNECT_TIMEOUT_SECONDS must be >= 1')
+    if RTSP_READ_TIMEOUT_SECONDS < 1:
+        raise ValueError('RTSP_READ_TIMEOUT_SECONDS must be >= 1')
+    if RTSP_STALL_THRESHOLD_SECONDS < 1:
+        raise ValueError('RTSP_STALL_THRESHOLD_SECONDS must be >= 1')
 
 
 def build_backend_runtime_values(environ=None):

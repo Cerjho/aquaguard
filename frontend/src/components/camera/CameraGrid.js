@@ -32,7 +32,11 @@ function CameraGrid({ reloadToken = 0 }) {
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     typeof document === 'undefined' ? true : !document.hidden
   );
-  const { cameraStatuses, systemStatus } = useSystemState();
+  const {
+    cameraStatuses,
+    cameraHealthMap = {},
+    systemStatus,
+  } = useSystemState();
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
   const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);
@@ -369,6 +373,7 @@ function CameraGrid({ reloadToken = 0 }) {
               ...camera,
               runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
               detection_engine_status: detectionEngineStatus,
+              health: cameraHealthMap[camera.zone_id] || null,
               stream_token: streamTokens[camera.zone_id]?.token || null,
               stream_session_id: streamSessionId,
             }}

@@ -79,6 +79,21 @@ function CameraCard({
   const cameraOnline =
     normalizeServiceStatus(camera.runtime_status ?? camera.status ?? camera.is_active) === 'online';
   const isActive = detectionOnline && cameraOnline;
+  const health = camera.health || null;
+  const healthStatus = normalizeServiceStatus(health?.status);
+  const fpsActual = typeof health?.fps_actual === 'number' ? health.fps_actual : null;
+  const fpsTarget = typeof health?.fps_target === 'number' ? health.fps_target : null;
+  const corruptionRate = typeof health?.corruption_rate === 'number' ? health.corruption_rate : null;
+  const reconnectCount = Number.isFinite(health?.reconnect_count) ? health.reconnect_count : 0;
+  const fpsDegraded =
+    typeof fpsActual === 'number'
+    && typeof fpsTarget === 'number'
+    && fpsTarget > 0
+    && (fpsActual / fpsTarget) < 0.5;
+  const corruptionDegraded =
+    typeof corruptionRate === 'number' && corruptionRate > 0.1;
+  const healthDegraded =
+    healthStatus === 'degraded' || fpsDegraded || corruptionDegraded;
   const { transport, webrtcState, streamUrl, videoStream } = useWebRTCStream({
     zoneId: camera.zone_id,
     streamToken,
@@ -264,7 +279,7 @@ function CameraCard({
       </div>
 
       {/* Camera info footer */}
-      <div className="px-4 py-3">
+        <div className="px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-semibold text-slate-800 truncate text-sm">
@@ -285,6 +300,37 @@ function CameraCard({
             title={isActive ? 'Camera active' : 'Camera inactive'}
           />
         </div>
+        {health && (
+          <div className="mt-2 space-y-1 text-[11px] text-slate-500">
+            <div className="flex items-center justify-between">
+              <span>Camera health</span>
+              <span
+                className={
+                  healthDegraded
+                    ? 'font-semibold text-yellow-700'
+                    : 'font-semibold text-slate-700'
+                }
+              >
+                {healthDegraded ? 'Degraded' : 'Normal'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>FPS</span>
+              <span>
+                {fpsActual !== null ? fpsActual.toFixed(1) : '—'}
+                {fpsTarget !== null ? ` / ${fpsTarget.toFixed(0)}` : ''}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Corruption</span>
+              <span>{corruptionRate !== null ? `${(corruptionRate * 100).toFixed(1)}%` : '—'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Reconnects</span>
+              <span>{reconnectCount}</span>
+            </div>
+          </div>
+        )}
         <p className="mt-2 text-[11px] text-slate-500">Click to open focus view</p>
       </div>
     </article>

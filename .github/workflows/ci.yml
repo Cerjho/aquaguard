@@ -178,7 +178,15 @@ jobs:
         run: |
           cd backend
           python wsgi.py &
-          sleep 5
+          # Wait for backend to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:5000/api/health > /dev/null 2>&1; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
         env:
           DATABASE_URL: sqlite:///test_aquaguard.db
           JWT_SECRET_KEY: ci-test-secret-key-not-for-production
@@ -193,6 +201,7 @@ jobs:
           npm run test:e2e -- --project=chromium
         env:
           CI: true
+          REACT_APP_API_URL: http://localhost:5000
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

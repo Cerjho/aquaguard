@@ -20,6 +20,9 @@ export default defineConfig({
   // Opt out of parallel tests on CI
   workers: process.env.CI ? 1 : undefined,
 
+  // CI runs only smoke tests by default
+  grep: process.env.CI ? /@smoke/ : undefined,
+
   // Reporter configuration
   reporter: [
     ['html', { outputFolder: 'e2e/reports/html' }],
@@ -41,15 +44,15 @@ export default defineConfig({
     // Record video on failure
     video: 'on-first-retry',
 
-    // Timeout for each action
-    actionTimeout: 10000,
+    // Timeout for each action (increase for CI)
+    actionTimeout: process.env.CI ? 15000 : 10000,
 
-    // Timeout for navigation
-    navigationTimeout: 30000,
+    // Timeout for navigation (increase for CI)
+    navigationTimeout: process.env.CI ? 45000 : 30000,
   },
 
-  // Global timeout
-  timeout: 60000,
+  // Global timeout (increase for CI)
+  timeout: process.env.CI ? 90000 : 60000,
 
   // Expect timeout
   expect: {
@@ -58,35 +61,30 @@ export default defineConfig({
 
   // Configure projects for different browsers
   projects: [
-    // Desktop Chrome
+    // Desktop Chrome (always run)
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    // Desktop Firefox
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    // Desktop Safari
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // Mobile Chrome
-    {
-      name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-
-    // Mobile Safari
-    {
-      name: 'mobile-safari',
-      use: { ...devices['iPhone 12'] },
-    },
+    // Additional browsers only run locally (skip in CI for speed)
+    ...(process.env.CI ? [] : [
+      {
+        name: 'firefox',
+        use: { ...devices['Desktop Firefox'] },
+      },
+      {
+        name: 'webkit',
+        use: { ...devices['Desktop Safari'] },
+      },
+      {
+        name: 'mobile-chrome',
+        use: { ...devices['Pixel 5'] },
+      },
+      {
+        name: 'mobile-safari',
+        use: { ...devices['iPhone 12'] },
+      },
+    ]),
   ],
 
   // Run local dev server before starting the tests

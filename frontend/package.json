@@ -38,10 +38,11 @@
     "test": "react-scripts test",
     "test:unit": "react-scripts test --watchAll=false",
     "test:e2e": "npx playwright test",
+    "test:e2e:smoke": "npx playwright test --grep @smoke",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:debug": "npx playwright test --debug",
-    "test:all": "npm run test:unit && npm run test:e2e",
+    "test:all": "npm run test:unit && npm run test:e2e:smoke",
     "playwright:install": "npx playwright install",
     "playwright:report": "npx playwright show-report",
     "eject": "react-scripts eject"

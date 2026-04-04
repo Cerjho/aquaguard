@@ -111,10 +111,7 @@ class HealthTracker:
     def _notify_status_change(self, old_status: str, new_status: str, reason: str) -> None:
         """Notify listeners of status change (for MQTT publishing)."""
         if old_status != new_status and self._on_status_change:
-            try:
-                self._on_status_change(self._health.zone_id, new_status, reason, self.health)
-            except Exception:
-                pass
+            self._on_status_change(self._health.zone_id, new_status, reason, self.health)
 
     def set_status_callback(self, callback) -> None:
         """Set callback for status changes: callback(zone_id, status, reason, health)."""

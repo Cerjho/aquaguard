@@ -4,7 +4,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import DetectionEvent
-from services.reports_service import compute_summary, compute_daily_breakdown
+from services.reports_service import (
+    compute_daily_breakdown,
+    compute_summary,
+    get_cached_summary,
+    set_cached_summary,
+)
 from utils.date_utils import parse_iso_datetime
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/api/v1')
@@ -16,6 +21,12 @@ def summary():
     from_str = request.args.get('from')
     to_str = request.args.get('to')
     group_by = (request.args.get('group_by') or 'none').lower()
+    cache_key = (from_str or '', to_str or '', group_by)
+    # // PERF: short TTL cache avoids repeating expensive aggregates for
+    # dashboard refresh bursts with identical filters.
+    cached_response = get_cached_summary(cache_key)
+    if cached_response is not None:
+        return jsonify(cached_response), 200
 
     query = DetectionEvent.query
 
@@ -45,4 +56,5 @@ def summary():
     if group_by == 'day':
         response['daily'] = compute_daily_breakdown(query)
 
+    set_cached_summary(cache_key, response)
     return jsonify(response), 200

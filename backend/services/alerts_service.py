@@ -6,6 +6,8 @@ from utils.date_utils import parse_iso_datetime
 
 def build_alerts_query(session):
     """Base alerts query including confidence_score join for serialization."""
+    # // PERF: project only columns needed by list endpoint to avoid
+    # over-fetching full DetectionEvent rows during join.
     return session.query(Alert, DetectionEvent.confidence_score).outerjoin(
         DetectionEvent, DetectionEvent.event_id == Alert.event_id
     )

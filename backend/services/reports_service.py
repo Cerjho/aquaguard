@@ -1,14 +1,50 @@
 """Service helpers for reports routes."""
 
+import threading
+import time
+from copy import deepcopy
+
 from sqlalchemy import case, func
 
 from models import CameraZone, DetectionEvent
 
+_SUMMARY_CACHE_LOCK = threading.Lock()
+_SUMMARY_CACHE = {}
+_SUMMARY_CACHE_TTL_SECONDS = 5
+
+
+def get_cached_summary(cache_key):
+    now = time.time()
+    with _SUMMARY_CACHE_LOCK:
+        cache_entry = _SUMMARY_CACHE.get(cache_key)
+        if not cache_entry:
+            return None
+        if now - cache_entry["created_at"] > _SUMMARY_CACHE_TTL_SECONDS:
+            _SUMMARY_CACHE.pop(cache_key, None)
+            return None
+        # // PERF: return copy to avoid mutating shared cached payload.
+        return deepcopy(cache_entry["payload"])
+
+
+def set_cached_summary(cache_key, payload):
+    with _SUMMARY_CACHE_LOCK:
+        _SUMMARY_CACHE[cache_key] = {
+            "created_at": time.time(),
+            "payload": deepcopy(payload),
+        }
+
 
 def compute_summary(query):
     """Compute aggregate summary payload from a DetectionEvent query."""
-    total_detections = query.count()
-    confirmed_alerts = query.filter(DetectionEvent.alert_triggered.is_(True)).count()
+    # // PERF: combine totals into one aggregate query instead of two COUNT scans.
+    aggregate_row = query.with_entities(
+        func.count(DetectionEvent.id).label("total_detections"),
+        func.sum(case((DetectionEvent.alert_triggered.is_(True), 1), else_=0)).label(
+            "confirmed_alerts"
+        ),
+    ).one()
+    total_detections = int(aggregate_row.total_detections or 0)
+    confirmed_alerts = int(aggregate_row.confirmed_alerts or 0)
     false_positives_suppressed = total_detections - confirmed_alerts
 
     zone_rows = (
@@ -30,7 +66,9 @@ def compute_summary(query):
     }
 
     by_zone = []
-    for zone in CameraZone.query.all():
+    # // PERF: select only fields needed for response to reduce row payload.
+    zones = CameraZone.query.with_entities(CameraZone.zone_id, CameraZone.zone_name).all()
+    for zone in zones:
         stats = zone_map.get(zone.zone_id, {"detections": 0, "alerts": 0})
         by_zone.append(
             {

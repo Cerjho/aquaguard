@@ -1,6 +1,8 @@
 import os
 import time
+import json
 from datetime import datetime, timezone, timedelta
+from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, current_app, Response
 from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -11,6 +13,25 @@ from models import CameraZone
 from auth_helpers import role_required, validate_internal_api_key
 
 cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
+HEALTH_READ_WORKERS = 8
+
+
+def _parse_optional_pagination():
+    raw_limit = request.args.get('limit')
+    raw_offset = request.args.get('offset')
+    if raw_limit is None and raw_offset is None:
+        return None, None, None
+    try:
+        limit = int(raw_limit) if raw_limit is not None else 50
+        offset = int(raw_offset) if raw_offset is not None else 0
+    except (TypeError, ValueError):
+        return None, None, (jsonify({'error': 'limit and offset must be integers'}), 400)
+    if limit <= 0 or offset < 0:
+        return None, None, (
+            jsonify({'error': 'limit must be > 0 and offset >= 0'}),
+            400,
+        )
+    return min(limit, 200), offset, None
 
 
 @cameras_bp.route('/internal/cameras', methods=['GET'])
@@ -18,7 +39,14 @@ def list_internal_cameras():
     if not validate_internal_api_key():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    cameras = CameraZone.query.filter_by(is_active=True).all()
+    query = CameraZone.query.filter_by(is_active=True)
+    limit, offset, error_response = _parse_optional_pagination()
+    if error_response:
+        return error_response
+    if limit is not None:
+        # // PERF: allow bounded reads for high camera counts.
+        query = query.offset(offset).limit(limit)
+    cameras = query.all()
     return jsonify({
         'cameras': [
             {
@@ -41,9 +69,15 @@ def list_cameras():
     include_inactive = request.args.get('include_inactive', '').strip().lower() in {
         '1', 'true', 'yes'
     }
+    limit, offset, error_response = _parse_optional_pagination()
+    if error_response:
+        return error_response
     query = CameraZone.query
     if not include_inactive:
         query = query.filter_by(is_active=True)
+    if limit is not None:
+        # // PERF: optional pagination prevents unbounded list scans.
+        query = query.offset(offset).limit(limit)
     cameras = query.all()
     return jsonify([c.to_dict() for c in cameras]), 200
 
@@ -267,28 +301,32 @@ def get_camera_health(zone_id):
 def get_all_cameras_health():
     """Return health metrics for all active cameras."""
     cameras = CameraZone.query.filter_by(is_active=True).all()
-    health_results = []
+    if not cameras:
+        return jsonify({'cameras': []}), 200
 
-    for camera in cameras:
+    def _load_health(camera):
         status_path = os.path.join(LIVE_DIR, f'{camera.zone_id}_status.json')
-        if os.path.exists(status_path):
-            try:
-                with open(status_path, 'r', encoding='utf-8') as f:
-                    import json
-                    health_data = json.load(f)
-                health_results.append(health_data)
-            except (OSError, json.JSONDecodeError):
-                health_results.append({
-                    'zone_id': camera.zone_id,
-                    'status': 'error',
-                    'error': 'Failed to read health data',
-                })
-        else:
-            health_results.append({
+        if not os.path.exists(status_path):
+            return {
                 'zone_id': camera.zone_id,
                 'status': 'unknown',
                 'error': 'No health data available',
-            })
+            }
+        try:
+            with open(status_path, 'r', encoding='utf-8') as file_obj:
+                return json.load(file_obj)
+        except (OSError, json.JSONDecodeError):
+            return {
+                'zone_id': camera.zone_id,
+                'status': 'error',
+                'error': 'Failed to read health data',
+            }
+
+    # // PERF: parallelize independent file reads so total latency scales
+    # with slowest camera health file instead of sum of all read times.
+    worker_count = min(len(cameras), HEALTH_READ_WORKERS)
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        health_results = list(executor.map(_load_health, cameras))
 
     return jsonify({'cameras': health_results}), 200
 
@@ -308,7 +346,6 @@ def get_internal_camera_health(zone_id):
 
     try:
         with open(status_path, 'r', encoding='utf-8') as f:
-            import json
             return jsonify(json.load(f)), 200
     except (OSError, json.JSONDecodeError):
         return jsonify({

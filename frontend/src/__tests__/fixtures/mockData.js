@@ -156,6 +156,22 @@ export const mockUser = {
   created_at: '2024-01-01T00:00:00Z',
 };
 
+export const mockAdminUser = {
+  id: 1,
+  username: 'admin',
+  email: 'admin@aquaguard.io',
+  role: 'admin',
+  created_at: '2024-01-01T00:00:00Z',
+};
+
+export const mockLifeguardUser = {
+  id: 2,
+  username: 'lifeguard',
+  email: 'lifeguard@aquaguard.io',
+  role: 'lifeguard',
+  created_at: '2024-01-01T00:00:00Z',
+};
+
 // API Response Wrappers
 export const createSuccessResponse = (data, message = 'Success') => ({
   status: 'success',

@@ -8,8 +8,10 @@ import React from 'react';
 import SystemStatus from '../components/system/SystemStatus';
 import CameraManagementPanel from '../components/camera/CameraManagementPanel';
 import CameraGrid from '../components/camera/CameraGrid';
+import { useAuth } from '../context/AuthContext';
 
 function SystemPage() {
+  const { canManageCameras } = useAuth();
   const [cameraReloadToken, setCameraReloadToken] = React.useState(0);
 
   return (
@@ -39,10 +41,12 @@ function SystemPage() {
         >
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
             <h3 id="camera-operations-title" className="text-sm font-semibold text-slate-700 mb-1">
-              Camera Operations & Configuration
+              {canManageCameras ? 'Camera Operations & Configuration' : 'Camera Overview'}
             </h3>
             <p className="text-xs text-slate-500">
-              Manage camera zones and refresh monitoring feeds after changes.
+              {canManageCameras
+                ? 'Manage camera zones and refresh monitoring feeds after changes.'
+                : 'View camera status and monitoring feeds.'}
             </p>
           </div>
 
@@ -51,9 +55,13 @@ function SystemPage() {
           />
 
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            <h4 className="text-sm font-semibold text-slate-700 mb-3">Feed refresh preview</h4>
+            <h4 className="text-sm font-semibold text-slate-700 mb-3">
+              {canManageCameras ? 'Feed refresh preview' : 'Camera Feeds'}
+            </h4>
             <p className="text-xs text-slate-500 mb-3">
-              Uses the shared refresh callback to verify camera grid updates after management actions.
+              {canManageCameras
+                ? 'Uses the shared refresh callback to verify camera grid updates after management actions.'
+                : 'Live monitoring feeds from all active cameras.'}
             </p>
             <CameraGrid reloadToken={cameraReloadToken} />
           </div>

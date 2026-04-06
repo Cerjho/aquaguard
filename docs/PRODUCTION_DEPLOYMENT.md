@@ -38,17 +38,21 @@ Do not run Werkzeug dev server in production.
 Example (Linux):
 
 ```bash
+
 cd backend
 source ../aquaguard_env/bin/activate
 gunicorn -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
-```text
+
+```
 
 Example (Windows service shell):
 
 ```powershell
+
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
-```text
+
+```
 
 ## 4. Nginx Reverse Proxy Baseline
 
@@ -56,7 +60,8 @@ Minimum recommendations:
 
 - Force HTTPS redirect for all HTTP traffic
 - Forward websocket upgrades for Socket.IO routes
-- Set strict security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy`)
+- Set strict security headers (`X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Content-Security-Policy`)
 - Set request body limits aligned with snapshot upload constraints
 - Enable access and error logs
 
@@ -65,9 +70,11 @@ Minimum recommendations:
 Run migrations before releasing each version:
 
 ```bash
+
 cd backend
 flask db upgrade
-```text
+
+```
 
 Backup policy (minimum):
 
@@ -77,9 +84,11 @@ Backup policy (minimum):
 
 ## 6. Detection Engine Deployment
 
-- Install as package (`pip install -e ./detection_engine` for managed source deployments)
+- Install as package (`pip install -e ./detection_engine` for managed source
+  deployments)
 - Run one `DrowningDetector` instance per camera zone
-- Ensure GPU/CUDA drivers are pinned and validated in staging before production rollout
+- Ensure GPU/CUDA drivers are pinned and validated in staging before
+  production rollout
 - Keep model file out of git and deploy from artifact storage
 
 ## 7. Operational Health Checks

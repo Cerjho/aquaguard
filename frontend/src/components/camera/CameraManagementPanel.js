@@ -101,14 +101,24 @@ function CameraManagementPanel({ onCamerasChanged }) {
 
     try {
       if (editingZoneId) {
-        await api.put(`/api/v1/cameras/${editingZoneId}`, payload);
+        const res = await api.put(`/api/v1/cameras/${editingZoneId}`, payload);
+        const updatedCamera = res.data || {};
+        setCameras((prev) => prev.map((camera) => (
+          camera.zone_id === editingZoneId
+            ? { ...camera, ...updatedCamera }
+            : camera
+        )));
         setFeedback({ type: 'success', message: `Camera ${editingZoneId} updated.` });
       } else {
-        await api.post('/api/v1/cameras', payload);
+        const res = await api.post('/api/v1/cameras', payload);
+        const createdCamera = res.data || payload;
+        setCameras((prev) => {
+          const withoutDuplicate = prev.filter((camera) => camera.zone_id !== createdCamera.zone_id);
+          return [...withoutDuplicate, createdCamera];
+        });
         setFeedback({ type: 'success', message: `Camera ${payload.zone_id} added.` });
       }
       closeForm();
-      await fetchCameras();
       onCamerasChanged?.();
     } catch (err) {
       setFeedback({
@@ -123,16 +133,21 @@ function CameraManagementPanel({ onCamerasChanged }) {
   const toggleActive = async (camera) => {
     setFeedback({ type: '', message: '' });
     try {
-      await api.put(`/api/v1/cameras/${camera.zone_id}`, {
+      const res = await api.put(`/api/v1/cameras/${camera.zone_id}`, {
         is_active: !camera.is_active,
       });
+      const updatedCamera = res.data || {};
+      setCameras((prev) => prev.map((item) => (
+        item.zone_id === camera.zone_id
+          ? { ...item, ...updatedCamera, is_active: !camera.is_active }
+          : item
+      )));
       setFeedback({
         type: 'success',
         message: `${camera.zone_name || camera.zone_id} ${
           camera.is_active ? 'deactivated' : 'activated'
         }.`,
       });
-      await fetchCameras();
       onCamerasChanged?.();
     } catch (err) {
       setFeedback({

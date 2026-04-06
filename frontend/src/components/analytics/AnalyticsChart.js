@@ -8,7 +8,7 @@
  * Uses Recharts library (pinned 2.12.7).
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart,
@@ -34,8 +34,11 @@ function AnalyticsChart() {
   const [timeData, setTimeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const requestIdRef = useRef(0);
 
   const fetchSummary = useCallback(async () => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     setLoading(true);
     setError(null);
     try {
@@ -52,6 +55,8 @@ function AnalyticsChart() {
       const zones = Array.isArray(data)
         ? data
         : data.zones || data.by_zone || [];
+
+      if (requestId !== requestIdRef.current) return;
 
       setZoneData(
         zones.map((z) => ({
@@ -82,11 +87,14 @@ function AnalyticsChart() {
         setTimeData(fallbackSeries);
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(
         err.response?.data?.message || 'Failed to load analytics data.'
       );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [rangeDays, groupBy]);
 

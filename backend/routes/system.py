@@ -1,15 +1,20 @@
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required
 
 from runtime_status import get_runtime_status, update_esp32_heartbeat
 from auth_helpers import validate_internal_api_key
+from extensions import limiter
 
 system_bp = Blueprint('system', __name__, url_prefix='/api/v1/system')
 
 
 @system_bp.route('/status', methods=['GET'])
+@limiter.limit(
+    '120 per minute',
+    exempt_when=lambda: current_app.config.get('TESTING', False),
+)
 @jwt_required()
 def system_status():
     return jsonify(get_runtime_status()), 200

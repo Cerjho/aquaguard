@@ -55,6 +55,9 @@ function DetectionFeed() {
   }, []);
 
   useEffect(() => {
+    // Skip polling if socket provides real-time events
+    if (socketConnected) return undefined;
+
     let cancelled = false;
     const schedule = (delay) => {
       if (cancelled) return;
@@ -86,7 +89,7 @@ function DetectionFeed() {
       if (intervalRef.current) clearTimeout(intervalRef.current);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [fetchLatest]);
+  }, [fetchLatest, socketConnected]);
 
   const hasRealtimeEvents = detectionEvents.length > 0;
   const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;

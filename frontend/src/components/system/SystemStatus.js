@@ -105,7 +105,7 @@ function StatusIndicator({ label, status, detail }) {
 }
 
 function SystemStatus() {
-  const { cameraStatuses, systemStatus } = useSystemState();
+  const { cameraStatuses, cameraHealthMap, systemStatus } = useSystemState();
   const { socketConnected } = useSocketState();
 
   const detection = useMemo(
@@ -134,6 +134,10 @@ function SystemStatus() {
   );
   const espOnline = esp?.status === 'online' && !isEspStale;
   const staleCameraCount = cameraEntries.filter((cam) => cam.status !== 'online').length;
+  const degradedCameraCount = cameraEntries.filter((cam) => {
+    const health = cameraHealthMap?.[cam.zone_id];
+    return normalizeServiceStatus(health?.status) === 'degraded';
+  }).length;
 
   return (
     <div className="space-y-3">
@@ -177,6 +181,9 @@ function SystemStatus() {
       <div className="text-xs text-slate-500 px-1">
         Cameras online: {cameraEntries.length - staleCameraCount}/{cameraEntries.length}
       </div>
+      <div className="text-xs text-slate-500 px-1">
+        Cameras degraded: {degradedCameraCount}/{cameraEntries.length || 0}
+      </div>
 
       {/* Camera statuses */}
       {cameraEntries.length === 0 ? (
@@ -191,7 +198,19 @@ function SystemStatus() {
             status={cam.status === 'online' ? 'online' : 'warning'}
             detail={`Zone: ${cam.zone_id}${
               cam.snapshot_age_seconds !== null ? ` • Snapshot age: ${cam.snapshot_age_seconds}s` : ''
-            }${cam.last_snapshot_at ? ` • Last snapshot: ${timeAgo(cam.last_snapshot_at)}` : ''}`}
+            }${cam.last_snapshot_at ? ` • Last snapshot: ${timeAgo(cam.last_snapshot_at)}` : ''}${
+              cameraHealthMap?.[cam.zone_id]?.fps_actual != null
+                ? ` • FPS: ${Number(cameraHealthMap[cam.zone_id].fps_actual).toFixed(1)}`
+                : ''
+            }${
+              cameraHealthMap?.[cam.zone_id]?.corruption_rate != null
+                ? ` • Corruption: ${(Number(cameraHealthMap[cam.zone_id].corruption_rate) * 100).toFixed(1)}%`
+                : ''
+            }${
+              Number.isFinite(cameraHealthMap?.[cam.zone_id]?.reconnect_count)
+                ? ` • Reconnects: ${cameraHealthMap[cam.zone_id].reconnect_count}`
+                : ''
+            }`}
           />
         ))
       )}

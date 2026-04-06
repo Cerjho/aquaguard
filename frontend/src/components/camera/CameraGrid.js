@@ -32,7 +32,11 @@ function CameraGrid({ reloadToken = 0 }) {
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     typeof document === 'undefined' ? true : !document.hidden
   );
-  const { cameraStatuses, systemStatus } = useSystemState();
+  const {
+    cameraStatuses,
+    cameraHealthMap = {},
+    systemStatus,
+  } = useSystemState();
   const closeButtonRef = useRef(null);
   const lastFocusedTriggerRef = useRef(null);
   const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);
@@ -148,29 +152,6 @@ function CameraGrid({ reloadToken = 0 }) {
     setStreamTokens(next);
   }, [mintStreamToken]);
 
-  const fetchRuntimeStatus = useCallback(async () => {
-    try {
-      const res = await api.get('/api/v1/system/status');
-      const payload = res.data || {};
-      const engine = payload.detection_engine || {};
-      setDetectionEngineStatus(normalizeServiceStatus(engine.status));
-
-      const runtimeCameras = payload.camera_status || payload.cameras || [];
-      const runtimeMap = {};
-      if (Array.isArray(runtimeCameras)) {
-        runtimeCameras.forEach((camera) => {
-          if (camera?.zone_id) {
-            runtimeMap[camera.zone_id] = normalizeServiceStatus(camera.status);
-          }
-        });
-      }
-      setCameraRuntimeMap(runtimeMap);
-    } catch {
-      setDetectionEngineStatus('unknown');
-      setCameraRuntimeMap({});
-    }
-  }, []);
-
   const refreshSingleToken = useCallback(async (zoneId) => {
     if (!zoneId) return;
     if (tokenRefreshInFlightRef.current.has(zoneId)) return;
@@ -190,8 +171,7 @@ function CameraGrid({ reloadToken = 0 }) {
 
   useEffect(() => {
     fetchCameras();
-    fetchRuntimeStatus();
-  }, [fetchCameras, fetchRuntimeStatus, reloadToken]);
+  }, [fetchCameras, reloadToken]);
 
   const activeStreamZoneIds = useMemo(() => {
     if (!Array.isArray(cameras) || cameras.length === 0) return new Set();
@@ -307,6 +287,16 @@ function CameraGrid({ reloadToken = 0 }) {
     return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}&session=${encodeURIComponent(streamSessionId)}`;
   }, [focusedCamera, streamTokens, streamSessionId]);
 
+  const isDetectionEngineOnline = useMemo(() => {
+    const subsystems = systemStatus?.subsystems;
+    const freshness = subsystems?.detection_engine?.freshness_seconds;
+    const threshold = subsystems?.detection_engine?.stale_threshold_seconds;
+    if (typeof freshness === 'number' && typeof threshold === 'number') {
+      return freshness <= threshold;
+    }
+    return detectionEngineStatus === 'online';
+  }, [systemStatus, detectionEngineStatus]);
+
   useEffect(() => {
     if (!focusedCamera && lastFocusedTriggerRef.current?.focus) {
       lastFocusedTriggerRef.current.focus();
@@ -367,7 +357,6 @@ function CameraGrid({ reloadToken = 0 }) {
         <button
           onClick={() => {
             fetchCameras();
-            fetchRuntimeStatus();
           }}
           className="text-xs text-sky-600 hover:text-sky-800 transition-colors"
           title="Refresh cameras"
@@ -384,6 +373,7 @@ function CameraGrid({ reloadToken = 0 }) {
               ...camera,
               runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
               detection_engine_status: detectionEngineStatus,
+              health: cameraHealthMap[camera.zone_id] || null,
               stream_token: streamTokens[camera.zone_id]?.token || null,
               stream_session_id: streamSessionId,
             }}
@@ -429,8 +419,16 @@ function CameraGrid({ reloadToken = 0 }) {
               </div>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 p-3 sm:p-4">
-              <div className="xl:col-span-8 rounded-lg overflow-hidden bg-slate-900 aspect-video min-h-[240px] sm:min-h-[320px]">
-                {focusedStreamUrl ? (
+              <div className="xl:col-span-8 rounded-lg overflow-hidden bg-slate-900 aspect-video min-h-[240px] sm:min-h-[320px] relative">
+                {!isDetectionEngineOnline ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+                    <svg className="w-12 h-12 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <span className="text-sm font-medium">Detection engine offline</span>
+                    <span className="text-xs text-slate-500">Live snapshots unavailable</span>
+                  </div>
+                ) : focusedStreamUrl ? (
                   <img
                     src={focusedStreamUrl}
                     alt={`Focused live feed — ${focusedCamera.zone_name || focusedCamera.zone_id}`}

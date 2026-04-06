@@ -1,7 +1,8 @@
----
-name: Bug Report
-about: Something is broken
----
+# Bug Report
+
+______________________________________________________________________
+
+## name: Bug Report about: Something is broken
 
 **Module:** detection_engine / backend / frontend / esp32
 
@@ -11,8 +12,9 @@ about: Something is broken
 Clear description of the bug.
 
 **Steps to Reproduce:**
+
 1. ...
-2. ...
+1. ...
 
 **Expected Behavior:**
 What should happen.
@@ -21,8 +23,11 @@ What should happen.
 What actually happens.
 
 **Error Output:**
+
 ```text
+
 paste error here
-```text
+
+```
 
 **Agent Assigned:** Agent {N}

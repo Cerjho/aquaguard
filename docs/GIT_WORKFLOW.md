@@ -4,94 +4,107 @@
 > This defines the complete branching strategy, commit conventions,
 > pull request workflow, and CI/CD pipeline for the AquaGuard project.
 
----
+______________________________________________________________________
 
 ## Repository Setup (Orchestrator Does This Once)
 
 ```bash
+
 # Initialize repo from AquaGuard/ root
+
 git init
 git remote add origin https://github.com/{your-username}/aquaguard.git
 
 # Create and push the base branch structure
+
 git checkout -b main
 git add docs/ agents/ .gitignore README.md
 git commit -m "chore(repo): initial project structure and documentation"
 git push -u origin main
 
-# Create develop branch — all feature work merges here first
-git checkout -b develop
-git push -u origin develop
-```text
+# Create dev branch — all feature work merges here first
+
+git checkout -b dev
+git push -u origin dev
+
+```
 
 After this, the Orchestrator sets up branch protection (see Section 6).
 
----
+______________________________________________________________________
 
 ## Branch Strategy
 
 ```text
+
 main
- └── develop
+ └── dev
       ├── feature/agent1-cv-engine
       ├── feature/agent2-backend-api
       ├── feature/agent3-frontend-dashboard
       ├── feature/agent4-esp32-firmware
       └── feature/agent5-testing
-```text
+
+```
 
 | Branch | Purpose | Who Pushes | Merges Into |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `main` | Production-ready code only | Nobody directly | — |
-| `develop` | Integration branch | Via PR from feature | `main` (via PR) |
-| `feature/agent{N}-*` | Each agent's work | The agent | `develop` (via PR) |
-| `fix/agent{N}-*` | Bug fixes after review | The agent | `develop` (via PR) |
+| `dev` | Integration branch | Via PR from feature | `main` (via PR) |
+| `feature/agent{N}-*` | Each agent's work | The agent | `dev` (via PR) |
+| `fix/agent{N}-*` | Bug fixes after review | The agent | `dev` (via PR) |
 
 **Rules:**
 
-- No agent pushes directly to `main` or `develop`
-- Every merge to `develop` goes through a Pull Request
-- Every merge to `main` goes through a Pull Request from `develop`
-- Feature branches are created from `develop`, not from `main`
+- No agent pushes directly to `main` or `dev`
+- Every merge to `dev` goes through a Pull Request
+- Every merge to `main` goes through a Pull Request from `dev`
+- Feature branches are created from `dev`, not from `main`
 
----
+______________________________________________________________________
 
 ## Each Agent's Git Startup
 
 Before writing any code, every agent creates their feature branch:
 
 ```bash
-# Make sure you're on develop and it's up to date
-git checkout develop
-git pull origin develop
+
+# Make sure you're on dev and it's up to date
+
+git checkout dev
+git pull origin dev
 
 # Create your feature branch
+
 git checkout -b feature/agent1-cv-engine     # Agent 1
 git checkout -b feature/agent2-backend-api   # Agent 2
 git checkout -b feature/agent3-frontend      # Agent 3
 git checkout -b feature/agent4-esp32         # Agent 4
 git checkout -b feature/agent5-testing       # Agent 5
-```text
 
-All work is done on your feature branch. Never commit directly to `develop`.
+```
 
----
+All work is done on your feature branch. Never commit directly to `dev`.
+
+______________________________________________________________________
 
 ## Commit Conventions
 
 ### Format
 
 ```text
+
 type(scope): short description (max 72 chars)
 
 Optional longer body explaining WHY, not WHAT.
 Reference task ID from TASK_BREAKDOWN.md.
-```text
+
+```
 
 ### Types
 
 | Type | When to Use |
-|---|---|
+| --- | --- |
 | `feat` | New file or new functionality |
 | `fix` | Bug fix |
 | `test` | Adding or fixing tests |
@@ -103,6 +116,7 @@ Reference task ID from TASK_BREAKDOWN.md.
 ### Scope = the module or layer you're in
 
 ```text
+
 feat(detector): implement DrowningDetector with YOLOv11s CUDA inference
 feat(pose): add MediaPipe landmark extraction with ROI cropping
 feat(analyzer): implement 5-indicator drowning behavior scoring
@@ -121,23 +135,29 @@ feat(dashboard): implement AlertPanel with WebSocket integration
 feat(camera-ui): add CameraGrid with MJPEG stream display
 chore(deps): add mediapipe==0.10.14 to requirements.txt
 test(backend): add conftest.py with in-memory SQLite fixtures
-```text
+
+```
 
 ### One Commit Per TASK_BREAKDOWN Task
 
 ```bash
+
 # Complete task P2-04 (YOLOv11 detector)
-# ... write the file ...
-# ... verify it runs ...
+
+# ... write the file
+
+# ... verify it runs
+
 git add detection_engine/vision/detector.py
 git commit -m "feat(detector): implement DrowningDetector with YOLOv11s CUDA inference
 
 Implements per-instance ByteTrack tracking with persist=True.
 One instance required per camera zone (see AGENT_RULES R6-A).
 Task: P2-04"
-```text
 
----
+```
+
+______________________________________________________________________
 
 ## When to Commit
 
@@ -145,56 +165,69 @@ Commit after each completed, verified task — not after each file,
 not after the entire phase.
 
 ```text
+
 P2-04 done and verified → commit
 P2-05 done and verified → commit
 P2-06 done and verified → commit
 ...NOT: finish all of Phase 2 → one big commit
-```text
 
----
+```
+
+______________________________________________________________________
 
 ## Pushing to GitHub
 
 Push your feature branch regularly — after every 3–5 commits:
 
 ```bash
+
 git push origin feature/agent1-cv-engine
-```text
+
+```
 
 This ensures work is backed up and visible to the Orchestrator.
 
----
+______________________________________________________________________
 
 ## Pull Request Workflow
 
 When an agent completes their full phase and all tests pass:
 
-### Step 1 — Sync with develop before opening PR
+### Step 1 — Sync with dev before opening PR
 
 ```bash
-git checkout develop
-git pull origin develop
+
+git checkout dev
+git pull origin dev
 git checkout feature/agent1-cv-engine
-git rebase develop    # replay your commits on top of latest develop
-# Resolve any conflicts, then:
+git rebase dev    # replay your commits on top of latest dev
+
+# Resolve any conflicts, then
+
 git push origin feature/agent1-cv-engine --force-with-lease
-```text
+
+```
 
 ### Step 2 — Open Pull Request on GitHub
 
 PR title format:
 
 ```text
+
 feat(agent1): complete CV/AI detection engine — Phase 2
-```text
+
+```
 
 PR body template (use `.github/pull_request_template.md`):
 
 ```markdown
+
 ## Summary
+
 Brief description of what this PR implements.
 
 ## Tasks Completed
+
 - [x] P2-01 — Frame preprocessor
 - [x] P2-02 — Camera capture
 - [x] P2-03 — Camera registry
@@ -208,18 +241,22 @@ Brief description of what this PR implements.
 - [x] P2-11 — Main loop
 
 ## Test Results
+
 - pytest detection_engine/tests/ — X passed, 0 failed
 - Benchmark: Xms average inference
 
 ## Critical Rules Verified
+
 - [x] R6-A: One DrowningDetector per camera
 - [x] R6-B: MediaPipe threshold 0.015 (normalized)
-- [x] R6-G: Snapshot path uses os.path.abspath(__file__)
+- [x] R6-G: Snapshot path uses os.path.abspath(**file**)
 - [x] Rule 9: All I/O exceptions handled
 
 ## Notes
+
 Any known limitations or follow-up items.
-```text
+
+```
 
 ### Step 3 — Orchestrator Reviews and Merges
 
@@ -229,7 +266,7 @@ The Orchestrator reviews the PR on GitHub:
 - Checks that no files outside scope were modified
 - Merges using **Squash and Merge** for clean history
 
----
+______________________________________________________________________
 
 ## GitHub Actions CI/CD
 
@@ -238,13 +275,14 @@ The Orchestrator reviews the PR on GitHub:
 The Orchestrator creates this file during repo setup:
 
 ```yaml
+
 name: AquaGuard CI
 
 on:
   push:
-    branches: [ develop, 'feature/**', 'fix/**' ]
+    branches: [ dev, 'feature/**', 'fix/**' ]
   pull_request:
-    branches: [ develop, main ]
+    branches: [ dev, main ]
 
 jobs:
 
@@ -363,9 +401,10 @@ jobs:
 
       - name: Lint Python (detection engine)
         run: flake8 detection_engine/ --max-line-length=100
-```text
 
----
+```
+
+______________________________________________________________________
 
 ## GitHub Repository Files
 
@@ -374,16 +413,21 @@ The Orchestrator also creates these files during setup:
 ### `.github/pull_request_template.md`
 
 ```markdown
+
 ## Summary
+
 <!-- What does this PR implement? -->
 
 ## Tasks Completed
+
 <!-- List tasks from TASK_BREAKDOWN.md with checkboxes -->
 
 ## Test Results
+
 <!-- Paste pytest or npm test output summary -->
 
 ## Critical Rules Verified
+
 - [x] No hardcoded config values (Rule 4)
 - [x] Correct venv environment used (Rule 5)
 - [x] All relevant R6-* technical rules followed (Rule 6)
@@ -391,26 +435,33 @@ The Orchestrator also creates these files during setup:
 - [x] No files outside agent scope modified (Rule 1)
 
 ## Linked Issues
+
 <!-- Closes #issue-number if applicable -->
-```text
+
+```
 
 ### `.github/CODEOWNERS`
 
 ```text
+
 # Global owners — Orchestrator reviews all PRs
+
 * @{project-lead-github-username}
 
 # Scope-specific ownership
+
 /detection_engine/    @{jhocer-github-username}
 /backend/             @{joshua-github-username}
 /frontend/            @{arabella-github-username}
 /esp32/               @{dranreb-github-username}
 docs/                 @{josiel-github-username}
-```text
+
+```
 
 ### `.github/ISSUE_TEMPLATE/bug_report.md`
 
-```markdown
+````markdown
+
 ---
 name: Bug Report
 about: Something is broken
@@ -425,7 +476,7 @@ Clear description of the bug.
 
 **Steps to Reproduce:**
 1. ...
-2. ...
+1. ...
 
 **Expected Behavior:**
 What should happen.
@@ -434,12 +485,14 @@ What should happen.
 What actually happens.
 
 **Error Output:**
+
 ```paste error here```
 
 **Agent Assigned:** Agent {N}
-```text
 
----
+````
+
+______________________________________________________________________
 
 ## Branch Protection Rules
 
@@ -453,7 +506,7 @@ The Orchestrator configures these on GitHub after the first push:
 - Require branches to be up to date ✅
 - Restrict who can push: nobody directly ✅
 
-**For `develop` branch:**
+**For `dev` branch:**
 
 - Require pull request before merging ✅
 - Require status checks to pass (all 4 CI jobs) ✅
@@ -462,19 +515,19 @@ The Orchestrator configures these on GitHub after the first push:
 Set these at:
 `GitHub → Repository → Settings → Branches → Add Rule`
 
----
+______________________________________________________________________
 
 ## Release Workflow (End of Project)
 
-When Agent 5 writes `agent5_done.md` and all PRs are merged to `develop`:
+When Agent 5 writes `agent5_done.md` and all PRs are merged to `dev`:
 
 ```bash
 
-# Orchestrator merges develop → main
+## Orchestrator merges dev → main
 
 git checkout main
 git pull origin main
-git merge --no-ff develop -m "release: AquaGuard v1.0.0
+git merge --no-ff dev -m "release: AquaGuard v1.0.0
 
 Complete system implementation:
 - YOLOv11s drowning detection engine
@@ -486,6 +539,7 @@ Complete system implementation:
 git tag -a v1.0.0 -m "AquaGuard v1.0.0 — Initial release"
 git push origin main
 git push origin v1.0.0
+
 ```text
 
 Then create a GitHub Release:
@@ -494,75 +548,76 @@ Then create a GitHub Release:
 - Title: `AquaGuard v1.0.0`
 - Body: Summary of all implemented features, team credits, known limitations
 
----
+______________________________________________________________________
 
 ## Daily Workflow Summary for Every Agent
 
 ```bash
 
-# Start of work session
+## Start of work session
 
 git checkout feature/agent{N}-{scope}
-git pull origin develop
-git rebase develop   # stay current with other agents' merged work
+git pull origin dev
+git rebase dev   # stay current with other agents' merged work
 
-# During work — after each completed task
+## During work — after each completed task
 
 git add {files you changed}
 git status           # verify only your scope files are staged
 git commit -m "feat(scope): description  Task: P{X}-{Y}"
 
-# Every few hours — push backup to GitHub
+## Every few hours — push backup to GitHub
 
 git push origin feature/agent{N}-{scope}
 
-# End of phase — open PR
+## End of phase — open PR
 
-git rebase develop
+git rebase dev
 git push origin feature/agent{N}-{scope} --force-with-lease
 
-# Then open PR on GitHub using the PR template
+## Then open PR on GitHub using the PR template
 
 ```text
 
----
+______________________________________________________________________
 
 ## Git Commands Quick Reference
 
 ```bash
 
-# See what you've changed
+## See what you've changed
 
 git status
 git diff
 
-# See your commit history
+## See your commit history
 
 git log --oneline -20
 
-# Undo last commit (keep changes)
+## Undo last commit (keep changes)
 
 git reset --soft HEAD~1
 
-# Check which files are in staging
+## Check which files are in staging
 
 git diff --staged
 
-# See all branches
+## See all branches
 
 git branch -a
 
-# Delete merged feature branch (after PR is merged)
+## Delete merged feature branch (after PR is merged)
 
 git branch -d feature/agent1-cv-engine
 git push origin --delete feature/agent1-cv-engine
 
-# Resolve rebase conflict
+## Resolve rebase conflict
 
-git rebase develop
+git rebase dev
 
-# → edit conflicted files
+## → edit conflicted files
 
 git add {resolved files}
 git rebase --continue
+
 ```text

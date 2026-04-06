@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import CameraGrid from './CameraGrid';
-import api from '../../hooks/useApi';
-import { useSystemState, useAlertState } from '../../context/AlertContext';
+import CameraGrid from '../../../components/camera/CameraGrid';
+import api from '../../../hooks/useApi';
+import { useSystemState, useAlertState } from '../../../context/AlertContext';
 
-jest.mock('../../hooks/useApi', () => ({
+jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
@@ -12,7 +12,7 @@ jest.mock('../../hooks/useApi', () => ({
   },
 }));
 
-jest.mock('../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext', () => ({
   useSystemState: jest.fn(),
   useAlertState: jest.fn(),
 }));
@@ -250,32 +250,21 @@ describe('CameraGrid stream token auth flow', () => {
       is_active: true,
     }));
 
-    api.get.mockImplementation((url) => {
-      if (url === '/api/v1/cameras') {
-        return Promise.resolve({ data: cameraList });
-      }
-      if (url === '/api/v1/system/status') {
-        return Promise.resolve({
-          data: {
-            detection_engine: { status: 'online' },
-            camera_status: cameraList.map((camera) => ({ zone_id: camera.zone_id, status: 'online' })),
-          },
-        });
-      }
-      return Promise.reject(new Error(`Unexpected GET URL ${url}`));
+    // Override mock for this test with matching zone IDs
+    const cameraStatuses = {};
+    cameraList.forEach((cam) => {
+      cameraStatuses[cam.zone_id] = { zone_id: cam.zone_id, status: 'online', zone_name: cam.zone_name };
+    });
+    useSystemState.mockReturnValue({
+      cameraStatuses,
+      systemStatus: {
+        detection_engine: { status: 'online' },
+      },
     });
 
     api.get.mockImplementation((url) => {
       if (url === '/api/v1/cameras') {
         return Promise.resolve({ data: cameraList });
-      }
-      if (url === '/api/v1/system/status') {
-        return Promise.resolve({
-          data: {
-            detection_engine: { status: 'online' },
-            camera_status: cameraList.map((camera) => ({ zone_id: camera.zone_id, status: 'online' })),
-          },
-        });
       }
       const match = url.match(/\/api\/v1\/cameras\/(.+)\/stream-token/);
       if (!match) return Promise.reject(new Error(`Unexpected GET URL ${url}`));

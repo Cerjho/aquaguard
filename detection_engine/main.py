@@ -207,21 +207,36 @@ def _send_zone_heartbeat_if_due(
     detection_count: int,
     now_epoch_s: float,
     last_heartbeat_at: dict,
+    camera_health=None,
 ) -> bool:
     """Send per-zone heartbeat on MQTT if interval elapsed."""
     previous = last_heartbeat_at.get(zone_id, 0.0)
     if (now_epoch_s - previous) < DETECTION_ENGINE_HEARTBEAT_INTERVAL_SECONDS:
         return False
 
+    status = "online"
+    fps_actual = 0.0
+    corruption_rate = 0.0
+    reconnect_count = 0
+
+    if camera_health:
+        status = camera_health.status
+        fps_actual = camera_health.fps_actual
+        corruption_rate = camera_health.corruption_rate
+        reconnect_count = camera_health.reconnect_count
+
     heartbeat_payload = {
         "message_type": "heartbeat",
         "component": "detection_engine",
         "zone_id": zone_id,
-        "status": "online",
+        "status": status,
         "heartbeat_source": "annotated_feed",
         "feed_mode": "annotated_snapshot_mjpeg",
-        "feed_status": "online",
+        "feed_status": status,
         "detection_count": detection_count,
+        "fps_actual": round(fps_actual, 2),
+        "corruption_rate": round(corruption_rate, 4),
+        "reconnect_count": reconnect_count,
         "timestamp": _utc_now_iso(),
     }
     mqtt_client.publish_detection(heartbeat_payload)
@@ -241,15 +256,17 @@ def _process_zone_frame(
     mqtt_client,
     live_dir: str,
     last_heartbeat_at: dict,
-) -> None:
+) -> bool:
+    """Process one frame from a camera zone.
+    Returns:
+        True if a frame was processed, False if no frame available.
+    """
     frame, metadata = camera.read()
     if frame is None:
-        return
+        return False
 
     detections = detector.detect(frame)
     logger.debug("Zone %s: %d detections", zone_id, len(detections))
-    if not detections:
-        logger.info("Zone %s: no tracked detections on this frame", zone_id)
     if detections:
         logger.debug(
             "Zone %s raw detections: %s",
@@ -266,16 +283,25 @@ def _process_zone_frame(
     active_track_ids = {str(det.track_id) for det in detections}
 
     frame_timestamp = metadata.get("timestamp") or _utc_now_iso()
+
+    # Get camera health metrics
+    camera_health = camera.health
     status_payload = {
         "component": "detection_engine",
         "zone_id": zone_id,
-        "status": "online",
+        "status": camera_health.status,
         "heartbeat_source": "annotated_feed",
         "feed_mode": "annotated_snapshot_mjpeg",
-        "feed_status": "online",
+        "feed_status": camera_health.status,
         "detection_count": len(detections),
         "latest_frame_at": frame_timestamp,
         "updated_at": _utc_now_iso(),
+        # Health metrics
+        "fps_actual": round(camera_health.fps_actual, 2),
+        "fps_target": camera_health.fps_target,
+        "corruption_rate": round(camera_health.corruption_rate, 4),
+        "reconnect_count": camera_health.reconnect_count,
+        "uptime_seconds": round(camera_health.uptime_seconds, 1),
     }
     try:
         annotated = _annotate_live_frame(frame, detections, zone_id, frame_timestamp)
@@ -291,6 +317,7 @@ def _process_zone_frame(
             detection_count=len(detections),
             now_epoch_s=now_ts,
             last_heartbeat_at=last_heartbeat_at,
+            camera_health=camera_health,
         )
     except (OSError, RuntimeError, ValueError) as hb_exc:
         logger.warning("Heartbeat publish failed for zone %s: %s", zone_id, hb_exc)
@@ -338,6 +365,7 @@ def _process_zone_frame(
 
     behavior_analyzer.cleanup_stale_tracks(active_track_ids)
     confidence_filter.cleanup_stale_tracks(active_track_ids)
+    return True
 
 
 def main():
@@ -408,6 +436,26 @@ def main():
     except (OSError, RuntimeError, ValueError) as exc:
         logger.warning("MQTT broker unavailable at startup: %s — continuing without MQTT", exc)
 
+    # ── Wire up camera health → MQTT publishing ───────────────────────────────
+    def _on_camera_status_change(zone_id, status, reason, health):
+        """Callback to publish camera health changes to MQTT."""
+        try:
+            mqtt_client.publish_camera_health(
+                zone_id=zone_id,
+                status=status,
+                reason=reason,
+                metrics={
+                    "fps_actual": round(health.fps_actual, 2),
+                    "corruption_rate": round(health.corruption_rate, 4),
+                    "reconnect_count": health.reconnect_count,
+                },
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            logger.debug("Failed to publish camera health: %s", exc)
+
+    for camera in registry.cameras.values():
+        camera._health_tracker.set_status_callback(_on_camera_status_change)
+
     # ── Start camera threads ──────────────────────────────────────────────────
     registry.start_all()
     logger.info("AquaGuard detection loop starting ...")
@@ -416,9 +464,10 @@ def main():
     last_heartbeat_at = {}
     try:
         while True:
+            any_frame_processed = False
             for zone_id, camera in registry.cameras.items():
                 try:
-                    _process_zone_frame(
+                    frame_was_processed = _process_zone_frame(
                         zone_id=zone_id,
                         camera=camera,
                         detector=detectors[zone_id],
@@ -430,9 +479,14 @@ def main():
                         live_dir=_LIVE_DIR,
                         last_heartbeat_at=last_heartbeat_at,
                     )
+                    if frame_was_processed:
+                        any_frame_processed = True
                 except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
                     logger.exception("Processing error in zone %s: %s", zone_id, exc)
                     continue
+            # Prevent tight loop CPU burn when cameras are reconnecting
+            if not any_frame_processed:
+                time.sleep(0.1)
 
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt received — shutting down ...")

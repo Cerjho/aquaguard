@@ -50,6 +50,7 @@ export function AlertProvider({ children }) {
 
   const [detectionEvents, setDetectionEvents] = useState([]);
   const [cameraStatuses, setCameraStatuses] = useState({});
+  const [cameraHealthMap, setCameraHealthMap] = useState({});
   const [systemStatus, setSystemStatus] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [socketMeta, setSocketMeta] = useState(null);
@@ -229,6 +230,33 @@ export function AlertProvider({ children }) {
     }
   }, [onCameraStatus, realtimeEnabled]);
 
+  const refreshCameraHealth = useCallback(async () => {
+    if (!realtimeEnabled) {
+      setCameraHealthMap({});
+      return;
+    }
+    try {
+      const response = await api.get('/api/v1/cameras/health');
+      const healthRows = Array.isArray(response?.data?.cameras) ? response.data.cameras : [];
+      const next = {};
+      healthRows.forEach((row) => {
+        if (!row || !row.zone_id) return;
+        next[row.zone_id] = {
+          status: normalizeServiceStatus(row.status),
+          fps_actual: typeof row.fps_actual === 'number' ? row.fps_actual : null,
+          fps_target: typeof row.fps_target === 'number' ? row.fps_target : null,
+          corruption_rate: typeof row.corruption_rate === 'number' ? row.corruption_rate : null,
+          reconnect_count: Number.isFinite(row.reconnect_count) ? row.reconnect_count : 0,
+          latest_frame_at: row.latest_frame_at || null,
+          updated_at: row.updated_at || null,
+        };
+      });
+      setCameraHealthMap(next);
+    } catch {
+      setCameraHealthMap({});
+    }
+  }, [realtimeEnabled]);
+
   useEffect(() => {
     let unmounted = false;
 
@@ -247,7 +275,7 @@ export function AlertProvider({ children }) {
           scheduleNextPoll(Math.min(STATUS_POLL_MAX_INTERVAL_MS, STATUS_POLL_HIDDEN_INTERVAL_MS));
           return;
         }
-        await refreshSystemStatus();
+        await Promise.all([refreshSystemStatus(), refreshCameraHealth()]);
         const backoff = Math.min(
           STATUS_POLL_BASE_INTERVAL_MS * (2 ** statusPollFailuresRef.current),
           STATUS_POLL_MAX_INTERVAL_MS
@@ -259,11 +287,13 @@ export function AlertProvider({ children }) {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         refreshSystemStatus();
+        refreshCameraHealth();
         scheduleNextPoll(STATUS_POLL_BASE_INTERVAL_MS);
       }
     };
 
     refreshSystemStatus();
+    refreshCameraHealth();
     scheduleNextPoll(STATUS_POLL_BASE_INTERVAL_MS);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -273,7 +303,7 @@ export function AlertProvider({ children }) {
       if (detectionFlushTimerRef.current) clearTimeout(detectionFlushTimerRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshSystemStatus, realtimeEnabled]);
+  }, [refreshSystemStatus, refreshCameraHealth, realtimeEnabled]);
 
   /**
    * Acknowledge an alert by ID.
@@ -360,14 +390,18 @@ export function AlertProvider({ children }) {
 
   const systemStateValue = useMemo(() => ({
     cameraStatuses,
+    cameraHealthMap,
     systemStatus,
     apiStatus,
     refreshSystemStatus,
+    refreshCameraHealth,
   }), [
     cameraStatuses,
+    cameraHealthMap,
     systemStatus,
     apiStatus,
     refreshSystemStatus,
+    refreshCameraHealth,
   ]);
 
   const filterStateValue = useMemo(() => ({

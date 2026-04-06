@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { AuthProvider, useAuth } from './AuthContext';
-import api from '../hooks/useApi';
+import { AuthProvider, useAuth } from '../../context/AuthContext';
+import api from '../../hooks/useApi';
 
-jest.mock('../hooks/useApi', () => ({
+jest.mock('../../hooks/useApi', () => ({
   post: jest.fn(),
   get: jest.fn(),
 }));

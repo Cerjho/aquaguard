@@ -6,21 +6,24 @@
 
 ## Why
 
-Infra now provides TURN/STUN configuration via Docker env and backend should expose ICE config endpoint. Frontend must consume this without hardcoding ICE servers.
+Infra now provides TURN/STUN configuration via Docker env and backend should
+expose ICE config endpoint. Frontend must consume this without hardcoding ICE
+servers.
 
 ## Required Frontend Changes
 
 1. Fetch ICE configuration at app startup (or before negotiation):
    - `GET /api/v1/webrtc/ice-config` (preferred)
    - Fallback to env vars only if endpoint unavailable.
-2. Use `iceServers` + `iceTransportPolicy` from server response when building `RTCPeerConnection`.
-3. Honor these toggles:
+1. Use `iceServers` + `iceTransportPolicy` from server response when building
+   `RTCPeerConnection`.
+1. Honor these toggles:
    - `REACT_APP_WEBRTC_ENABLE`
    - `REACT_APP_WEBRTC_FORCE_RELAY`
-4. Fallback logic:
+1. Fallback logic:
    - If WebRTC disabled, or ICE fails repeatedly, use MJPEG stream endpoint.
    - Surface active transport in UI (`WebRTC` / `MJPEG fallback`).
-5. Keep using signaling contract from Agent 2:
+1. Keep using signaling contract from Agent 2:
    - `/api/v1/webrtc/offer`
    - `/api/v1/webrtc/ice-candidate`
    - `/api/v1/webrtc/session-status/*`

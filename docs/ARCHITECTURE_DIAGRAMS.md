@@ -3,6 +3,7 @@
 ## Context Diagram
 
 ```mermaid
+
 graph TD
     User[Dashboard User] -->|HTTPS + WebSocket| FE[React Frontend]
     FE -->|REST/WebSocket| BE[Flask Backend]
@@ -10,11 +11,13 @@ graph TD
     DE -->|MQTT Alerts| MQ[MQTT Broker]
     MQ --> ESP[ESP32 Alarm Node]
     BE --> DB[(SQL Database)]
-```text
+
+```
 
 ## Detection Pipeline Sequence
 
 ```mermaid
+
 sequenceDiagram
     participant Cam as Camera
     participant Cap as CameraCapture
@@ -34,11 +37,13 @@ sequenceDiagram
     Filt-->>Alert: trigger (N/T/K met)
     Alert->>API: POST event + snapshot
     Alert->>MQTT: publish alert payload
-```text
+
+```
 
 ## Runtime Ownership Diagram
 
 ```mermaid
+
 flowchart LR
     subgraph Frontend
       A1[AlertProvider]
@@ -64,4 +69,5 @@ flowchart LR
     B1 --> B2 --> B3
     B1 --> B4 --> A2
     D1 --> D2 --> D3 --> D4 --> B1
-```text
+
+```

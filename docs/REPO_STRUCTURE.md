@@ -1,12 +1,14 @@
 # AquaGuard — Repository Structure
 
-> This file defines the complete folder and file layout of the AquaGuard codebase.
+> This file defines the complete folder and file layout of the AquaGuard
+codebase.
 > The Claude agent must create files at exactly these paths.
 > Do not create files outside this structure without a documented reason.
 
----
+______________________________________________________________________
 
 ```text
+
 aquaguard/
 │
 ├── README.md
@@ -16,51 +18,62 @@ aquaguard/
 │
 ├── config/
 │   ├── settings.py                  # All system-wide constants and thresholds
-│   └── cameras.json                 # Camera zone registry (zone_id, rtsp_url, etc.)
+│   └── cameras.json                 # Camera zone registry (zone_id, rtsp_url,
+etc.)
 │
 ├── detection_engine/                # Python CV + AI pipeline (runs on edge server)
-│   ├── main.py                      # Entry point — starts all camera threads and detection loop
+│   ├── main.py                      # Entry point — starts all camera threads
+and detection loop
 │   ├── benchmark.py                 # Inference timing benchmark script
 │   │
 │   ├── models/
-│   │   └── aquaguard_yolov11s.pt    # Trained model weights (not committed to git — add to .gitignore)
+│   │   └── aquaguard_yolov11s.pt    # Trained model weights (not committed to
+git — add to .gitignore)
 │   │
 │   ├── camera/
-│   │   ├── __init__.py
-│   │   ├── capture.py               # CameraCapture class — RTSP/webcam stream thread
+│   │   ├── **init**.py
+│   │   ├── capture.py               # CameraCapture class — RTSP/webcam stream
+thread
 │   │   └── registry.py              # CameraRegistry — hash map of zone_id → CameraCapture
 │   │
 │   ├── vision/
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── detector.py              # DrowningDetector class — YOLOv11s CUDA inference
-│   │   ├── pose_estimator.py        # PoseEstimator class — MediaPipe Pose landmark extraction
+│   │   ├── pose_estimator.py        # PoseEstimator class — MediaPipe Pose
+landmark extraction
 │   │   └── preprocessor.py         # Frame resize, normalize, BGR→RGB conversion
 │   │
 │   ├── analysis/
-│   │   ├── __init__.py
-│   │   ├── behavior_analyzer.py     # BehaviorAnalyzer — 5-indicator rule-based scoring
-│   │   └── confidence_filter.py     # ConfidenceFilter — rolling deque window (N=15, T=0.75, K=10)
+│   │   ├── **init**.py
+│   │   ├── behavior_analyzer.py     # BehaviorAnalyzer — 5-indicator rule-based
+scoring
+│   │   └── confidence_filter.py     # ConfidenceFilter — rolling deque window
+(N=15, T=0.75, K=10)
 │   │
 │   ├── alert/
-│   │   ├── __init__.py
-│   │   ├── alert_engine.py          # AlertEngine — orchestrates MQTT + WebSocket + API dispatch
+│   │   ├── **init**.py
+│   │   ├── alert_engine.py          # AlertEngine — orchestrates MQTT +
+WebSocket + API dispatch
 │   │   ├── mqtt_client.py           # MQTTClient wrapper using paho-mqtt
 │   │   └── api_client.py            # APIClient — HTTP POST to Flask backend
 │   │
 │   ├── models_data/
-│   │   ├── detection.py             # Detection dataclass (track_id, class_label, confidence, bbox)
+│   │   ├── detection.py             # Detection dataclass (track_id,
+class_label, confidence, bbox)
 │   │   ├── landmark.py              # Landmark dataclass (x, y, z, visibility)
-│   │   └── alert_payload.py         # AlertPayload dataclass (event_id, zone_id, timestamp, etc.)
+│   │   └── alert_payload.py         # AlertPayload dataclass (event_id,
+zone_id, timestamp, etc.)
 │   │
 │   └── tests/
-│       ├── __init__.py
+│       ├── **init**.py
 │       ├── test_detector.py
 │       ├── test_pose_estimator.py
 │       ├── test_behavior_analyzer.py
 │       └── test_confidence_filter.py
 │
 ├── backend/                         # Flask REST API + WebSocket server
-│   ├── app.py                       # Flask app factory — init extensions, register blueprints
+│   ├── app.py                       # Flask app factory — init extensions,
+register blueprints
 │   ├── extensions.py                # SQLAlchemy, JWT, SocketIO instances
 │   ├── models.py                    # SQLAlchemy ORM models
 │   ├── seed.py                      # Create default admin user
@@ -68,7 +81,7 @@ aquaguard/
 │   ├── .env                         # Environment variables (not committed to git)
 │   │
 │   ├── routes/
-│   │   ├── __init__.py
+│   │   ├── **init**.py
 │   │   ├── auth.py                  # POST /auth/login, /auth/refresh, /auth/logout
 │   │   ├── events.py                # POST /events, GET /events
 │   │   ├── alerts.py                # GET /alerts, POST /alerts/<id>/acknowledge
@@ -85,7 +98,7 @@ aquaguard/
 │   │   └── .gitkeep
 │   │
 │   └── tests/
-│       ├── __init__.py
+│       ├── **init**.py
 │       ├── conftest.py              # Pytest fixtures — test client, test DB
 │       ├── test_auth.py
 │       ├── test_events.py
@@ -165,16 +178,19 @@ aquaguard/
     ├── start_dev.sh                 # Starts all services for local development
     ├── test_mqtt.py                 # Manually publish a test MQTT alert
     └── test_camera.py               # Verify RTSP stream connection
-```text
 
----
+```
+
+______________________________________________________________________
 
 ## .gitignore Entries
 
 ```gitignore
+
 # Python
+
 venv/
-__pycache__/
+**pycache**/
 *.pyc
 *.pyo
 *.pyd
@@ -184,41 +200,50 @@ dist/
 build/
 
 # Model weights (large binary files)
+
 detection_engine/models/*.pt
 detection_engine/models/*.onnx
 
 # Environment files
+
 .env
 backend/.env
 frontend/.env
 
 # Database
+
 *.db
 *.sqlite3
 
 # Snapshots (generated at runtime)
+
 backend/snapshots/*.jpg
 backend/snapshots/*.jpeg
 
 # Node
+
 frontend/node_modules/
 frontend/build/
 
 # IDE
+
 .vscode/
 .idea/
 *.swp
 
 # OS
+
 .DS_Store
 Thumbs.db
-```text
 
----
+```
+
+______________________________________________________________________
 
 ## cameras.json Format
 
 ```json
+
 {
   "cameras": [
     {
@@ -239,11 +264,13 @@ Thumbs.db
     }
   ]
 }
-```text
+
+```
 
 For local development with a webcam instead of RTSP:
 
 ```json
+
 {
   "cameras": [
     {
@@ -256,22 +283,23 @@ For local development with a webcam instead of RTSP:
     }
   ]
 }
-```text
 
----
+```
+
+______________________________________________________________________
 
 ## Key Naming Conventions
 
-| Type | Convention | Example |
+|Type|Convention|Example|
 |---|---|---|
-| Python files | snake_case | `behavior_analyzer.py` |
-| Python classes | PascalCase | `BehaviorAnalyzer` |
-| Python functions/methods | snake_case | `evaluate_confidence()` |
-| Python constants | UPPER_SNAKE | `CONFIDENCE_THRESHOLD` |
-| React components | PascalCase | `AlertPanel.js` |
-| React hooks | camelCase prefixed `use` | `useAlertSocket.js` |
-| React context files | PascalCase + Context | `AlertContext.js` |
-| Database tables | snake_case plural | `detection_events` |
-| API routes | kebab-case | `/acknowledge-alert` |
-| MQTT topics | slash-separated lowercase | `aquaguard/alert` |
-| Environment variables | UPPER_SNAKE | `JWT_SECRET_KEY` |
+|Python files|snake_case|`behavior_analyzer.py`|
+|Python classes|PascalCase|`BehaviorAnalyzer`|
+|Python functions/methods|snake_case|`evaluate_confidence()`|
+|Python constants|UPPER_SNAKE|`CONFIDENCE_THRESHOLD`|
+|React components|PascalCase|`AlertPanel.js`|
+|React hooks|camelCase prefixed `use`|`useAlertSocket.js`|
+|React context files|PascalCase + Context|`AlertContext.js`|
+|Database tables|snake_case plural|`detection_events`|
+|API routes|kebab-case|`/acknowledge-alert`|
+|MQTT topics|slash-separated lowercase|`aquaguard/alert`|
+|Environment variables|UPPER_SNAKE|`JWT_SECRET_KEY`|

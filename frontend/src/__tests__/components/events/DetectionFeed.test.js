@@ -1,17 +1,17 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import DetectionFeed from './DetectionFeed';
-import api from '../../hooks/useApi';
-import { useAlertState, useSocketState } from '../../context/AlertContext';
+import DetectionFeed from '../../../components/events/DetectionFeed';
+import api from '../../../hooks/useApi';
+import { useAlertState, useSocketState } from '../../../context/AlertContext';
 
-jest.mock('../../hooks/useApi', () => ({
+jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
   },
 }));
 
-jest.mock('../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext', () => ({
   useAlertState: jest.fn(),
   useSocketState: jest.fn(),
 }));
@@ -84,11 +84,8 @@ describe('DetectionFeed mapping resilience', () => {
     expect(await screen.findByText('drowning')).toBeInTheDocument();
     expect(screen.getByText(/Live \(socket\)/)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith('/api/v1/events', {
-        params: { limit: 20, page: 1 },
-      });
-    });
+    // With socket connected, polling is skipped - events come via WebSocket
+    expect(api.get).not.toHaveBeenCalledWith('/api/v1/events', expect.anything());
   });
 
   test('pauses aggressive polling when tab is hidden', async () => {

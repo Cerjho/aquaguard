@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react';
-import useWebRTCStream from './useWebRTCStream';
-import api from './useApi';
+import useWebRTCStream from '../../hooks/useWebRTCStream';
+import api from '../../hooks/useApi';
 
-jest.mock('./useApi', () => ({
+jest.mock('../../hooks/useApi', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
@@ -11,7 +11,7 @@ jest.mock('./useApi', () => ({
   },
 }));
 
-jest.mock('../utils/constants', () => ({
+jest.mock('../../utils/constants', () => ({
   API_BASE_URL: 'http://localhost:5000',
   WEBRTC_ENABLE: true,
   WEBRTC_FORCE_RELAY: false,

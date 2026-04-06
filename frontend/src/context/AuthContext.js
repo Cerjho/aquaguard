@@ -6,8 +6,9 @@
  * User profile is kept in memory for the current tab session.
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import api from '../hooks/useApi';
+import { isAdmin as checkIsAdmin, hasRole as checkHasRole, canManageCameras as checkCanManageCameras } from '../utils/permissions';
 
 const AuthContext = createContext(null);
 
@@ -91,9 +92,17 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = Boolean(currentUser);
 
+  const isAdmin = useMemo(() => checkIsAdmin(currentUser), [currentUser]);
+  const canManageCameras = useMemo(() => checkCanManageCameras(currentUser), [currentUser]);
+
+  const hasRole = useCallback((role) => checkHasRole(currentUser, role), [currentUser]);
+
   const value = {
     currentUser,
     isAuthenticated,
+    isAdmin,
+    canManageCameras,
+    hasRole,
     authError,
     loading,
     initializingSession,
@@ -106,7 +115,7 @@ export function AuthProvider({ children }) {
 
 /**
  * Hook to access auth context.
- * @returns {{ currentUser, isAuthenticated, authError, loading, initializingSession, login, logout }}
+ * @returns {{ currentUser, isAuthenticated, isAdmin, canManageCameras, hasRole, authError, loading, initializingSession, login, logout }}
  */
 export function useAuth() {
   const ctx = useContext(AuthContext);

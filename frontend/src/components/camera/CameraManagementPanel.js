@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../hooks/useApi';
+import { useAuth } from '../../context/AuthContext';
 
 const INITIAL_FORM = {
   zone_id: '',
@@ -12,6 +13,7 @@ const INITIAL_FORM = {
 };
 
 function CameraManagementPanel({ onCamerasChanged }) {
+  const { canManageCameras } = useAuth();
   const [cameras, setCameras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -166,13 +168,15 @@ function CameraManagementPanel({ onCamerasChanged }) {
             {activeCount} active / {cameras.length} total cameras
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openAddForm}
-          className="px-3 py-1.5 text-sm rounded-md bg-sky-600 text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
-        >
-          Add Camera
-        </button>
+        {canManageCameras && (
+          <button
+            type="button"
+            onClick={openAddForm}
+            className="px-3 py-1.5 text-sm rounded-md bg-sky-600 text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          >
+            Add Camera
+          </button>
+        )}
       </div>
 
       <div aria-live="polite" className="mt-3 min-h-[1.25rem]">
@@ -209,7 +213,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
                 <th scope="col" className="py-2 pr-3">Zone</th>
                 <th scope="col" className="py-2 pr-3">Name</th>
                 <th scope="col" className="py-2 pr-3">Status</th>
-                <th scope="col" className="py-2 pr-3">Actions</th>
+                <th scope="col" className="py-2 pr-3">{canManageCameras ? 'Actions' : ''}</th>
               </tr>
             </thead>
             <tbody>
@@ -232,23 +236,27 @@ function CameraManagementPanel({ onCamerasChanged }) {
                     </span>
                   </td>
                   <td className="py-2 pr-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditForm(camera)}
-                        className="px-2 py-1 rounded border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleActive(camera)}
-                        className="px-2 py-1 rounded border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        aria-label={`${camera.is_active ? 'Deactivate' : 'Activate'} camera ${camera.zone_name || camera.zone_id}`}
-                      >
-                        {camera.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </div>
+                    {canManageCameras ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditForm(camera)}
+                          className="px-2 py-1 rounded border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleActive(camera)}
+                          className="px-2 py-1 rounded border border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          aria-label={`${camera.is_active ? 'Deactivate' : 'Activate'} camera ${camera.zone_name || camera.zone_id}`}
+                        >
+                          {camera.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">View only</span>
+                    )}
                   </td>
                 </tr>
               ))}

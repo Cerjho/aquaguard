@@ -70,3 +70,17 @@ agents/runtime_logs/*
 agents/runtime_logs/**
 agents/logs/*
 agents/logs/**
+
+# Agent workflow artifacts (runtime only)
+agents/queue/*.md
+!agents/queue/.gitkeep
+agents/status/*.md
+agents/status/*.txt
+agents/status/*.json
+!agents/status/.gitkeep
+
+# Editor temp files
+*.bak
+*.orig
+~$*
+*~

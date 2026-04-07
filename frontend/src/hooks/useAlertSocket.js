@@ -74,23 +74,31 @@ function useAlertSocket({
     }
 
     // Establish Socket.IO connection with credentialed cookie handshake.
-    // Use polling-first to avoid WebSocket frame header errors during auth transitions
+    // Use polling-only transport since backend uses async_mode='threading' which
+    // doesn't support native WebSocket upgrade (causes "Invalid frame header" errors).
     const wsUrl = WS_URL || 'http://localhost:5000';
     logger.info('[AquaGuard WS] Connecting to:', wsUrl);
     
     const socket = io(wsUrl, {
-      transports: ['polling', 'websocket'],
+      transports: ['polling'],       // Polling only - threading mode doesn't support websocket
+      upgrade: false,                // Don't attempt to upgrade to websocket
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,  // Keep reconnecting indefinitely for life-safety system
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      upgrade: true,
+      forceNew: true,                // Force new connection each time
       // Match server ping settings for stability
       pingTimeout: 60000,    // 60s - matches backend ping_timeout
       pingInterval: 25000,   // 25s - matches backend ping_interval
     });
+    
+    // Debug: Log all socket manager events
+    socket.io.on('open', () => logger.info('[AquaGuard WS] Transport opened'));
+    socket.io.on('close', (reason) => logger.info('[AquaGuard WS] Transport closed:', reason));
+    socket.io.on('packet', (packet) => logger.debug('[AquaGuard WS] Packet:', packet.type));
+    socket.io.on('error', (err) => logger.error('[AquaGuard WS] Manager error:', err));
 
     socketRef.current = socket;
 

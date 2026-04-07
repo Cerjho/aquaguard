@@ -58,14 +58,36 @@ if AIORTC_AVAILABLE:
             frame_path = os.path.join(LIVE_SNAPSHOT_DIR, f'{self.zone_id}_latest.jpg')
             try:
                 # Run I/O in thread pool to avoid blocking event loop
-                frame = await loop.run_in_executor(None, cv2.imread, frame_path)
-                if frame is not None:
+                frame = await loop.run_in_executor(None, self._safe_read_jpeg, frame_path)
+                if frame is not None and frame.size > 0:
                     self._cached_frame = frame
                     self._frame_timestamp = time.time()
                     return frame
             except Exception as exc:
                 LOGGER.warning('WebRTC frame read failed for zone %s: %s', self.zone_id, exc)
             return self._cached_frame
+
+        def _safe_read_jpeg(self, path):
+            """Read JPEG with validation to avoid corrupted frames."""
+            try:
+                # Read file bytes first to avoid partial reads
+                with open(path, 'rb') as f:
+                    data = f.read()
+                
+                # Validate JPEG markers (SOI at start, EOI at end)
+                if len(data) < 4:
+                    return None
+                if data[:2] != b'\xff\xd8':  # SOI marker
+                    return None
+                if data[-2:] != b'\xff\xd9':  # EOI marker
+                    return None
+                
+                # Decode from memory buffer
+                arr = np.frombuffer(data, dtype=np.uint8)
+                frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                return frame
+            except (IOError, OSError):
+                return None
 
         async def recv(self):
             pts, time_base = await self.next_timestamp()

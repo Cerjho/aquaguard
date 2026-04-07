@@ -119,18 +119,50 @@ class ContinuousFrameWriter:
                 time.sleep(sleep_time)
     
     def _atomic_write_jpeg(self, path: str, frame: np.ndarray) -> None:
-        """Atomically write JPEG (temp file + rename)."""
-        tmp_path = path + '.tmp'
+        """Atomically write JPEG (temp file + rename).
+        
+        On Windows, os.replace() can fail if another process has the file open.
+        We use a retry mechanism with unique temp file names to handle this.
+        """
+        import uuid
+        import shutil
+        
+        # Use unique temp file to avoid conflicts
+        tmp_path = f"{path}.{uuid.uuid4().hex[:8]}.tmp"
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
         success, buffer = cv2.imencode('.jpg', frame, encode_param)
         
         if not success:
             raise RuntimeError("JPEG encoding failed")
         
-        with open(tmp_path, 'wb') as f:
-            f.write(buffer.tobytes())
-        
-        os.replace(tmp_path, path)
+        try:
+            with open(tmp_path, 'wb') as f:
+                f.write(buffer.tobytes())
+            
+            # Try atomic replace with retries for Windows file locking
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    os.replace(tmp_path, path)
+                    return
+                except PermissionError:
+                    if attempt < max_retries - 1:
+                        time.sleep(0.005)  # 5ms backoff
+                    else:
+                        # Fallback: use shutil.move which handles cross-device moves
+                        try:
+                            shutil.move(tmp_path, path)
+                            return
+                        except Exception:
+                            pass
+                        raise
+        finally:
+            # Clean up temp file if it still exists
+            try:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            except Exception:
+                pass
 
 
 class FrameWriterRegistry:

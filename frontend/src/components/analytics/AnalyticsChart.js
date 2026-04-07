@@ -58,34 +58,32 @@ function AnalyticsChart() {
 
       if (requestId !== requestIdRef.current) return;
 
-      setZoneData(
-        zones.map((z) => ({
-          zoneId: z.zone_id || z.zone_name || 'Unknown',
-          zone: z.zone_name || z.zone_id || 'Unknown',
-          alerts: z.alert_count ?? z.alerts ?? 0,
-          detections: z.event_count ?? z.detections ?? 0,
-        }))
-      );
+      const normalizedZones = zones.map((z) => ({
+        zoneId: z.zone_id || z.zone_name || 'Unknown',
+        zone: z.zone_name || z.zone_id || 'Unknown',
+        alerts: z.alert_count ?? z.alerts ?? 0,
+        detections: z.event_count ?? z.detections ?? 0,
+      }));
+      setZoneData(normalizedZones);
 
       // Time series: expects { daily: [{date, alert_count, event_count}] }
       const daily = data.daily || data.by_date || [];
+      let normalizedTime;
       if (Array.isArray(daily) && daily.length > 0) {
-        setTimeData(
-          daily.map((d) => ({
-            date: d.date,
-            alerts: d.alert_count ?? d.alerts ?? 0,
-            detections: d.event_count ?? d.detections ?? 0,
-          }))
-        );
+        normalizedTime = daily.map((d) => ({
+          date: d.date,
+          alerts: d.alert_count ?? d.alerts ?? 0,
+          detections: d.event_count ?? d.detections ?? 0,
+        }));
       } else {
         // Graceful fallback when backend omits daily in this response.
-        const fallbackSeries = zones.map((z, idx) => ({
+        normalizedTime = zones.map((z, idx) => ({
           date: z.zone_name || z.zone_id || `Zone ${idx + 1}`,
           alerts: z.alert_count ?? z.alerts ?? 0,
           detections: z.event_count ?? z.detections ?? 0,
         }));
-        setTimeData(fallbackSeries);
       }
+      setTimeData(normalizedTime);
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       setError(

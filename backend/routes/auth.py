@@ -36,15 +36,27 @@ def login():
     username = data.get('username', '').strip()
     password = data.get('password', '')
     remember_me = data.get('remember_me', False)
+    
+    current_app.logger.info('Login attempt for user: %s', username)
+    
     if not isinstance(remember_me, bool):
         return jsonify({'error': 'remember_me must be a boolean'}), 400
 
     if not username or not password:
+        current_app.logger.warning('Login failed: missing username or password')
         return jsonify({'error': 'username and password required'}), 400
 
     user = User.query.filter_by(username=username, is_active=True).first()
-    if not user or not bcrypt.check_password_hash(user.password_hash, password):
+    
+    if not user:
+        current_app.logger.warning('Login failed: user "%s" not found or inactive', username)
         return jsonify({'error': 'Invalid credentials'}), 401
+    
+    if not bcrypt.check_password_hash(user.password_hash, password):
+        current_app.logger.warning('Login failed: wrong password for user "%s"', username)
+        return jsonify({'error': 'Invalid credentials'}), 401
+    
+    current_app.logger.info('Login SUCCESS for user: %s (id=%s)', username, user.id)
 
     additional_claims = {'role': user.role}
 

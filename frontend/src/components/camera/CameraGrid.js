@@ -1,14 +1,15 @@
 /**
  * AquaGuard — CameraGrid component.
  *
- * Fetches all camera zones from GET /api/v1/cameras and renders
- * a responsive grid of CameraCard tiles.
+ * Uses shared DataCacheContext for instant page loads.
+ * Renders a responsive grid of CameraCard tiles.
  */
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import api from '../../hooks/useApi';
 import CameraCard from './CameraCard';
 import { useSystemState } from '../../context/AlertContext';
+import { useDataCache } from '../../context/DataCacheContext';
 import { formatDateTime } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../utils/constants';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
@@ -19,9 +20,8 @@ const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
 const MAX_GRID_STREAMS = 4;
 
 function CameraGrid({ reloadToken = 0 }) {
-  const [cameras, setCameras] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Use shared cache for instant page loads
+  const { cameras, camerasLoading: loading, camerasError: error, fetchCameras, refreshCameras } = useDataCache();
   const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
   const [cameraRuntimeMap, setCameraRuntimeMap] = useState({});
   const [streamTokens, setStreamTokens] = useState({});
@@ -79,24 +79,6 @@ function CameraGrid({ reloadToken = 0 }) {
       window.removeEventListener('pageshow', handlePageShow);
     };
   }, [bumpStreamSession]);
-
-  const fetchCameras = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get('/api/v1/cameras');
-      // Backend returns { cameras: [...] } or directly an array
-      const data = Array.isArray(res.data) ? res.data : res.data.cameras || [];
-      setCameras(data);
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          'Failed to load cameras. Is the backend running?'
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const mintStreamToken = useCallback(async (zoneId) => {
     if (!zoneId) return null;
@@ -169,9 +151,12 @@ function CameraGrid({ reloadToken = 0 }) {
     }
   }, [mintStreamToken]);
 
+  // Refresh cameras when reloadToken changes (e.g., after camera management)
   useEffect(() => {
-    fetchCameras();
-  }, [fetchCameras, reloadToken]);
+    if (reloadToken > 0) {
+      refreshCameras();
+    }
+  }, [reloadToken, refreshCameras]);
 
   const activeStreamZoneIds = useMemo(() => {
     if (!Array.isArray(cameras) || cameras.length === 0) return new Set();
@@ -327,7 +312,7 @@ function CameraGrid({ reloadToken = 0 }) {
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-red-600 font-medium">{error}</p>
         <button
-          onClick={fetchCameras}
+          onClick={() => fetchCameras({ forceLoading: true })}
           className="mt-3 px-4 py-1.5 text-sm rounded-lg bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
         >
           Retry
@@ -356,7 +341,7 @@ function CameraGrid({ reloadToken = 0 }) {
         </h2>
         <button
           onClick={() => {
-            fetchCameras();
+            fetchCameras({ forceLoading: true });
           }}
           className="text-xs text-sky-600 hover:text-sky-800 transition-colors"
           title="Refresh cameras"

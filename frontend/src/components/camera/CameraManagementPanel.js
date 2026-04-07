@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../hooks/useApi';
+import { useDataCache } from '../../context/DataCacheContext';
 
 const INITIAL_FORM = {
   zone_id: '',
@@ -12,6 +13,8 @@ const INITIAL_FORM = {
 };
 
 function CameraManagementPanel({ onCamerasChanged }) {
+  // Use shared cache - management panel needs inactive cameras too, so we fetch separately
+  const { refreshCameras: refreshGlobalCache } = useDataCache();
   const [cameras, setCameras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,9 +23,12 @@ function CameraManagementPanel({ onCamerasChanged }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingZoneId, setEditingZoneId] = useState(null);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  const fetchCameras = useCallback(async () => {
-    setLoading(true);
+  const fetchCameras = useCallback(async (forceLoading = false) => {
+    if (!hasLoaded || forceLoading) {
+      setLoading(true);
+    }
     setError('');
     try {
       const res = await api.get('/api/v1/cameras', {
@@ -30,16 +36,28 @@ function CameraManagementPanel({ onCamerasChanged }) {
       });
       const data = Array.isArray(res.data) ? res.data : res.data.cameras || [];
       setCameras(data);
+      setHasLoaded(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load camera management data.');
+      if (!hasLoaded) {
+        setError(err.response?.data?.error || 'Failed to load camera management data.');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hasLoaded]);
 
   useEffect(() => {
     fetchCameras();
   }, [fetchCameras]);
+
+  // Notify both parent and global cache when cameras change
+  const notifyCamerasChanged = useCallback(() => {
+    fetchCameras(false);
+    refreshGlobalCache();
+    if (onCamerasChanged) {
+      onCamerasChanged();
+    }
+  }, [fetchCameras, refreshGlobalCache, onCamerasChanged]);
 
   const activeCount = useMemo(
     () => cameras.filter((camera) => camera.is_active).length,

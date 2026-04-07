@@ -101,7 +101,8 @@ function CameraCard({
     isActive,
   });
   const showWebRTC = shouldRenderStream && isActive && transport === 'webrtc' && Boolean(videoStream);
-  const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl);
+  // Show MJPEG fallback stream immediately while WebRTC negotiates (faster reconnection)
+  const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl) && !showWebRTC;
   const zoneAlerts = useMemo(
     () => (activeAlerts || []).filter((alertItem) => alertItem?.zone_id === camera.zone_id),
     [activeAlerts, camera.zone_id]
@@ -152,17 +153,16 @@ function CameraCard({
     videoRef.current.srcObject = videoStream;
   }, [videoStream]);
 
+  // Only show offline reason if neither WebRTC nor MJPEG fallback is available
   const offlineReason = !detectionOnline
     ? 'Detection engine offline'
     : !cameraOnline
     ? 'Camera offline'
     : !shouldRenderStream
     ? pausedReason
-    : transport === 'webrtc' && webrtcState === 'connecting'
-    ? 'Negotiating WebRTC…'
     : !streamToken
     ? 'Authorizing stream…'
-    : 'Stream unavailable';
+    : 'Connecting…';
 
   return (
     <article

@@ -75,15 +75,21 @@ function useAlertSocket({
 
     // Establish Socket.IO connection with credentialed cookie handshake.
     // Use polling-first to avoid WebSocket frame header errors during auth transitions
-    const socket = io(WS_URL, {
+    const wsUrl = WS_URL || 'http://localhost:5000';
+    logger.info('[AquaGuard WS] Connecting to:', wsUrl);
+    
+    const socket = io(wsUrl, {
       transports: ['polling', 'websocket'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-      timeout: 10000,
+      reconnectionAttempts: Infinity,  // Keep reconnecting indefinitely for life-safety system
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
       upgrade: true,
+      // Match server ping settings for stability
+      pingTimeout: 60000,    // 60s - matches backend ping_timeout
+      pingInterval: 25000,   // 25s - matches backend ping_interval
     });
 
     socketRef.current = socket;

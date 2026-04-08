@@ -148,16 +148,17 @@ class DetectionWorker:
             try:
                 landmarks = self.pose_estimator.estimate(frame, det.bbox)
                 if landmarks is not None:
-                    behavior_flags = self.behavior_analyzer.analyze(
-                        track_id=str(det.track_id),
+                    behavior_score = self.behavior_analyzer.analyze(
                         landmarks=landmarks,
+                        yolo_class=det.class_label,
+                        yolo_conf=det.confidence,
+                        track_id=str(det.track_id),
                     )
-                    det.behavior_flags = behavior_flags
+                    det.behavior_flags = behavior_score
                 
-                # Step 3: Confidence filtering
-                final_det = self.confidence_filter.filter(det)
-                if final_det is not None:
-                    filtered_detections.append(final_det)
+                # Step 3: All detections pass through - confidence_filter.evaluate()
+                # is used later for alert triggering, not for filtering detections
+                filtered_detections.append(det)
                     
             except Exception as exc:
                 logger.warning("[%s] Error processing detection %s: %s", 

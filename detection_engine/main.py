@@ -498,15 +498,25 @@ def main():
         active_track_ids = {str(det.track_id) for det in filtered_detections}
         
         for det in filtered_detections:
-            score = confidence_filter.get_smoothed_score(det.track_id)
-            if score is None:
+            # Get behavior score from detection (set by detection_worker)
+            behavior_score = getattr(det, 'behavior_flags', None)
+            if behavior_score is None:
                 continue
             
-            # Check if alert should trigger
+            # Pass score through confidence filter for rolling-window smoothing
+            alert_confirmed = confidence_filter.evaluate(
+                track_id=str(det.track_id),
+                score=float(behavior_score),
+            )
+            
+            if not alert_confirmed:
+                continue
+            
+            # Check if alert should trigger (cooldown, deduplication, etc.)
             should_alert = alert_engine.should_trigger_alert(
                 zone_id=zone_id,
                 track_id=det.track_id,
-                final_confidence=float(score),
+                final_confidence=float(behavior_score),
                 class_label=det.class_label,
                 behavior_flags=det.behavior_flags,
             )
@@ -520,7 +530,7 @@ def main():
                     class_label=det.class_label,
                     yolo_confidence=float(det.confidence),
                     pose_confidence=None,
-                    final_confidence=float(score),
+                    final_confidence=float(behavior_score),
                 )
                 logger.info("Zone %s track %s: alert dispatched", zone_id, det.track_id)
         

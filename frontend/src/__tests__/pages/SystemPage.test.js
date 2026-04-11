@@ -1,22 +1,22 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import SystemPage from '../../pages/SystemPage';
+import SystemPage from '../../pages/SystemPage.jsx';
 
 const mockCameraGrid = jest.fn();
 const mockCameraManagementPanel = jest.fn();
 const mockSystemStatus = jest.fn();
 
-jest.mock('../../components/system/SystemStatus', () => () => {
+jest.mock('../../components/system/SystemStatus.jsx', () => () => {
   mockSystemStatus();
   return <div>Mock System Status</div>;
 });
 
-jest.mock('../../components/camera/CameraGrid', () => (props) => {
+jest.mock('../../components/camera/CameraGrid.jsx', () => (props) => {
   mockCameraGrid(props);
   return <div>Mock Camera Grid</div>;
 });
 
-jest.mock('../../components/camera/CameraManagementPanel', () => (props) => {
+jest.mock('../../components/camera/CameraManagementPanel.jsx', () => (props) => {
   mockCameraManagementPanel(props);
   return (
     <button type="button" onClick={props.onCamerasChanged}>

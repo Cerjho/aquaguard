@@ -19,7 +19,7 @@ import React, {
 } from 'react';
 import useAlertSocket from '../hooks/useAlertSocket';
 import api from '../hooks/useApi';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContext.jsx';
 import { normalizeServiceStatus } from '../utils/statusHelpers';
 import logger from '../utils/logger';
 import {

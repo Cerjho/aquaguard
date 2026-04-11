@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import CameraManagementPanel from '../../../components/camera/CameraManagementPanel';
+import CameraManagementPanel from '../../../components/camera/CameraManagementPanel.jsx';
 import api from '../../../hooks/useApi';
 
 jest.mock('../../../hooks/useApi', () => ({

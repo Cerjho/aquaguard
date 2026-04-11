@@ -6,9 +6,10 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
-import { useFilterState } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext.jsx';
 import {
   mapEventClassLabel,
   mapEventConfidence,
@@ -16,8 +17,10 @@ import {
 } from '../../utils/eventMappers';
 
 const PAGE_SIZE = 10;
+const INCIDENT_STATUS_VALUES = new Set(['alerted', 'normal', 'unacknowledged', 'acknowledged']);
 
 function IncidentHistory() {
+  const prefersReducedMotion = useReducedMotion();
   const { triageFilters, setTriageFilters, resetTriageFilters } = useFilterState();
   const [events, setEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -27,6 +30,18 @@ function IncidentHistory() {
   const [error, setError] = useState(null);
   const [draftFilters, setDraftFilters] = useState(triageFilters || {});
   const requestIdRef = useRef(0);
+
+  const toNumericFilter = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const isValidDateFilter = (value) => {
+    if (!value) return false;
+    const parsed = new Date(value);
+    return !Number.isNaN(parsed.getTime());
+  };
 
   useEffect(() => {
     setDraftFilters(triageFilters || {});
@@ -61,15 +76,19 @@ function IncidentHistory() {
     setError(null);
     try {
       const filterState = triageFilters || {};
+      const minConfidence = toNumericFilter(filterState.min_confidence);
+      const normalizedStatus = INCIDENT_STATUS_VALUES.has(filterState.status)
+        ? filterState.status
+        : '';
       const res = await api.get('/api/v1/events', {
         params: {
           page: pageNum,
           limit: PAGE_SIZE,
           ...(filterState.zone_id ? { zone_id: filterState.zone_id } : {}),
-          ...(filterState.status ? { status: filterState.status } : {}),
-          ...(filterState.min_confidence ? { min_confidence: filterState.min_confidence } : {}),
-          ...(filterState.from ? { from: filterState.from } : {}),
-          ...(filterState.to ? { to: filterState.to } : {}),
+          ...(normalizedStatus ? { status: normalizedStatus } : {}),
+          ...(minConfidence !== null ? { min_confidence: minConfidence } : {}),
+          ...(isValidDateFilter(filterState.from) ? { from: filterState.from } : {}),
+          ...(isValidDateFilter(filterState.to) ? { to: filterState.to } : {}),
         },
       });
       const data = res.data;
@@ -108,23 +127,32 @@ function IncidentHistory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-slate-500 text-sm gap-2">
-        <svg className="animate-spin h-5 w-5 text-sky-500" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-        Loading events…
+      <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading incident history">
+        <div className="glass-subtle rounded-2xl border border-slate-200 p-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="skeleton h-10" />
+            ))}
+          </div>
+        </div>
+        <div className="glass-subtle rounded-2xl border border-slate-200 p-4">
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="skeleton h-12" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-center">
-        <p className="text-red-600">{error}</p>
+      <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-6 text-center" role="alert">
+        <p className="text-rose-300">{error}</p>
         <button
           onClick={() => fetchEvents(page)}
-          className="mt-2 px-4 py-1.5 text-sm rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+          className="mt-2 btn-danger"
         >
           Retry
         </button>
@@ -133,21 +161,26 @@ function IncidentHistory() {
   }
 
   return (
-    <div>
-      <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
+    <motion.section
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
+      aria-label="Incident history table"
+    >
+      <div className="mb-3 rounded-2xl border border-slate-200 glass-subtle p-3">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           <input
             aria-label="Filter incidents by zone ID"
             value={draftFilters?.zone_id || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, zone_id: e.target.value }))}
             placeholder="Zone ID"
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
           <select
             aria-label="Filter incidents by status"
             value={draftFilters?.status || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, status: e.target.value }))}
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           >
             <option value="">All statuses</option>
             <option value="alerted">Alerted</option>
@@ -164,21 +197,21 @@ function IncidentHistory() {
             value={draftFilters?.min_confidence || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, min_confidence: e.target.value }))}
             placeholder="Min confidence"
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
           <input
             type="datetime-local"
             aria-label="Filter incidents from datetime"
             value={draftFilters?.from || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, from: e.target.value }))}
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
           <input
             type="datetime-local"
             aria-label="Filter incidents to datetime"
             value={draftFilters?.to || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, to: e.target.value }))}
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
         </div>
         <div className="mt-2 text-right">
@@ -193,31 +226,31 @@ function IncidentHistory() {
                 to: '',
               });
             }}
-            className="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-50"
+            className="px-3 py-1 text-xs rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 focus-ring"
           >
             Reset filters
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 glass-subtle">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
               {['Time', 'Zone', 'Class', 'Confidence', 'Alert Triggered'].map((col) => (
                 <th
                   key={col}
-                  className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                   className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"
                 >
                   {col}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100">
             {events.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-8 text-slate-400">
+                <td colSpan={5} className="text-center py-8 text-slate-500">
                   No events recorded.
                 </td>
               </tr>
@@ -227,25 +260,25 @@ function IncidentHistory() {
                 const eventTime = mapEventTimestamp(ev);
                 return (
                   <tr key={ev.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-700">
+                    <td className="px-4 py-3 whitespace-nowrap text-slate-600">
                       {formatDateTime(eventTime)}
                     </td>
-                    <td className="px-4 py-3 text-slate-800 font-medium">
+                    <td className="px-4 py-3 text-slate-900 font-medium">
                       {ev.zone_name || ev.zone_id || '—'}
                     </td>
-                    <td className="px-4 py-3 text-slate-700 capitalize">
+                    <td className="px-4 py-3 text-slate-600 capitalize">
                       {mapEventClassLabel(ev, '—')}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-600">
                       {confidence != null ? `${(confidence * 100).toFixed(1)}%` : '—'}
                     </td>
                     <td className="px-4 py-3">
                       {ev.alert_triggered ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200">
                           Yes
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                           No
                         </span>
                       )}
@@ -272,21 +305,21 @@ function IncidentHistory() {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
             >
               ← Prev
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
             >
               Next →
             </button>
           </div>
         </div>
       )}
-    </div>
+    </motion.section>
   );
 }
 

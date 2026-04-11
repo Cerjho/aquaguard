@@ -14,7 +14,7 @@ import React, {
   useRef,
 } from 'react';
 import api from '../hooks/useApi';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContext.jsx';
 
 const DataCacheContext = createContext(null);
 

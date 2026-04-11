@@ -6,13 +6,16 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
-import { useFilterState } from '../../context/AlertContext';
+import { useFilterState } from '../../context/AlertContext.jsx';
 
 const PAGE_SIZE = 10;
+const ALERT_STATUS_VALUES = new Set(['unacknowledged', 'acknowledged']);
 
 function AlertHistory() {
+  const prefersReducedMotion = useReducedMotion();
   const { triageFilters, setTriageFilters, resetTriageFilters } = useFilterState();
   const [alerts, setAlerts] = useState([]);
   const [total, setTotal] = useState(0);
@@ -22,6 +25,18 @@ function AlertHistory() {
   const [error, setError] = useState(null);
   const [draftFilters, setDraftFilters] = useState(triageFilters || {});
   const requestIdRef = useRef(0);
+
+  const toNumericFilter = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const isValidDateFilter = (value) => {
+    if (!value) return false;
+    const parsed = new Date(value);
+    return !Number.isNaN(parsed.getTime());
+  };
 
   useEffect(() => {
     setDraftFilters(triageFilters || {});
@@ -56,15 +71,19 @@ function AlertHistory() {
     setError(null);
     try {
       const filterState = triageFilters || {};
+      const minConfidence = toNumericFilter(filterState.min_confidence);
+      const normalizedStatus = ALERT_STATUS_VALUES.has(filterState.status)
+        ? filterState.status
+        : '';
       const res = await api.get('/api/v1/alerts', {
         params: {
           page: pageNum,
           limit: PAGE_SIZE,
           ...(filterState.zone_id ? { zone_id: filterState.zone_id } : {}),
-          ...(filterState.status ? { status: filterState.status } : {}),
-          ...(filterState.min_confidence ? { min_confidence: filterState.min_confidence } : {}),
-          ...(filterState.from ? { from: filterState.from } : {}),
-          ...(filterState.to ? { to: filterState.to } : {}),
+          ...(normalizedStatus ? { status: normalizedStatus } : {}),
+          ...(minConfidence !== null ? { min_confidence: minConfidence } : {}),
+          ...(isValidDateFilter(filterState.from) ? { from: filterState.from } : {}),
+          ...(isValidDateFilter(filterState.to) ? { to: filterState.to } : {}),
         },
       });
       const data = res.data;
@@ -79,7 +98,11 @@ function AlertHistory() {
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
-      setError(err.response?.data?.message || 'Failed to load alert history.');
+      setError(
+        err.response?.data?.message
+        || err.response?.data?.error
+        || 'Failed to load alert history.'
+      );
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -122,29 +145,38 @@ function AlertHistory() {
   const statusBadge = (status) => {
     const base = 'px-2 py-0.5 rounded-full text-xs font-semibold';
     if (status === 'acknowledged')
-      return <span className={`${base} bg-green-100 text-green-700`}>Acknowledged</span>;
-    return <span className={`${base} bg-red-100 text-red-700`}>Unacknowledged</span>;
+      return <span className={`${base} bg-emerald-100 text-emerald-700 border border-emerald-200`}>Acknowledged</span>;
+    return <span className={`${base} bg-rose-100 text-rose-700 border border-rose-200`}>Unacknowledged</span>;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-slate-500 text-sm">
-        <svg className="animate-spin h-5 w-5 mr-2 text-sky-500" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
-        Loading alerts…
+      <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading alert history">
+        <div className="glass-subtle rounded-2xl border border-slate-200 p-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="skeleton h-10" />
+            ))}
+          </div>
+        </div>
+        <div className="glass-subtle rounded-2xl border border-slate-200 p-4">
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="skeleton h-12" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-center">
-        <p className="text-red-600">{error}</p>
+      <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-6 text-center">
+        <p className="text-rose-400">{error}</p>
         <button
           onClick={() => fetchAlerts(page)}
-          className="mt-2 px-4 py-1.5 text-sm rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+          className="mt-2 px-4 py-1.5 text-sm rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400"
         >
           Retry
         </button>
@@ -153,21 +185,26 @@ function AlertHistory() {
   }
 
   return (
-    <div>
-      <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
+    <motion.section
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
+      aria-label="Alert history table"
+    >
+      <div className="mb-3 rounded-2xl border border-slate-200 glass-subtle p-3">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           <input
             aria-label="Filter alerts by zone ID"
             value={draftFilters?.zone_id || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, zone_id: e.target.value }))}
             placeholder="Zone ID"
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
           <select
             aria-label="Filter alerts by status"
             value={draftFilters?.status || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, status: e.target.value }))}
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           >
             <option value="">All statuses</option>
             <option value="unacknowledged">Unacknowledged</option>
@@ -182,21 +219,21 @@ function AlertHistory() {
             value={draftFilters?.min_confidence || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, min_confidence: e.target.value }))}
             placeholder="Min confidence"
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
           <input
             type="datetime-local"
             aria-label="Filter alerts from datetime"
             value={draftFilters?.from || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, from: e.target.value }))}
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
           <input
             type="datetime-local"
             aria-label="Filter alerts to datetime"
             value={draftFilters?.to || ''}
             onChange={(e) => setDraftFilters((prev) => ({ ...prev, to: e.target.value }))}
-            className="px-3 py-2 text-sm rounded border border-slate-300"
+            className="input-field"
           />
         </div>
         <div className="mt-2 text-right">
@@ -211,7 +248,7 @@ function AlertHistory() {
                 to: '',
               });
             }}
-            className="px-3 py-1 text-xs rounded border border-slate-300 hover:bg-slate-50"
+            className="px-3 py-1 text-xs rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 focus-ring"
           >
             Reset filters
           </button>
@@ -219,10 +256,10 @@ function AlertHistory() {
       </div>
 
       {refreshing && (
-        <p className="mt-2 text-xs text-slate-500">Refreshing alerts…</p>
+        <p className="mt-2 text-xs text-slate-400">Refreshing alerts…</p>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 glass-subtle">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
@@ -236,10 +273,10 @@ function AlertHistory() {
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100">
             {alerts.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-8 text-slate-400">
+                <td colSpan={5} className="text-center py-8 text-slate-500">
                   No alerts found.
                 </td>
               </tr>
@@ -247,13 +284,13 @@ function AlertHistory() {
               alerts.map((alert) => {
                 return (
                   <tr key={alert.id || alert.alert_id || `${alert.zone_id || 'zone'}-${getAlertTime(alert) || 'time'}`} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-700">
+                    <td className="px-4 py-3 whitespace-nowrap text-slate-600">
                       {formatAlertTime(alert)}
                     </td>
-                    <td className="px-4 py-3 text-slate-800 font-medium">
+                    <td className="px-4 py-3 text-slate-900 font-medium">
                       {alert.zone_name || alert.zone_id || '—'}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-600">
                       {formatConfidence(alert)}
                     </td>
                     <td className="px-4 py-3">{statusBadge(alert.status)}</td>
@@ -278,21 +315,21 @@ function AlertHistory() {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
             >
               ← Prev
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
             >
               Next →
             </button>
           </div>
         </div>
       )}
-    </div>
+    </motion.section>
   );
 }
 

@@ -1,19 +1,19 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import TopBar from '../../../components/layout/TopBar';
-import { useAuth } from '../../../context/AuthContext';
+import TopBar from '../../../components/layout/TopBar.jsx';
+import { useAuth } from '../../../context/AuthContext.jsx';
 import {
   useAlertState,
   useSocketState,
   useSystemState,
-} from '../../../context/AlertContext';
+} from '../../../context/AlertContext.jsx';
 
-jest.mock('../../../context/AuthContext', () => ({
+jest.mock('../../../context/AuthContext.jsx', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('../../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext.jsx', () => ({
   useAlertState: jest.fn(),
   useSocketState: jest.fn(),
   useSystemState: jest.fn(),
@@ -59,6 +59,7 @@ describe('TopBar connectivity health strip', () => {
     expect(screen.getByText(/API: Offline/i)).toBeInTheDocument();
     expect(screen.getByText(/Socket: Disconnected/i)).toBeInTheDocument();
     expect(screen.getByText(/Detection freshness: 18s/i)).toBeInTheDocument();
+    expect(screen.getByText(/Socket: Online|Socket: Disconnected/i)).toBeInTheDocument();
   });
 
   test('shows API checking during auth bootstrap', () => {

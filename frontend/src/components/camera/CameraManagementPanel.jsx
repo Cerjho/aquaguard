@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../hooks/useApi';
-import { useDataCache } from '../../context/DataCacheContext';
+import { useDataCache } from '../../context/DataCacheContext.jsx';
 
 const INITIAL_FORM = {
   zone_id: '',

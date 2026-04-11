@@ -6,10 +6,11 @@
  */
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import api from '../../hooks/useApi';
-import CameraCard from './CameraCard';
-import { useSystemState } from '../../context/AlertContext';
-import { useDataCache } from '../../context/DataCacheContext';
+import CameraCard from './CameraCard.jsx';
+import { useSystemState } from '../../context/AlertContext.jsx';
+import { useDataCache } from '../../context/DataCacheContext.jsx';
 import { formatDateTime } from '../../utils/dateFormat';
 import { API_BASE_URL } from '../../utils/constants';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
@@ -17,9 +18,10 @@ import { normalizeServiceStatus } from '../../utils/statusHelpers';
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
 const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
-const MAX_GRID_STREAMS = 4;
+const MAX_GRID_STREAMS = 9;
 
 function CameraGrid({ reloadToken = 0 }) {
+  const prefersReducedMotion = useReducedMotion();
   // Use shared cache for instant page loads
   const { cameras, camerasLoading: loading, camerasError: error, fetchCameras, refreshCameras } = useDataCache();
   const [detectionEngineStatus, setDetectionEngineStatus] = useState('unknown');
@@ -174,6 +176,15 @@ function CameraGrid({ reloadToken = 0 }) {
     return new Set(prioritized);
   }, [cameras, focusedCamera, isDocumentVisible, cameraRuntimeMap]);
 
+  const gridColsClass = useMemo(() => {
+    const total = cameras.length;
+    if (total <= 1) return 'grid-cols-1';
+    if (total === 2) return 'grid-cols-2';
+    if (total <= 4) return 'grid-cols-2';
+    if (total <= 6) return 'grid-cols-3';
+    return 'grid-cols-3';
+  }, [cameras.length]);
+
   const streamCandidateCameras = useMemo(
     () => cameras.filter((camera) => activeStreamZoneIds.has(camera.zone_id)),
     [cameras, activeStreamZoneIds]
@@ -290,18 +301,21 @@ function CameraGrid({ reloadToken = 0 }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <div className="flex flex-col items-center gap-3 text-slate-500">
-          <svg
-            className="animate-spin h-8 w-8 text-sky-500"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-          <span className="text-sm">Loading cameras…</span>
+      <div className="space-y-4" role="status" aria-live="polite" aria-label="Loading camera feeds">
+        <div className="flex items-center justify-between">
+          <div className="skeleton h-4 w-36" />
+          <div className="skeleton h-4 w-20" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="glass-subtle rounded-xl p-3 border border-white/10">
+              <div className="skeleton aspect-video w-full rounded-lg" />
+              <div className="mt-3 space-y-2">
+                <div className="skeleton h-4 w-2/3" />
+                <div className="skeleton h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -331,11 +345,11 @@ function CameraGrid({ reloadToken = 0 }) {
   }
 
   return (
-    <div>
+    <div className="rounded-3xl bg-slate-50 p-3 sm:p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-semibold text-slate-700">
+        <h2 className="text-base font-semibold text-slate-800">
           Camera Feeds
-          <span className="ml-2 text-xs text-slate-400 font-normal">
+          <span className="ml-2 text-xs text-slate-500 font-normal">
             {cameras.length} camera{cameras.length !== 1 ? 's' : ''}
           </span>
         </h2>
@@ -343,59 +357,71 @@ function CameraGrid({ reloadToken = 0 }) {
           onClick={() => {
             fetchCameras({ forceLoading: true });
           }}
-          className="text-xs text-sky-600 hover:text-sky-800 transition-colors"
+          className="text-xs text-slate-600 hover:text-slate-900 transition-colors focus-ring"
           title="Refresh cameras"
         >
           ↺ Refresh
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className={`grid ${gridColsClass} gap-4 transition-all duration-500 ease-in-out`}>
         {cameras.map((camera) => (
-          <CameraCard
+          <motion.div
             key={camera.zone_id || camera.id}
-            camera={{
-              ...camera,
-              runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
-              detection_engine_status: detectionEngineStatus,
-              health: cameraHealthMap[camera.zone_id] || null,
-              stream_token: streamTokens[camera.zone_id]?.token || null,
-              stream_session_id: streamSessionId,
-            }}
-            onStreamAuthFailure={handleStreamAuthFailure}
-            onFocus={(selectedCamera, triggerElement) => openFocus(selectedCamera, triggerElement)}
-            shouldRenderStream={!focusedCamera && activeStreamZoneIds.has(camera.zone_id)}
-            pausedReason={
-              focusedCamera
-                ? 'Focus mode active'
-                : isDocumentVisible
-                ? 'Click to focus live stream'
-                : 'Paused in background tab'
-            }
-          />
+            layout
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.01 : 0.5, ease: 'easeInOut', delay: prefersReducedMotion ? 0 : 0.03 * (Number(camera.id) || 1) }}
+            className="transition-all duration-500 ease-in-out"
+          >
+            <CameraCard
+              camera={{
+                ...camera,
+                runtime_status: cameraRuntimeMap[camera.zone_id] || 'unknown',
+                detection_engine_status: detectionEngineStatus,
+                health: cameraHealthMap[camera.zone_id] || null,
+                stream_token: streamTokens[camera.zone_id]?.token || null,
+                stream_session_id: streamSessionId,
+              }}
+              onStreamAuthFailure={handleStreamAuthFailure}
+              onFocus={(selectedCamera, triggerElement) => openFocus(selectedCamera, triggerElement)}
+              shouldRenderStream={!focusedCamera && activeStreamZoneIds.has(camera.zone_id)}
+              pausedReason={
+                focusedCamera
+                  ? 'Focus mode active'
+                  : isDocumentVisible
+                  ? 'Click to focus live stream'
+                  : 'Paused in background tab'
+              }
+            />
+          </motion.div>
         ))}
       </div>
 
       {focusedCamera && (
-        <div
+        <motion.div
           role="dialog"
           aria-modal="true"
           aria-label={`Focused view for ${focusedCamera.zone_name || focusedCamera.zone_id}`}
           className="fixed inset-0 z-50 bg-slate-950/80 p-2 sm:p-4 md:p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
         >
-          <div className="h-full w-full rounded-xl bg-white border border-slate-200 shadow-xl overflow-auto">
-            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur px-3 sm:px-4 py-3">
+          <div className="h-full w-full rounded-xl glass-elevated border border-white/10 shadow-xl overflow-auto">
+            <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-900/90 backdrop-blur px-3 sm:px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Focused camera</p>
-                  <h3 className="text-base sm:text-lg font-semibold text-slate-900">{focusedCamera.zone_name || focusedCamera.zone_id}</h3>
-                  <p className="text-xs text-slate-500">{focusedCamera.location_description || focusedCamera.zone_id}</p>
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-100">{focusedCamera.zone_name || focusedCamera.zone_id}</h3>
+                  <p className="text-xs text-slate-400">{focusedCamera.location_description || focusedCamera.zone_id}</p>
                 </div>
                 <button
                   ref={closeButtonRef}
                   type="button"
                   onClick={closeFocus}
-                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm border border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm border border-white/20 text-slate-100 hover:bg-white/5 focus-ring"
                   aria-label="Close camera focus and return to camera grid"
                 >
                   <span aria-hidden="true">←</span>
@@ -424,17 +450,17 @@ function CameraGrid({ reloadToken = 0 }) {
                 )}
               </div>
               <div className="xl:col-span-4 space-y-4">
-                <section className="rounded-lg border border-slate-200 p-3">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Recent detections</h4>
-                  <ul className="text-xs text-slate-600 space-y-1.5">
+                <section className="rounded-lg border border-white/10 p-3">
+                  <h4 className="text-sm font-semibold text-slate-200 mb-2">Recent detections</h4>
+                  <ul className="text-xs text-slate-400 space-y-1.5">
                     {zoneEvents.length === 0 ? <li>No recent detections</li> : zoneEvents.map((ev) => (
                       <li key={ev.event_id || ev.id}>{formatDateTime(ev.timestamp || ev.detected_at)} — {(ev.class_label || ev.class_name || 'Detection')}</li>
                     ))}
                   </ul>
                 </section>
-                <section className="rounded-lg border border-slate-200 p-3">
-                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Recent alerts</h4>
-                  <ul className="text-xs text-slate-600 space-y-1.5">
+                <section className="rounded-lg border border-white/10 p-3">
+                  <h4 className="text-sm font-semibold text-slate-200 mb-2">Recent alerts</h4>
+                  <ul className="text-xs text-slate-400 space-y-1.5">
                     {zoneAlerts.length === 0 ? <li>No recent alerts</li> : zoneAlerts.map((al) => (
                       <li key={al.alert_id || al.id}>{formatDateTime(al.alerted_at || al.timestamp)} — {(al.status || 'unknown')}</li>
                     ))}
@@ -443,7 +469,7 @@ function CameraGrid({ reloadToken = 0 }) {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

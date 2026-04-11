@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import AlertHistory from '../../../components/alerts/AlertHistory';
+import AlertHistory from '../../../components/alerts/AlertHistory.jsx';
 import api from '../../../hooks/useApi';
-import { useFilterState } from '../../../context/AlertContext';
+import { useFilterState } from '../../../context/AlertContext.jsx';
 
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
@@ -11,7 +11,7 @@ jest.mock('../../../hooks/useApi', () => ({
   },
 }));
 
-jest.mock('../../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext.jsx', () => ({
   useFilterState: jest.fn(),
 }));
 

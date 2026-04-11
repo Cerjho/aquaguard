@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import IncidentHistory from '../../../components/events/IncidentHistory';
+import IncidentHistory from '../../../components/events/IncidentHistory.jsx';
 import api from '../../../hooks/useApi';
-import { useFilterState } from '../../../context/AlertContext';
+import { useFilterState } from '../../../context/AlertContext.jsx';
 
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
@@ -11,8 +11,13 @@ jest.mock('../../../hooks/useApi', () => ({
   },
 }));
 
-jest.mock('../../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext.jsx', () => ({
   useFilterState: jest.fn(),
+}));
+
+jest.mock('framer-motion', () => ({
+  ...jest.requireActual('framer-motion'),
+  useReducedMotion: () => false,
 }));
 
 describe('IncidentHistory mapping resilience', () => {
@@ -60,5 +65,27 @@ describe('IncidentHistory mapping resilience', () => {
         params: { page: 1, limit: 10 },
       });
     });
+  });
+
+  test('shows loading status skeleton while fetching', async () => {
+    let resolveRequest;
+    api.get.mockReturnValue(new Promise((resolve) => {
+      resolveRequest = resolve;
+    }));
+
+    render(<IncidentHistory />);
+
+    expect(
+      screen.getByRole('status', { name: /loading incident history/i })
+    ).toBeInTheDocument();
+
+    resolveRequest({
+      data: {
+        events: [],
+        total: 0,
+      },
+    });
+
+    await screen.findByText(/No events recorded/i);
   });
 });

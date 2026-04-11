@@ -12,10 +12,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
-import { AuthProvider } from './context/AuthContext';
-import { DataCacheProvider } from './context/DataCacheContext';
-import { AlertProvider } from './context/AlertContext';
+import App from './App.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
+import { DataCacheProvider } from './context/DataCacheContext.jsx';
+import { AlertProvider } from './context/AlertContext.jsx';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 

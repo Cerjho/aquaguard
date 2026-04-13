@@ -100,7 +100,7 @@ function CameraCard({
     typeof corruptionRate === 'number' && corruptionRate > 0.1;
   const healthDegraded =
     healthStatus === 'degraded' || fpsDegraded || corruptionDegraded;
-  const { transport, webrtcState, streamUrl, videoStream } = useWebRTCStream({
+  const { transport, streamUrl, videoStream } = useWebRTCStream({
     zoneId: camera.zone_id,
     streamToken,
     shouldRenderStream,

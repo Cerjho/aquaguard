@@ -18,7 +18,7 @@ import { normalizeServiceStatus } from '../../utils/statusHelpers';
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
 const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
-const MAX_GRID_STREAMS = 9;
+const MAX_GRID_STREAMS = 1;
 
 function CameraGrid({ reloadToken = 0 }) {
   const prefersReducedMotion = useReducedMotion();

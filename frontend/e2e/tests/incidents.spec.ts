@@ -17,7 +17,7 @@ test.describe('Incidents Page', () => {
     await incidentsPage.goto();
     await incidentsPage.isLoaded();
 
-    await expect(incidentsPage.alertTable).toBeVisible();
+    await expect(incidentsPage.incidentMasterList).toBeVisible();
   });
 
   test('should have filter controls', async ({ authenticatedPage }) => {
@@ -25,6 +25,8 @@ test.describe('Incidents Page', () => {
     await incidentsPage.goto();
     await incidentsPage.isLoaded();
 
+    await expect(incidentsPage.addFilterButton).toBeVisible();
+    await incidentsPage.addFilterButton.click();
     await expect(incidentsPage.zoneIdFilter).toBeVisible();
     await expect(incidentsPage.statusFilter).toBeVisible();
     await expect(incidentsPage.resetFiltersButton).toBeVisible();
@@ -34,6 +36,7 @@ test.describe('Incidents Page', () => {
     const incidentsPage = new IncidentsPage(authenticatedPage);
     await incidentsPage.goto();
     await incidentsPage.isLoaded();
+    await incidentsPage.addFilterButton.click();
 
     // Get initial count
     const initialCount = await incidentsPage.getAlertCount();
@@ -53,6 +56,7 @@ test.describe('Incidents Page', () => {
     const incidentsPage = new IncidentsPage(authenticatedPage);
     await incidentsPage.goto();
     await incidentsPage.isLoaded();
+    await incidentsPage.addFilterButton.click();
 
     // Filter by acknowledged
     await incidentsPage.filterByStatus('acknowledged');
@@ -68,6 +72,7 @@ test.describe('Incidents Page', () => {
     const incidentsPage = new IncidentsPage(authenticatedPage);
     await incidentsPage.goto();
     await incidentsPage.isLoaded();
+    await incidentsPage.addFilterButton.click();
 
     // Apply filters
     await incidentsPage.filterByZone('zone_test');
@@ -97,6 +102,17 @@ test.describe('Incidents Page', () => {
     // Switch back to alert history
     await incidentsPage.switchToAlertHistory();
     await authenticatedPage.waitForTimeout(500);
+  });
+
+  test('should open incident detail drawer when selecting a row', async ({ authenticatedPage }) => {
+    const incidentsPage = new IncidentsPage(authenticatedPage);
+    await incidentsPage.goto();
+    await incidentsPage.isLoaded();
+
+    if ((await incidentsPage.incidentRows.count()) > 0) {
+      await incidentsPage.incidentRows.first().click();
+      await expect(incidentsPage.incidentDetailDrawer).toBeVisible();
+    }
   });
 
   test('should show pagination controls', async ({ authenticatedPage }) => {

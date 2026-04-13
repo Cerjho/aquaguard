@@ -79,6 +79,40 @@ export const mockAlerts = [
   },
 ];
 
+// Mock Incident History Data (sample/testing only)
+export const mockIncidentHistoryAlerts = [
+  {
+    id: 'hist_001',
+    zone_id: 'zone_pool_main',
+    zone_name: 'Main Pool',
+    confidence: 0.94,
+    status: 'unacknowledged',
+    alerted_at: '2026-04-12T13:05:00Z',
+    acknowledged_by_username: null,
+    threat_level: 'Critical',
+  },
+  {
+    id: 'hist_002',
+    zone_id: 'zone_pool_kids',
+    zone_name: 'Kids Pool',
+    confidence: 0.81,
+    status: 'acknowledged',
+    alerted_at: '2026-04-12T12:58:00Z',
+    acknowledged_by_username: 'lifeguard_anna',
+    threat_level: 'Reviewed',
+  },
+  {
+    id: 'hist_003',
+    zone_id: 'zone_pool_deep',
+    zone_name: 'Deep End',
+    confidence_score: 0.76,
+    status: 'unacknowledged',
+    timestamp: '2026-04-12T12:46:00Z',
+    acknowledged_by: null,
+    severity: 'Elevated',
+  },
+];
+
 // Mock Detection Events
 export const mockDetectionEvents = [
   {
@@ -222,6 +256,7 @@ export const createDetectionEvent = (overrides = {}) => ({
 export default {
   mockCameras,
   mockAlerts,
+  mockIncidentHistoryAlerts,
   mockDetectionEvents,
   mockAnalytics,
   mockSystemHealth,

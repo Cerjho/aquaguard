@@ -191,6 +191,21 @@ The frontend consumes URLs from `frontend/src/utils/constants.js` using
 1. Install libraries:
    - PubSubClient by Nick O'Leary
    - ArduinoJson by Benoit Blanchon
+
+   If Arduino shows `Failed to install library: 'PubSubClient:2.8.0'` with a
+   missing path similar to
+   `C:\Users\...\OneDrive\...\Arduino\libraries`, fix the Sketchbook path:
+   - Arduino IDE -> File -> Preferences -> Sketchbook location
+   - Set it to an existing folder (example:
+     `C:\Users\Jhocer Barcela\Documents\Arduino`)
+   - Ensure a `libraries` folder exists there, then retry install
+
+   PowerShell quick fix:
+
+   ```powershell
+   New-Item -ItemType Directory -Force "C:\Users\Jhocer Barcela\Documents\Arduino\libraries"
+   ```
+
 1. Open `esp32/aquaguard_esp32/config.h` and update:
    - `WIFI_SSID`
    - `WIFI_PASSWORD`

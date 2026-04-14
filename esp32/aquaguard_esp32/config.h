@@ -2,11 +2,11 @@
 #define CONFIG_H
 
 // Wi-Fi credentials — change before flashing
-#define WIFI_SSID           "your_wifi_ssid"
-#define WIFI_PASSWORD       "your_wifi_password"
+#define WIFI_SSID           "BarcelaFi_2.4GHz"
+#define WIFI_PASSWORD       "FamilyNet@24"
 
 // MQTT broker — edge server LAN IP
-#define MQTT_BROKER         "192.168.1.x"
+#define MQTT_BROKER         "192.168.1.15"
 #define MQTT_PORT           1883
 
 // GPIO pin driving buzzer/relay

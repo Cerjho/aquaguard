@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import SystemStatus from '../../../components/system/SystemStatus';
-import { useSocketState, useSystemState } from '../../../context/AlertContext';
+import SystemStatus from '../../../components/system/SystemStatus.jsx';
+import { useSocketState, useSystemState } from '../../../context/AlertContext.jsx';
 
-jest.mock('../../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext.jsx', () => ({
   useSocketState: jest.fn(),
   useSystemState: jest.fn(),
 }));

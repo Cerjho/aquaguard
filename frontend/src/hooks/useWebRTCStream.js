@@ -54,7 +54,6 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
 
   useEffect(() => {
     fallbackUrlRef.current = fallbackUrl;
-    setStreamUrl(fallbackUrl);
   }, [fallbackUrl]);
 
   useEffect(() => {
@@ -62,6 +61,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       setTransport('fallback');
       setWebrtcState(WEBRTC_ENABLE ? 'idle' : 'disabled');
       setVideoStream(null);
+      setStreamUrl(fallbackUrlRef.current);
       return undefined;
     }
     if (typeof RTCPeerConnection === 'undefined') {

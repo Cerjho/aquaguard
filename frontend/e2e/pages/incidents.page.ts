@@ -8,6 +8,7 @@ export class IncidentsPage {
   readonly heading: Locator;
   readonly alertHistoryTab: Locator;
   readonly detectionEventsTab: Locator;
+  readonly addFilterButton: Locator;
 
   // Filter controls
   readonly zoneIdFilter: Locator;
@@ -19,6 +20,9 @@ export class IncidentsPage {
 
   // Table
   readonly alertTable: Locator;
+  readonly incidentMasterList: Locator;
+  readonly incidentRows: Locator;
+  readonly incidentDetailDrawer: Locator;
   readonly pagination: Locator;
   readonly prevPageButton: Locator;
   readonly nextPageButton: Locator;
@@ -28,9 +32,10 @@ export class IncidentsPage {
     this.heading = page.getByRole('heading', { name: /incidents/i });
     this.alertHistoryTab = page.getByRole('button', { name: /alert history/i });
     this.detectionEventsTab = page.getByRole('button', { name: /detection events/i });
+    this.addFilterButton = page.getByRole('button', { name: /add filter/i });
 
     // Filters
-    this.zoneIdFilter = page.getByPlaceholder(/zone id/i);
+    this.zoneIdFilter = page.getByLabel(/zone id/i);
     this.statusFilter = page.getByRole('combobox', { name: /status/i });
     this.confidenceFilter = page.getByRole('spinbutton', { name: /confidence/i });
     this.fromDateFilter = page.getByRole('textbox', { name: /from/i });
@@ -39,6 +44,9 @@ export class IncidentsPage {
 
     // Table
     this.alertTable = page.getByRole('table').first();
+    this.incidentMasterList = page.getByTestId('incident-master-list');
+    this.incidentRows = page.getByTestId('incident-row');
+    this.incidentDetailDrawer = page.getByTestId('incident-detail-drawer');
     this.pagination = page.locator('text=/Page \\d+ of \\d+/i');
     this.prevPageButton = page.getByRole('button', { name: /prev/i });
     this.nextPageButton = page.getByRole('button', { name: /next/i });
@@ -50,7 +58,7 @@ export class IncidentsPage {
 
   async isLoaded() {
     await this.heading.waitFor({ state: 'visible' });
-    await this.alertTable.waitFor({ state: 'visible' });
+    await this.incidentMasterList.waitFor({ state: 'visible' });
   }
 
   async switchToAlertHistory() {

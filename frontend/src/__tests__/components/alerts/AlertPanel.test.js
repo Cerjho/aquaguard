@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import AlertPanel, { resolveSnapshotUrl } from '../../../components/alerts/AlertPanel';
-import * as AlertContext from '../../../context/AlertContext';
+import AlertPanel, { resolveSnapshotUrl } from '../../../components/alerts/AlertPanel.jsx';
+import * as AlertContext from '../../../context/AlertContext.jsx';
 
 // Prevent axios ESM import errors from transitive deps
 jest.mock('../../../hooks/useApi', () => ({ post: jest.fn(), get: jest.fn() }));

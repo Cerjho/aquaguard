@@ -13,12 +13,17 @@ def handle_connect(auth):
     Validate optional JWT on WebSocket handshake.
     auth dict may contain {'token': '<access_token>'}.
     """
+    logger.info('WebSocket connect attempt from %s', request.remote_addr)
+    
     auth_token = (auth or {}).get('token')
     cookie_token = (
         request.cookies.get('access_token_cookie')
         or request.cookies.get('csrf_access_token')
         or None
     )
+    
+    logger.debug('Auth token present: %s, Cookie token present: %s', 
+                 bool(auth_token), bool(cookie_token))
 
     decoded = None
     if auth_token:
@@ -26,23 +31,24 @@ def handle_connect(auth):
             from flask_jwt_extended import decode_token
             decoded = decode_token(auth_token)
         except JWTExtendedException as exc:
-            logger.warning(f'WebSocket auth token invalid, trying cookie token: {exc}')
+            logger.warning('WebSocket auth token invalid, trying cookie token: %s', exc)
 
     if decoded is None and cookie_token:
         try:
             from flask_jwt_extended import decode_token
             decoded = decode_token(cookie_token)
         except JWTExtendedException as exc:
-            logger.warning(f'WebSocket cookie token invalid: {exc}')
+            logger.warning('WebSocket cookie token invalid: %s', exc)
 
     if auth_token and decoded is None:
+        logger.warning('WebSocket connect REJECTED - invalid auth token')
         return False  # reject explicitly invalid token handshakes
 
     if decoded is not None:
         user_id = decoded.get('sub')
-        logger.info(f'WebSocket connect: user_id={user_id}')
+        logger.info('WebSocket connect SUCCESS: user_id=%s, sid=%s', user_id, request.sid)
     else:
-        logger.info('WebSocket connect: anonymous client')
+        logger.info('WebSocket connect SUCCESS: anonymous client, sid=%s', request.sid)
 
     status = get_runtime_status()
     socketio.emit('system_status', status.get('detection_engine', {}), to=request.sid)
@@ -51,7 +57,20 @@ def handle_connect(auth):
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    logger.info('WebSocket disconnect: client session ended')
+    logger.info('WebSocket disconnect: sid=%s', request.sid)
+
+
+@socketio.on_error_default
+def default_error_handler(e):
+    """Handle socket errors without crashing the connection."""
+    logger.error('Socket.IO error: %s', e)
+
+
+@socketio.on('ping')
+def handle_ping():
+    """Custom ping handler for debugging connection issues."""
+    logger.debug('Received ping from sid=%s', request.sid)
+    return 'pong'
 
 
 # ── Server-emitted events (called from route handlers) ───────────────────────

@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import DashboardPage from '../../pages/DashboardPage';
+import DashboardPage from '../../pages/DashboardPage.jsx';
 
-jest.mock('../../components/camera/CameraGrid', () => () => <div>Mock Camera Grid</div>);
-jest.mock('../../components/events/DetectionFeed', () => () => <div>Mock Detection Feed</div>);
-jest.mock('../../components/system/SystemStatus', () => () => <div>Mock System Status</div>);
-jest.mock('../../components/camera/CameraManagementPanel', () => () => <div>Mock Camera Management</div>);
+jest.mock('../../components/camera/CameraGrid.jsx', () => () => <div>Mock Camera Grid</div>);
+jest.mock('../../components/events/DetectionFeed.jsx', () => () => <div>Mock Detection Feed</div>);
+jest.mock('../../components/system/SystemStatus.jsx', () => () => <div>Mock System Status</div>);
+jest.mock('../../components/camera/CameraManagementPanel.jsx', () => () => <div>Mock Camera Management</div>);
 
 describe('DashboardPage', () => {
   test('keeps dashboard focused on monitoring and excludes camera management panel', () => {

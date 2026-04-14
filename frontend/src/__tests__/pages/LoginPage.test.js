@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import LoginPage from '../../pages/LoginPage';
-import * as AuthContext from '../../context/AuthContext';
+import LoginPage from '../../pages/LoginPage.jsx';
+import * as AuthContext from '../../context/AuthContext.jsx';
 
 // Prevent axios ESM import errors from transitive deps
 jest.mock('../../hooks/useApi', () => ({ post: jest.fn(), get: jest.fn() }));

@@ -10,6 +10,7 @@ Usage:
 """
 import logging
 import os
+import sys
 import json
 import time
 from datetime import datetime, timezone
@@ -29,6 +30,9 @@ logger = logging.getLogger("aquaguard.main")
 
 # ── Base directories ──────────────────────────────────────────────────────────
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Add project root to Python path for imports
+if _BASE_DIR not in sys.path:
+    sys.path.insert(0, _BASE_DIR)
 
 # ── Snapshot directory — MUST be absolute (resolved here, passed downstream) ──
 _SNAPSHOT_DIR = os.path.join(_BASE_DIR, "backend", "snapshots")
@@ -256,6 +260,7 @@ def _process_zone_frame(
     mqtt_client,
     live_dir: str,
     last_heartbeat_at: dict,
+    frame_writer=None,
 ) -> bool:
     """Process one frame from a camera zone.
     Returns:
@@ -264,6 +269,11 @@ def _process_zone_frame(
     frame, metadata = camera.read()
     if frame is None:
         return False
+
+    # CRITICAL: Feed raw frame to frame writer FIRST (ensures smooth stream)
+    # This happens BEFORE slow detection, preventing blackouts
+    if frame_writer is not None:
+        frame_writer.update_raw_frame(frame)
 
     detections = detector.detect(frame)
     logger.debug("Zone %s: %d detections", zone_id, len(detections))
@@ -305,6 +315,9 @@ def _process_zone_frame(
     }
     try:
         annotated = _annotate_live_frame(frame, detections, zone_id, frame_timestamp)
+        # Feed annotated frame to frame writer (overwrites raw frame for smooth display)
+        if frame_writer is not None:
+            frame_writer.update_annotated_frame(annotated)
         _write_live_zone_artifacts(live_dir, zone_id, annotated, status_payload)
     except (OSError, ValueError) as artifact_exc:
         logger.warning("Live artifact update failed for zone %s: %s", zone_id, artifact_exc)
@@ -369,6 +382,20 @@ def _process_zone_frame(
 
 
 def main():
+    """
+    AquaGuard detection engine main loop — Multi-threaded Three-Lane Highway.
+    
+    Architecture:
+    ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+    │   Camera    │ ───► │  Detection  │ ───► │   Frame     │
+    │  (30 FPS)   │      │  (~10 FPS)  │      │   Writer    │
+    │  Worker 1   │      │  Worker 2   │      │  Worker 3   │
+    └─────────────┘      └─────────────┘      │  (30 FPS)   │
+          │                                   └─────────────┘
+          └─────────────────────────────────────────┘
+              Raw frames also go directly to writer
+              (ensures smooth video even when AI is slow)
+    """
     from detection_engine.camera.registry import CameraRegistry
     from detection_engine.vision.detector import DrowningDetector
     from detection_engine.vision.pose_estimator import PoseEstimator
@@ -377,6 +404,7 @@ def main():
     from detection_engine.alert.mqtt_client import MQTTClient
     from detection_engine.alert.api_client import APIClient
     from detection_engine.alert.alert_engine import AlertEngine
+    from detection_engine.pipeline.pipeline_manager import PipelineManager
 
     validate_runtime_settings()
     _LIVE_DIR = os.path.join(_BASE_DIR, "backend", "snapshots", "live")
@@ -416,8 +444,10 @@ def main():
     }
     logger.info("Initialized %d DrowningDetector(s)", len(detectors))
 
-    # ── Per-zone stateful analyzers/filters (prevents cross-zone track collisions)
+    # ── Shared PoseEstimator (stateless, safe to share) ───────────────────────
     pose_estimator = PoseEstimator()
+    
+    # ── Per-zone stateful analyzers/filters (prevents cross-zone track collisions)
     behavior_analyzers = {
         zone_id: BehaviorAnalyzer()
         for zone_id in registry.cameras.keys()
@@ -435,6 +465,77 @@ def main():
         mqtt_client.connect()
     except (OSError, RuntimeError, ValueError) as exc:
         logger.warning("MQTT broker unavailable at startup: %s — continuing without MQTT", exc)
+
+    # ── Detection callback for alert processing ───────────────────────────────
+    last_heartbeat_at = {}
+    
+    def _on_detection(zone_id: str, frame_data, filtered_detections: list):
+        """Called by detection worker for each processed frame."""
+        frame = frame_data.frame
+        timestamp = frame_data.timestamp
+        
+        # Get camera health
+        camera = registry.cameras.get(zone_id)
+        camera_health = camera.health if camera else None
+        
+        # Send heartbeat if due
+        now_ts = time.time()
+        try:
+            _send_zone_heartbeat_if_due(
+                mqtt_client=mqtt_client,
+                zone_id=zone_id,
+                detection_count=len(filtered_detections),
+                now_epoch_s=now_ts,
+                last_heartbeat_at=last_heartbeat_at,
+                camera_health=camera_health,
+            )
+        except (OSError, RuntimeError, ValueError) as hb_exc:
+            logger.warning("Heartbeat publish failed for zone %s: %s", zone_id, hb_exc)
+        
+        # Process detections for alerts
+        behavior_analyzer = behavior_analyzers[zone_id]
+        confidence_filter = confidence_filters[zone_id]
+        active_track_ids = {str(det.track_id) for det in filtered_detections}
+        
+        for det in filtered_detections:
+            # Get behavior score from detection (set by detection_worker)
+            behavior_score = getattr(det, 'behavior_flags', None)
+            if behavior_score is None:
+                continue
+            
+            # Pass score through confidence filter for rolling-window smoothing
+            alert_confirmed = confidence_filter.evaluate(
+                track_id=str(det.track_id),
+                score=float(behavior_score),
+            )
+            
+            if not alert_confirmed:
+                continue
+            
+            # Check if alert should trigger (cooldown, deduplication, etc.)
+            should_alert = alert_engine.should_trigger_alert(
+                zone_id=zone_id,
+                track_id=det.track_id,
+                final_confidence=float(behavior_score),
+                class_label=det.class_label,
+                behavior_flags=det.behavior_flags,
+            )
+            
+            if should_alert:
+                alert_engine.dispatch_alert(
+                    zone_id=zone_id,
+                    track_id=det.track_id,
+                    frame=frame,
+                    bbox=det.bbox,
+                    class_label=det.class_label,
+                    yolo_confidence=float(det.confidence),
+                    pose_confidence=None,
+                    final_confidence=float(behavior_score),
+                )
+                logger.info("Zone %s track %s: alert dispatched", zone_id, det.track_id)
+        
+        behavior_analyzer.cleanup_stale_tracks(active_track_ids)
+        confidence_filter.cleanup_stale_tracks(active_track_ids)
 
     # ── Wire up camera health → MQTT publishing ───────────────────────────────
     def _on_camera_status_change(zone_id, status, reason, health):
@@ -456,48 +557,69 @@ def main():
     for camera in registry.cameras.values():
         camera._health_tracker.set_status_callback(_on_camera_status_change)
 
-    # ── Start camera threads ──────────────────────────────────────────────────
-    registry.start_all()
-    logger.info("AquaGuard detection loop starting ...")
+    # ── Create multi-threaded pipeline manager ────────────────────────────────
+    pipeline_manager = PipelineManager(
+        live_dir=_LIVE_DIR,
+        annotate_frame_fn=_annotate_live_frame,
+        detection_callback=_on_detection,
+        target_fps=30,
+    )
+    
+    # Create pipeline for each camera zone
+    for zone_id, camera in registry.cameras.items():
+        pipeline_manager.create_pipeline(
+            zone_id=zone_id,
+            camera=camera,
+            detector=detectors[zone_id],
+            pose_estimator=pose_estimator,
+            behavior_analyzer=behavior_analyzers[zone_id],
+            confidence_filter=confidence_filters[zone_id],
+        )
+    
+    logger.info("Created %d multi-threaded pipelines (Three-Lane Highway)", len(registry.cameras))
 
-    # ── Main detection loop ───────────────────────────────────────────────────
-    last_heartbeat_at = {}
+    # ── Start all workers ─────────────────────────────────────────────────────
+    registry.start_all()  # Start camera capture threads
+    pipeline_manager.start_all()  # Start detection workers + frame writers
+    
+    logger.info("=" * 60)
+    logger.info("AquaGuard Detection Engine RUNNING")
+    logger.info("  Architecture: Multi-threaded Three-Lane Highway")
+    logger.info("  Worker 1 (Camera):    30 FPS frame capture")
+    logger.info("  Worker 2 (Detection): ~10-15 FPS AI inference")
+    logger.info("  Worker 3 (Streamer):  30 FPS smooth output")
+    logger.info("=" * 60)
+
+    # ── Main loop — just monitor, workers do the actual work ──────────────────
     try:
         while True:
-            any_frame_processed = False
-            for zone_id, camera in registry.cameras.items():
-                try:
-                    frame_was_processed = _process_zone_frame(
-                        zone_id=zone_id,
-                        camera=camera,
-                        detector=detectors[zone_id],
-                        pose_estimator=pose_estimator,
-                        behavior_analyzer=behavior_analyzers[zone_id],
-                        confidence_filter=confidence_filters[zone_id],
-                        alert_engine=alert_engine,
-                        mqtt_client=mqtt_client,
-                        live_dir=_LIVE_DIR,
-                        last_heartbeat_at=last_heartbeat_at,
-                    )
-                    if frame_was_processed:
-                        any_frame_processed = True
-                except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
-                    logger.exception("Processing error in zone %s: %s", zone_id, exc)
-                    continue
-            # Prevent tight loop CPU burn when cameras are reconnecting
-            if not any_frame_processed:
-                time.sleep(0.1)
+            # Log pipeline stats every 30 seconds
+            time.sleep(30)
+            stats = pipeline_manager.stats
+            for zone_id, zone_stats in stats.items():
+                queue_stats = zone_stats.get('raw_queue', {})
+                logger.info(
+                    "[%s] Pipeline: drop_rate=%.1f%%, frames_processed=%d",
+                    zone_id,
+                    queue_stats.get('drop_rate', 0) * 100,
+                    queue_stats.get('frames_processed', 0),
+                )
 
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt received — shutting down ...")
     finally:
+        # Stop in reverse order
+        pipeline_manager.stop_all()
         registry.stop_all()
         try:
             mqtt_client.close()
         except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("MQTT shutdown encountered an error: %s", exc)
-        logger.info("All camera threads stopped. Goodbye.")
+        logger.info("All workers stopped. Goodbye.")
 
 
 if __name__ == "__main__":
-    main()
+    # Run with watchdog for crash-proof operation
+    # Critical for life-safety drowning detection system
+    from detection_engine.watchdog import run_with_watchdog
+    run_with_watchdog(main)

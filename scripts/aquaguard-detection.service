@@ -1,0 +1,37 @@
+# AquaGuard Detection Engine - Systemd Service
+# Install: sudo cp aquaguard-detection.service /etc/systemd/system/
+# Enable: sudo systemctl enable aquaguard-detection
+# Start: sudo systemctl start aquaguard-detection
+
+[Unit]
+Description=AquaGuard Drowning Detection Engine
+After=network.target mosquitto.service
+Wants=mosquitto.service
+
+[Service]
+Type=simple
+User=aquaguard
+WorkingDirectory=/opt/aquaguard
+Environment="PATH=/opt/aquaguard/aquaguard_env/bin"
+ExecStart=/opt/aquaguard/aquaguard_env/bin/python detection_engine/main.py
+
+# Auto-restart on crash
+Restart=always
+RestartSec=10
+StartLimitInterval=0
+
+# Resource limits
+MemoryLimit=2G
+CPUQuota=80%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aquaguard-detection
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

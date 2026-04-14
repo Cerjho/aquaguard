@@ -109,4 +109,47 @@ def create_app():
             'message': 'An unexpected error occurred.',
         }, 500
 
+    # Auto-create database tables and default admin user on startup
+    with app.app_context():
+        db.create_all()
+        _ensure_default_users(app)
+
     return app
+
+
+def _ensure_default_users(app):
+    """Create default admin and lifeguard users if they don't exist."""
+    from models import User
+    
+    # Default credentials - use env vars if available, otherwise use defaults
+    default_admin_password = os.environ.get('SEED_ADMIN_PASSWORD', 'aquaguard2026')
+    default_guard_password = os.environ.get('SEED_GUARD_PASSWORD', 'lifeguard123')
+    
+    users_to_create = [
+        {'username': 'admin', 'password': default_admin_password, 'role': 'admin'},
+        {'username': 'lifeguard', 'password': default_guard_password, 'role': 'lifeguard'},
+    ]
+    
+    for user_data in users_to_create:
+        existing = User.query.filter_by(username=user_data['username']).first()
+        if not existing:
+            pw_hash = bcrypt.generate_password_hash(user_data['password']).decode('utf-8')
+            user = User(
+                username=user_data['username'],
+                password_hash=pw_hash,
+                role=user_data['role'],
+                is_active=True
+            )
+            db.session.add(user)
+            app.logger.info('Created default user: %s (%s)', user_data['username'], user_data['role'])
+        else:
+            # Ensure user is active and reset password to known value for dev
+            if not existing.is_active:
+                existing.is_active = True
+                app.logger.info('Activated user: %s', user_data['username'])
+            # Reset password to ensure it matches expected value
+            existing.password_hash = bcrypt.generate_password_hash(user_data['password']).decode('utf-8')
+            app.logger.info('Reset password for user: %s', user_data['username'])
+    
+    db.session.commit()
+    app.logger.info('Default users ready. Login with: admin / %s', default_admin_password)

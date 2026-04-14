@@ -19,8 +19,26 @@ def _socketio_allowed_origins():
     return origins or ['http://localhost:3000']
 
 
-socketio = SocketIO(async_mode='threading', cors_allowed_origins=_socketio_allowed_origins())
+socketio = SocketIO(
+    async_mode='threading',
+    cors_allowed_origins=_socketio_allowed_origins(),
+    # CRITICAL: Extend ping timeouts to prevent disconnections during heavy load
+    # Default ping_timeout is 20s, ping_interval is 25s - too short for life-safety system
+    ping_timeout=60,      # Time to wait for pong before considering connection dead
+    ping_interval=25,     # How often to send ping frames
+)
 bcrypt   = Bcrypt()
 migrate  = Migrate()
 cors     = CORS()
-limiter  = Limiter(key_func=get_remote_address, default_limits=['200 per day'])
+DEFAULT_RATE_LIMITS = os.getenv(
+    'FLASK_DEFAULT_RATE_LIMITS',
+    '2000 per day,300 per hour',
+)
+limiter  = Limiter(
+    key_func=get_remote_address,
+    default_limits=[
+        limit.strip()
+        for limit in DEFAULT_RATE_LIMITS.split(',')
+        if limit.strip()
+    ],
+)

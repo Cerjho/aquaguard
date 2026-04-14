@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import AlertHistory from '../../../components/alerts/AlertHistory';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import AlertHistory from '../../../components/alerts/AlertHistory.jsx';
 import api from '../../../hooks/useApi';
-import { useFilterState } from '../../../context/AlertContext';
+import { useFilterState } from '../../../context/AlertContext.jsx';
+import { mockIncidentHistoryAlerts } from '../../fixtures/mockData';
 
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
@@ -11,7 +12,7 @@ jest.mock('../../../hooks/useApi', () => ({
   },
 }));
 
-jest.mock('../../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext.jsx', () => ({
   useFilterState: jest.fn(),
 }));
 
@@ -33,7 +34,7 @@ describe('AlertHistory shared triage filters', () => {
 
   test('applies shared filter params to alerts query', async () => {
     api.get.mockResolvedValue({
-      data: [{ id: 'a1', zone_id: 'zone_01', status: 'unacknowledged', alerted_at: new Date().toISOString() }],
+      data: mockIncidentHistoryAlerts,
     });
 
     render(<AlertHistory />);
@@ -52,5 +53,20 @@ describe('AlertHistory shared triage filters', () => {
 
     const matches = await screen.findAllByText(/Unacknowledged/i);
     expect(matches.length).toBeGreaterThan(0);
+  });
+
+  test('keeps filters collapsed by default and reveals on Add Filter', async () => {
+    api.get.mockResolvedValue({
+      data: mockIncidentHistoryAlerts,
+    });
+
+    render(<AlertHistory />);
+
+    expect(screen.getByRole('button', { name: /add filter/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/filter alerts by zone id/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /add filter/i }));
+
+    expect(await screen.findByLabelText(/filter alerts by zone id/i)).toBeInTheDocument();
   });
 });

@@ -1,0 +1,65 @@
+/**
+ * AquaGuard — System Page (Ocean Theme)
+ *
+ * System health monitoring and camera management.
+ */
+
+import React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import SystemStatus from '../components/system/SystemStatus.jsx';
+import CameraManagementPanel from '../components/camera/CameraManagementPanel.jsx';
+
+function SystemPage() {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.div 
+      className="flex flex-col gap-6"
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
+    >
+      {/* Page header */}
+      <div className="flex items-center gap-3">
+        <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
+        <div>
+          <h2 className="text-3xl font-semibold tracking-tight text-slate-900">System Status</h2>
+          <p className="text-sm text-slate-600 mt-1">
+            Real-time health of cameras, detection engine, and ESP32 devices
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 2xl:grid-cols-3 gap-6">
+        <motion.section
+          aria-labelledby="system-health-title"
+          className="2xl:col-span-1 glass-subtle p-5 rounded-3xl border border-slate-200"
+          initial={{ opacity: 0, x: prefersReducedMotion ? 0 : -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: prefersReducedMotion ? 0 : 0.1 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 id="system-health-title" className="text-sm font-semibold text-slate-800">
+              System Health
+            </h3>
+          </div>
+          <SystemStatus />
+        </motion.section>
+
+        <motion.section
+          className="2xl:col-span-2"
+          initial={{ opacity: 0, x: prefersReducedMotion ? 0 : 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: prefersReducedMotion ? 0 : 0.2 }}
+        >
+          <CameraManagementPanel />
+        </motion.section>
+      </div>
+    </motion.div>
+  );
+}
+
+export default SystemPage;

@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, waitFor, fireEvent, screen } from '@testing-library/react';
-import AnalyticsChart from '../../../components/analytics/AnalyticsChart';
+import AnalyticsChart from '../../../components/analytics/AnalyticsChart.jsx';
 import api from '../../../hooks/useApi';
-import { useFilterState } from '../../../context/AlertContext';
+import { useFilterState } from '../../../context/AlertContext.jsx';
 
 const mockNavigate = jest.fn();
 
@@ -13,7 +13,7 @@ jest.mock('../../../hooks/useApi', () => ({
   },
 }));
 
-jest.mock('../../../context/AlertContext', () => ({
+jest.mock('../../../context/AlertContext.jsx', () => ({
   useFilterState: jest.fn(),
 }));
 
@@ -37,6 +37,11 @@ jest.mock('recharts', () => {
     Legend: () => null,
   };
 });
+
+jest.mock('framer-motion', () => ({
+  ...jest.requireActual('framer-motion'),
+  useReducedMotion: () => false,
+}));
 
 describe('AnalyticsChart drilldown', () => {
   const setTriageFilters = jest.fn();
@@ -65,6 +70,26 @@ describe('AnalyticsChart drilldown', () => {
     fireEvent.click(screen.getByTestId('line-chart'));
     expect(setTriageFilters).toHaveBeenCalledWith(expect.objectContaining({ from: expect.any(String), to: expect.any(String) }));
     expect(mockNavigate).toHaveBeenCalledWith('/incidents');
+  });
+
+  test('shows loading skeleton status before data resolves', async () => {
+    let resolveRequest;
+    api.get.mockReturnValue(new Promise((resolve) => {
+      resolveRequest = resolve;
+    }));
+
+    render(<AnalyticsChart />);
+
+    expect(screen.getByRole('status', { name: /loading analytics/i })).toBeInTheDocument();
+
+    resolveRequest({
+      data: {
+        zones: [{ zone_id: 'zone_01', zone_name: 'Main Pool', alert_count: 4, event_count: 10 }],
+        daily: [{ date: '2026-03-11', alert_count: 1, event_count: 2 }],
+      },
+    });
+
+    await screen.findByText(/Alert Counts by Zone/i);
   });
 });
 

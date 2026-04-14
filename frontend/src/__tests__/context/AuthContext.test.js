@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { AuthProvider, useAuth } from '../../context/AuthContext';
+import { AuthProvider, useAuth } from '../../context/AuthContext.jsx';
 import api from '../../hooks/useApi';
 
 jest.mock('../../hooks/useApi', () => ({

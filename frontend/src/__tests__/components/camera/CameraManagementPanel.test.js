@@ -1,8 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import CameraManagementPanel from '../../../components/camera/CameraManagementPanel';
+import CameraManagementPanel from '../../../components/camera/CameraManagementPanel.jsx';
 import api from '../../../hooks/useApi';
-import AuthContext from '../../../context/AuthContext';
 
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
@@ -12,27 +11,6 @@ jest.mock('../../../hooks/useApi', () => ({
     put: jest.fn(),
   },
 }));
-
-const mockAuthValue = {
-  currentUser: { id: 1, username: 'admin', role: 'admin' },
-  isAuthenticated: true,
-  isAdmin: true,
-  canManageCameras: true,
-  hasRole: (role) => role === 'admin',
-  authError: null,
-  loading: false,
-  initializingSession: false,
-  login: jest.fn(),
-  logout: jest.fn(),
-};
-
-const renderWithAuth = (ui) => {
-  return render(
-    <AuthContext.Provider value={mockAuthValue}>
-      {ui}
-    </AuthContext.Provider>
-  );
-};
 
 describe('CameraManagementPanel', () => {
   beforeEach(() => {
@@ -54,7 +32,7 @@ describe('CameraManagementPanel', () => {
       ],
     });
 
-    renderWithAuth(<CameraManagementPanel />);
+    render(<CameraManagementPanel />);
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/cameras', {
@@ -91,7 +69,7 @@ describe('CameraManagementPanel', () => {
     api.post.mockResolvedValueOnce({ data: {} });
     api.put.mockResolvedValueOnce({ data: {} });
 
-    renderWithAuth(<CameraManagementPanel onCamerasChanged={onCamerasChanged} />);
+    render(<CameraManagementPanel onCamerasChanged={onCamerasChanged} />);
 
     fireEvent.click(await screen.findByRole('button', { name: /add camera/i }));
 

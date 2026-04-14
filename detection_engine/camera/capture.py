@@ -369,32 +369,60 @@ class CameraCapture:
             self._set_capture(cap)
 
             if cap.isOpened():
-                self._consecutive_failures = 0
-                self._last_frame_time = time.time()
-                self._health_tracker.connected()
-                logger.info("[%s] Reconnected successfully", self.zone_id)
-                return
+                # Verify we can actually read a frame before declaring success
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    self._consecutive_failures = 0
+                    self._last_frame_time = time.time()
+                    self._health_tracker.connected()
+                    logger.info("[%s] Reconnected successfully", self.zone_id)
+                    return
+                else:
+                    logger.warning("[%s] Opened but cannot read frame", self.zone_id)
+                    self._release_capture()
 
             logger.warning("[%s] Reconnect attempt failed", self.zone_id)
 
         self._health_tracker.disconnected("Reconnect exhausted")
         logger.error(
-            "[%s] Reconnect exhausted after %d attempts — will retry next cycle",
+            "[%s] Reconnect exhausted after %d attempts — cooling down for 30s",
             self.zone_id,
             len(RECONNECT_BACKOFF_SECONDS),
         )
+        # Cooldown period to prevent rapid reconnect loops
+        self._last_frame_time = time.time() + 20  # Fake "recent frame" to delay stall detection
         self._consecutive_failures = 0
 
     def _open_capture(self) -> cv2.VideoCapture:
         """Open video capture with optimized settings for RTSP."""
         with self._cap_lock:
-            # Local webcam (Windows)
-            if platform.system() == 'Windows' and str(self.rtsp_url).isdigit():
-                return cv2.VideoCapture(int(self.rtsp_url), cv2.CAP_DSHOW)
-
             # Local webcam (numeric index)
-            if isinstance(self.rtsp_url, int):
-                return cv2.VideoCapture(self.rtsp_url)
+            if isinstance(self.rtsp_url, int) or (isinstance(self.rtsp_url, str) and self.rtsp_url.isdigit()):
+                cam_idx = int(self.rtsp_url)
+                
+                # On Windows, try DirectShow first, then MSMF, then default
+                if platform.system() == 'Windows':
+                    # Try DirectShow (better compatibility with most webcams)
+                    cap = cv2.VideoCapture(cam_idx, cv2.CAP_DSHOW)
+                    if cap.isOpened():
+                        # Set reasonable buffer size to reduce latency
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        return cap
+                    cap.release()
+                    
+                    # Fallback to Media Foundation
+                    cap = cv2.VideoCapture(cam_idx, cv2.CAP_MSMF)
+                    if cap.isOpened():
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        return cap
+                    cap.release()
+                    
+                    # Last resort: default backend
+                    logger.debug("[%s] Trying default backend for webcam %d", self.zone_id, cam_idx)
+                    return cv2.VideoCapture(cam_idx)
+                else:
+                    # Non-Windows: use default backend
+                    return cv2.VideoCapture(cam_idx)
 
             # RTSP/HTTP stream with FFmpeg backend
             cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
@@ -419,6 +447,9 @@ class CameraCapture:
                 except (cv2.error, OSError):
                     pass
                 self._cap = None
+                # On Windows, give OS time to release the device
+                if platform.system() == 'Windows':
+                    time.sleep(0.1)
 
     def _set_capture(self, cap: Optional[cv2.VideoCapture]) -> None:
         with self._cap_lock:

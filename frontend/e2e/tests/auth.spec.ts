@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { LoginPage } from '../pages';
 
+const ROOT_DASHBOARD_URL = /^https?:\/\/[^/]+\/(?:\?.*)?$/;
+
 test.describe('Authentication Flow', () => {
   test('should display login page with all elements', async ({ page }) => {
     const loginPage = new LoginPage(page);
@@ -35,7 +37,7 @@ test.describe('Authentication Flow', () => {
     await loginPage.login('admin', 'aquaguard2026');
 
     // Should redirect to dashboard
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(ROOT_DASHBOARD_URL);
     await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible();
   });
 
@@ -46,7 +48,7 @@ test.describe('Authentication Flow', () => {
     await loginPage.login('admin', 'aquaguard2026', true);
 
     // Should redirect to dashboard
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(ROOT_DASHBOARD_URL);
 
     // Cookies should be set for longer duration (we can't directly test duration)
     const cookies = await page.context().cookies();
@@ -55,7 +57,7 @@ test.describe('Authentication Flow', () => {
 
   test('should logout successfully', async ({ authenticatedPage }) => {
     // Start authenticated
-    await expect(authenticatedPage).toHaveURL('/');
+    await expect(authenticatedPage).toHaveURL(ROOT_DASHBOARD_URL);
 
     // Click logout
     await authenticatedPage.getByRole('button', { name: /logout/i }).click();

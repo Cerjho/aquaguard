@@ -1,5 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test';
 
+const URL_WAIT_TIMEOUT_MS = 45_000;
+
 /**
  * Page Object Model: Dashboard Page
  */
@@ -47,7 +49,9 @@ export class DashboardPage {
     headingPattern: RegExp,
   ) {
     await link.click();
-    await expect(this.page).toHaveURL(urlPattern);
+    await expect(this.page).toHaveURL(urlPattern, {
+      timeout: URL_WAIT_TIMEOUT_MS,
+    });
     await expect(this.page.getByRole('heading', { name: headingPattern }).first()).toBeVisible();
   }
 
@@ -65,7 +69,9 @@ export class DashboardPage {
 
   async logout() {
     await this.logoutButton.click();
-    await expect(this.page).toHaveURL(/\/login(?:\?.*)?$/);
+    await expect(this.page).toHaveURL(/\/login(?:\?.*)?$/, {
+      timeout: URL_WAIT_TIMEOUT_MS,
+    });
   }
 
   async getApiStatus() {

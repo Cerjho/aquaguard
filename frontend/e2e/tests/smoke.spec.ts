@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { LoginPage, DashboardPage } from '../pages';
 
+const ROOT_DASHBOARD_URL = /^https?:\/\/[^/]+\/(?:\?.*)?$/;
+
 /**
  * Critical Smoke Tests - Run in CI
  * 
@@ -36,7 +38,7 @@ test.describe('Smoke Tests @smoke', () => {
     await loginPage.login('admin', 'aquaguard2026');
 
     // Should redirect to dashboard
-    await expect(page).toHaveURL(/\/(?:\?.*)?$/);
+    await expect(page).toHaveURL(ROOT_DASHBOARD_URL);
     await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible();
   });
 
@@ -78,7 +80,7 @@ test.describe('Smoke Tests @smoke', () => {
   });
 
   test('should logout successfully', async ({ authenticatedPage }) => {
-    await expect(authenticatedPage).toHaveURL(/\/(?:\?.*)?$/);
+    await expect(authenticatedPage).toHaveURL(ROOT_DASHBOARD_URL);
 
     // Click logout
     await authenticatedPage.getByRole('button', { name: /logout/i }).click();

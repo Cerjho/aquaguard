@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { DashboardPage } from '../pages';
 
+const ROOT_DASHBOARD_URL = /^https?:\/\/[^/]+\/(?:\?.*)?$/;
+
 test.describe('Dashboard', () => {
   test('should display all main sections', async ({ authenticatedPage }) => {
     const dashboard = new DashboardPage(authenticatedPage);
@@ -65,7 +67,7 @@ test.describe('Dashboard', () => {
     await authenticatedPage.getByRole('link', { name: /system/i }).click();
     await expect(authenticatedPage).toHaveURL(/\/system(?:\?.*)?$/);
     await authenticatedPage.getByRole('link', { name: /dashboard/i }).click();
-    await expect(authenticatedPage).toHaveURL(/\/(?:\?.*)?$/);
+    await expect(authenticatedPage).toHaveURL(ROOT_DASHBOARD_URL);
 
     // Should end up back on dashboard
     await expect(dashboard.heading).toBeVisible();

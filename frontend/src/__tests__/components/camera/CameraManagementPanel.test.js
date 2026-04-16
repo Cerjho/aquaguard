@@ -149,4 +149,55 @@ describe('CameraManagementPanel', () => {
     expect(await screen.findByText(/camera zone_01 updated\./i)).toBeInTheDocument();
     expect(onCamerasChanged).toHaveBeenCalledTimes(2);
   });
+
+  test('soft deletes inactive camera and hides it from the list', async () => {
+    api.get
+      .mockResolvedValueOnce({
+        data: [
+          {
+            zone_id: 'zone_02',
+            zone_name: 'Kiddie Pool',
+            rtsp_url: 'rtsp://two',
+            is_active: false,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            zone_id: 'zone_02',
+            zone_name: 'Kiddie Pool',
+            rtsp_url: 'rtsp://two',
+            is_active: false,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    api.delete.mockResolvedValueOnce({
+      data: {
+        message: 'Camera zone_02 soft deleted',
+      },
+    });
+
+    render(<CameraManagementPanel />);
+
+    await screen.findByText('Kiddie Pool');
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /open actions menu for kiddie pool/i,
+      })
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /^delete$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /yes, remove camera/i }));
+
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith('/api/v1/cameras/zone_02');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Kiddie Pool')).not.toBeInTheDocument();
+    });
+  });
 });

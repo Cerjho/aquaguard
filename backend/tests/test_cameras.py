@@ -68,21 +68,37 @@ def test_list_cameras_include_inactive(client, admin_token):
         'zone_name': 'Inactive Zone',
         'rtsp_url':  'rtsp://localhost/inactive1',
     }, headers={'Authorization': f'Bearer {admin_token}'})
-    client.delete('/api/v1/cameras/zone_inactive_1',
-                  headers={'Authorization': f'Bearer {admin_token}'})
+
+    deactivate = client.put('/api/v1/cameras/zone_inactive_1', json={
+        'is_active': False,
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    assert deactivate.status_code == 200
 
     default_list = client.get('/api/v1/cameras',
                               headers={'Authorization': f'Bearer {admin_token}'})
     assert default_list.status_code == 200
     assert 'zone_inactive_1' not in [c['zone_id'] for c in default_list.get_json()]
 
-    include_all = client.get('/api/v1/cameras?include_inactive=true',
-                             headers={'Authorization': f'Bearer {admin_token}'})
-    assert include_all.status_code == 200
-    rows = include_all.get_json()
+    include_inactive = client.get('/api/v1/cameras?include_inactive=true',
+                                  headers={'Authorization': f'Bearer {admin_token}'})
+    assert include_inactive.status_code == 200
+    rows = include_inactive.get_json()
     match = next((c for c in rows if c['zone_id'] == 'zone_inactive_1'), None)
     assert match is not None
     assert match['is_active'] is False
+
+    soft_delete = client.delete('/api/v1/cameras/zone_inactive_1',
+                                headers={'Authorization': f'Bearer {admin_token}'})
+    assert soft_delete.status_code == 200
+
+    include_inactive_after_delete = client.get(
+        '/api/v1/cameras?include_inactive=true',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert include_inactive_after_delete.status_code == 200
+    assert 'zone_inactive_1' not in [
+        c['zone_id'] for c in include_inactive_after_delete.get_json()
+    ]
 
 
 def test_create_camera_admin(client, admin_token):
@@ -182,6 +198,57 @@ def test_delete_camera(client, admin_token):
                            headers={'Authorization': f'Bearer {admin_token}'})
     zone_ids = [c['zone_id'] for c in list_resp.get_json()]
     assert 'zone_del' not in zone_ids
+
+
+def test_delete_camera_is_idempotent(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id': 'zone_del_twice',
+        'zone_name': 'Del Twice',
+        'rtsp_url': 'rtsp://del-twice',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    first = client.delete('/api/v1/cameras/zone_del_twice',
+                          headers={'Authorization': f'Bearer {admin_token}'})
+    assert first.status_code == 200
+    assert first.get_json()['camera']['is_active'] is None
+
+    second = client.delete('/api/v1/cameras/zone_del_twice',
+                           headers={'Authorization': f'Bearer {admin_token}'})
+    assert second.status_code == 200
+    assert 'already soft deleted' in second.get_json()['message']
+    assert second.get_json()['camera']['is_active'] is None
+
+
+def test_delete_inactive_camera_soft_deletes_and_hides_it(client, admin_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id': 'zone_soft_delete_from_inactive',
+        'zone_name': 'Soft Delete From Inactive',
+        'rtsp_url': 'rtsp://soft-delete-from-inactive',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    deactivate = client.put('/api/v1/cameras/zone_soft_delete_from_inactive', json={
+        'is_active': False,
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+    assert deactivate.status_code == 200
+
+    delete_resp = client.delete('/api/v1/cameras/zone_soft_delete_from_inactive',
+                                headers={'Authorization': f'Bearer {admin_token}'})
+    assert delete_resp.status_code == 200
+    assert delete_resp.get_json()['camera']['is_active'] is None
+
+    include_inactive = client.get('/api/v1/cameras?include_inactive=1',
+                                  headers={'Authorization': f'Bearer {admin_token}'})
+    assert include_inactive.status_code == 200
+    assert 'zone_soft_delete_from_inactive' not in [
+        c['zone_id'] for c in include_inactive.get_json()
+    ]
+
+
+def test_delete_camera_not_found_returns_json_error(client, admin_token):
+    resp = client.delete('/api/v1/cameras/zone_missing_delete',
+                         headers={'Authorization': f'Bearer {admin_token}'})
+    assert resp.status_code == 404
+    assert 'not found' in resp.get_json()['error'].lower()
 
 
 def test_stream_requires_bearer_auth(client):

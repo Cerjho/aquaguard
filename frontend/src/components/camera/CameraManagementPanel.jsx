@@ -223,14 +223,10 @@ function CameraManagementPanel({ onCamerasChanged }) {
     setFeedback({ type: '', message: '' });
     try {
       await api.delete(`/api/v1/cameras/${camera.zone_id}`);
-      setCameras((prev) => prev.map((item) => (
-        item.zone_id === camera.zone_id
-          ? { ...item, is_active: false }
-          : item
-      )));
+      setCameras((prev) => prev.filter((item) => item.zone_id !== camera.zone_id));
       setFeedback({
         type: 'success',
-        message: `${camera.zone_name || camera.zone_id} removed from active monitoring.`,
+        message: `${camera.zone_name || camera.zone_id} soft deleted and hidden.`,
       });
       closeDeleteConfirmation();
       notifyCamerasChanged();

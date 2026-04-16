@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { DashboardPage } from '../pages';
 
+const ROOT_DASHBOARD_URL = /^https?:\/\/[^/]+\/(?:\?.*)?$/;
+
 test.describe('Dashboard', () => {
   test('should display all main sections', async ({ authenticatedPage }) => {
     const dashboard = new DashboardPage(authenticatedPage);
@@ -35,7 +37,7 @@ test.describe('Dashboard', () => {
     await dashboard.isLoaded();
 
     await dashboard.navigateToIncidents();
-    await expect(authenticatedPage).toHaveURL('/incidents');
+    await expect(authenticatedPage).toHaveURL(/\/incidents(?:\?.*)?$/);
   });
 
   test('should navigate to analytics page', async ({ authenticatedPage }) => {
@@ -43,7 +45,7 @@ test.describe('Dashboard', () => {
     await dashboard.isLoaded();
 
     await dashboard.navigateToAnalytics();
-    await expect(authenticatedPage).toHaveURL('/analytics');
+    await expect(authenticatedPage).toHaveURL(/\/analytics(?:\?.*)?$/);
   });
 
   test('should navigate to system page', async ({ authenticatedPage }) => {
@@ -51,7 +53,7 @@ test.describe('Dashboard', () => {
     await dashboard.isLoaded();
 
     await dashboard.navigateToSystem();
-    await expect(authenticatedPage).toHaveURL('/system');
+    await expect(authenticatedPage).toHaveURL(/\/system(?:\?.*)?$/);
   });
 
   test('should handle rapid navigation between pages', async ({ authenticatedPage }) => {
@@ -61,11 +63,11 @@ test.describe('Dashboard', () => {
     // Navigate quickly between pages
     await dashboard.navigateToIncidents();
     await authenticatedPage.getByRole('link', { name: /analytics/i }).click();
-    await authenticatedPage.waitForURL('/analytics');
+    await expect(authenticatedPage).toHaveURL(/\/analytics(?:\?.*)?$/);
     await authenticatedPage.getByRole('link', { name: /system/i }).click();
-    await authenticatedPage.waitForURL('/system');
+    await expect(authenticatedPage).toHaveURL(/\/system(?:\?.*)?$/);
     await authenticatedPage.getByRole('link', { name: /dashboard/i }).click();
-    await authenticatedPage.waitForURL('/');
+    await expect(authenticatedPage).toHaveURL(ROOT_DASHBOARD_URL);
 
     // Should end up back on dashboard
     await expect(dashboard.heading).toBeVisible();

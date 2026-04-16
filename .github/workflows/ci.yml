@@ -197,6 +197,7 @@ jobs:
           SEED_ADMIN_PASSWORD: aquaguard2026
           SEED_GUARD_PASSWORD: lifeguard2026
           RESET_DEFAULT_PASSWORDS_ON_STARTUP: 1
+          RATELIMIT_ENABLED: 0
           FLASK_DEBUG: 0
           ALLOW_UNSAFE_WERKZEUG: 1
 

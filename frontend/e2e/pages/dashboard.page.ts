@@ -1,4 +1,6 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
+
+const URL_WAIT_TIMEOUT_MS = 45_000;
 
 /**
  * Page Object Model: Dashboard Page
@@ -41,24 +43,35 @@ export class DashboardPage {
     await this.cameraGrid.waitFor({ state: 'visible' });
   }
 
+  private async navigateAndWait(
+    link: Locator,
+    urlPattern: RegExp,
+    headingPattern: RegExp,
+  ) {
+    await link.click();
+    await expect(this.page).toHaveURL(urlPattern, {
+      timeout: URL_WAIT_TIMEOUT_MS,
+    });
+    await expect(this.page.getByRole('heading', { name: headingPattern }).first()).toBeVisible();
+  }
+
   async navigateToIncidents() {
-    await this.navIncidents.click();
-    await this.page.waitForURL('/incidents');
+    await this.navigateAndWait(this.navIncidents, /\/incidents(?:\?.*)?$/, /incidents/i);
   }
 
   async navigateToAnalytics() {
-    await this.navAnalytics.click();
-    await this.page.waitForURL('/analytics');
+    await this.navigateAndWait(this.navAnalytics, /\/analytics(?:\?.*)?$/, /analytics/i);
   }
 
   async navigateToSystem() {
-    await this.navSystem.click();
-    await this.page.waitForURL('/system');
+    await this.navigateAndWait(this.navSystem, /\/system(?:\?.*)?$/, /system/i);
   }
 
   async logout() {
     await this.logoutButton.click();
-    await this.page.waitForURL('/login');
+    await expect(this.page).toHaveURL(/\/login(?:\?.*)?$/, {
+      timeout: URL_WAIT_TIMEOUT_MS,
+    });
   }
 
   async getApiStatus() {

@@ -43,7 +43,7 @@ function LoginPage() {
     setSubmitted(false);
 
     if (!username.trim()) {
-      setFieldError('Email is required.');
+      setFieldError('Username is required.');
       return;
     }
     if (!password) {
@@ -157,20 +157,20 @@ function LoginPage() {
             <div className="mb-4">
               <div className="relative">
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                type="text"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={isSubmitting}
                 className="peer w-full rounded-2xl border border-slate-200 bg-white px-4 pb-2.5 pt-5 text-slate-800 outline-none transition-all duration-500 ease-in-out placeholder:text-transparent focus:border-[#a3cef1] focus:ring-2 focus:ring-[#a3cef1]/35"
-                placeholder="Email"
+                placeholder="Username"
               />
                 <label
-                  htmlFor="email"
+                  htmlFor="username"
                   className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-500 transition-all duration-300 peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-slate-600 peer-[&:not(:placeholder-shown)]:top-3 peer-[&:not(:placeholder-shown)]:translate-y-0 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-slate-600"
                 >
-                  Email
+                  Username
                 </label>
               </div>
             </div>
@@ -237,6 +237,7 @@ function LoginPage() {
             <div className="flex flex-col items-center">
               <motion.button
                 type="submit"
+                aria-label="Sign In"
                 disabled={isSubmitting}
                 className={`relative overflow-hidden rounded-2xl border border-[#a3cef1]/65 bg-gradient-to-r from-[#a3cef1] to-[#b6d9f4] text-slate-900 shadow-[0_12px_28px_rgba(163,206,241,0.45)] transition-all duration-500 ease-in-out ${
                   submitState === 'idle' ? 'w-full py-3.5' : 'w-14 py-3.5'

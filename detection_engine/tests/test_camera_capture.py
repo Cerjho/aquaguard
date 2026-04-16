@@ -41,6 +41,10 @@ class _RaceAwareCapture:
             raise RuntimeError("capture released during read")
         return True, self._frame.copy()
 
+    def set(self, *_args, **_kwargs):
+        """Mimic cv2.VideoCapture.set for backend-specific capture setup."""
+        return True
+
     def release(self):
         self.release_calls += 1
         self._released = True

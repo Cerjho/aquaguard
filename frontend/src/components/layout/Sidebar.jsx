@@ -60,8 +60,12 @@ function Sidebar() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    await logout();
-    navigate('/login', { replace: true });
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (

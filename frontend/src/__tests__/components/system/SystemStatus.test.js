@@ -15,16 +15,15 @@ describe('SystemStatus', () => {
       socketConnected: true,
     });
     useSystemState.mockReturnValue({
-      socketConnected: true,
+      apiStatus: { connected: true },
       cameraStatuses: {
         zone_01: {
           zone_id: 'zone_01',
           zone_name: 'Main Pool',
           status: 'online',
-          snapshot_age_seconds: 2,
-          last_snapshot_at: new Date().toISOString(),
         },
       },
+      cameraHealthMap: {},
       systemStatus: {
         detection_engine: {
           status: 'online',
@@ -32,7 +31,6 @@ describe('SystemStatus', () => {
         },
         esp32: {
           status: 'online',
-          last_seen: new Date().toISOString(),
           message: 'ESP heartbeat active',
         },
         subsystems: {
@@ -40,38 +38,31 @@ describe('SystemStatus', () => {
             freshness_seconds: 2,
             stale_threshold_seconds: 10,
           },
-          esp32: {
-            freshness_seconds: 5,
-            stale_threshold_seconds: 90,
-          },
         },
       },
     });
   });
 
-  test('shows connectivity and subsystem status from shared context', async () => {
+  test('renders status cards and subsystem detail rows', () => {
     render(<SystemStatus />);
 
-    expect(await screen.findByText('Runtime ok')).toBeInTheDocument();
-    expect(screen.getByText('Connected')).toBeInTheDocument();
-    expect(screen.getByText('Detection Engine')).toBeInTheDocument();
+    expect(screen.getByText('API')).toBeInTheDocument();
+    expect(screen.getByText('Socket')).toBeInTheDocument();
+    expect(screen.getByText('AI')).toBeInTheDocument();
+    expect(screen.getByText('ESP32 Alarm')).toBeInTheDocument();
     expect(screen.getByText('ESP heartbeat active')).toBeInTheDocument();
+    expect(screen.getByText('Main Pool')).toBeInTheDocument();
   });
 
-  test('marks stale detection freshness as warning', async () => {
-    useSocketState.mockReturnValue({
-      socketConnected: false,
-    });
+  test('shows waiting message when no camera statuses are available', () => {
     useSystemState.mockReturnValue({
+      apiStatus: { connected: false },
       cameraStatuses: {},
+      cameraHealthMap: {},
       systemStatus: {
-        detection_engine: {
-          status: 'online',
-          message: '',
-        },
         subsystems: {
           detection_engine: {
-            freshness_seconds: 15,
+            freshness_seconds: 20,
             stale_threshold_seconds: 10,
           },
         },
@@ -79,27 +70,25 @@ describe('SystemStatus', () => {
     });
 
     render(<SystemStatus />);
-    expect(await screen.findByText('Disconnected (status polling only)')).toBeInTheDocument();
-    expect(screen.getByText(/Freshness: 15s/)).toBeInTheDocument();
-    expect(screen.getByText('Warning')).toBeInTheDocument();
+
+    expect(screen.getByText(/waiting for camera status/i)).toBeInTheDocument();
   });
 
-  test('uses esp32 last_heartbeat_at field for heartbeat detail', async () => {
-    useSocketState.mockReturnValue({
-      socketConnected: true,
-    });
+  test('renders relative heartbeat detail from last_heartbeat_at', () => {
     useSystemState.mockReturnValue({
+      apiStatus: { connected: true },
       cameraStatuses: {},
+      cameraHealthMap: {},
       systemStatus: {
         esp32: {
           status: 'online',
           last_heartbeat_at: new Date().toISOString(),
-          message: '',
         },
       },
     });
 
     render(<SystemStatus />);
-    expect(await screen.findByText(/Last heartbeat:/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/ago|just now/i)).toBeInTheDocument();
   });
 });

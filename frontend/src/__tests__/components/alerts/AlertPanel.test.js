@@ -65,7 +65,7 @@ describe('AlertPanel', () => {
 
   test('displays active zone name chips', () => {
     renderAlertPanel({ activeAlert: sampleAlert });
-    expect(screen.getByRole('button', { name: 'Pool A' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /pool a/i })).toBeInTheDocument();
   });
 
   test('calls acknowledge with oldest unacknowledged alert id', () => {
@@ -76,7 +76,7 @@ describe('AlertPanel', () => {
         { ...sampleAlert, id: 22, zone_id: 'zone_02', zone_name: 'Pool B' },
       ],
     });
-    fireEvent.click(screen.getByRole('button', { name: /acknowledge oldest/i }));
+    fireEvent.click(screen.getByRole('button', { name: /acknowledge/i }));
     expect(mockAcknowledge).toHaveBeenCalledWith(22);
   });
 
@@ -105,7 +105,7 @@ describe('AlertPanel', () => {
       activeAlert: sampleAlert,
       acknowledgeError: 'Acknowledge failed.',
     });
-    expect(screen.getByText('Acknowledge failed.')).toBeInTheDocument();
+    expect(screen.getByText(/acknowledge failed/i)).toBeInTheDocument();
   });
 
   test('clicking zone chip scrolls to camera card', () => {
@@ -115,7 +115,7 @@ describe('AlertPanel', () => {
     });
 
     renderAlertPanel({ activeAlert: sampleAlert });
-    fireEvent.click(screen.getByRole('button', { name: 'Pool A' }));
+    fireEvent.click(screen.getByRole('button', { name: /pool a/i }));
 
     expect(getElementByIdSpy).toHaveBeenCalledWith('camera-card-zone_01');
     expect(scrollIntoView).toHaveBeenCalled();

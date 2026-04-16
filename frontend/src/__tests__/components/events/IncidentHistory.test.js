@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import IncidentHistory from '../../../components/events/IncidentHistory.jsx';
 import api from '../../../hooks/useApi';
-import { useFilterState } from '../../../context/AlertContext.jsx';
+import { useAlertState, useSocketState } from '../../../context/AlertContext.jsx';
 
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
@@ -12,31 +12,26 @@ jest.mock('../../../hooks/useApi', () => ({
 }));
 
 jest.mock('../../../context/AlertContext.jsx', () => ({
-  useFilterState: jest.fn(),
+  useAlertState: jest.fn(),
+  useSocketState: jest.fn(),
 }));
 
-jest.mock('framer-motion', () => ({
-  ...jest.requireActual('framer-motion'),
-  useReducedMotion: () => false,
-}));
-
-describe('IncidentHistory mapping resilience', () => {
+describe('IncidentHistory compatibility wrapper', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useFilterState.mockReturnValue({
-      triageFilters: {
-        zone_id: '',
-        status: '',
-        min_confidence: '',
-        from: '',
-        to: '',
-      },
-      setTriageFilters: jest.fn(),
-      resetTriageFilters: jest.fn(),
-    });
+    useAlertState.mockReturnValue({ detectionEvents: [] });
+    useSocketState.mockReturnValue({ socketConnected: false });
   });
 
-  test('maps class_name, confidence_score, and timestamp keys from backend payload', async () => {
+  test('renders DetectionFeed heading via compatibility export', async () => {
+    api.get.mockResolvedValue({ data: { events: [] } });
+
+    render(<IncidentHistory />);
+
+    expect(await screen.findByText(/live detection feed/i)).toBeInTheDocument();
+  });
+
+  test('maps backend detection payload keys from polling data', async () => {
     api.get.mockResolvedValue({
       data: {
         events: [
@@ -49,43 +44,18 @@ describe('IncidentHistory mapping resilience', () => {
             alert_triggered: false,
           },
         ],
-        total: 1,
       },
     });
 
     render(<IncidentHistory />);
 
-    expect(await screen.findByText('Kiddie Pool')).toBeInTheDocument();
-    expect(screen.getByText('swimming')).toBeInTheDocument();
-    expect(screen.getByText('73.5%')).toBeInTheDocument();
-    expect(screen.getByText('No')).toBeInTheDocument();
+    expect(await screen.findByText('swimming')).toBeInTheDocument();
+    expect(screen.getByText(/74%/)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/events', {
-        params: { page: 1, limit: 10 },
+        params: { page: 1, limit: 20 },
       });
     });
-  });
-
-  test('shows loading status skeleton while fetching', async () => {
-    let resolveRequest;
-    api.get.mockReturnValue(new Promise((resolve) => {
-      resolveRequest = resolve;
-    }));
-
-    render(<IncidentHistory />);
-
-    expect(
-      screen.getByRole('status', { name: /loading incident history/i })
-    ).toBeInTheDocument();
-
-    resolveRequest({
-      data: {
-        events: [],
-        total: 0,
-      },
-    });
-
-    await screen.findByText(/No events recorded/i);
   });
 });

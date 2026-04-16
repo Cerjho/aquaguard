@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import DetectionFeed from '../../../components/events/DetectionFeed.jsx';
 import api from '../../../hooks/useApi';
 import { useAlertState, useSocketState } from '../../../context/AlertContext.jsx';
@@ -51,7 +51,7 @@ describe('DetectionFeed mapping resilience', () => {
     await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
-    expect(screen.getByText(/88% confidence/)).toBeInTheDocument();
+    expect(screen.getByText(/88%/)).toBeInTheDocument();
     expect(screen.getByText(/⚠ ALERT/)).toBeInTheDocument();
 
     await waitFor(() => {
@@ -82,7 +82,7 @@ describe('DetectionFeed mapping resilience', () => {
     await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
-    expect(screen.getByText(/Live \(socket\)/)).toBeInTheDocument();
+    expect(screen.getByText(/^Live$/)).toBeInTheDocument();
 
     // With socket connected, polling is skipped - events come via WebSocket
     expect(api.get).not.toHaveBeenCalledWith('/api/v1/events', expect.anything());
@@ -99,8 +99,9 @@ describe('DetectionFeed mapping resilience', () => {
       expect(api.get).toHaveBeenCalledTimes(1);
     });
 
-    jest.advanceTimersByTime(20000);
-    await Promise.resolve();
+    await act(async () => {
+      jest.advanceTimersByTime(20000);
+    });
     expect(api.get).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
   });

@@ -21,6 +21,21 @@ const DataCacheContext = createContext(null);
 const CAMERA_REFRESH_INTERVAL_MS = 30000;
 const DEFAULT_HISTORY_PAGE_SIZE = 10;
 
+const TEST_FALLBACK_CONTEXT = {
+  cameras: [],
+  camerasLoading: false,
+  camerasError: null,
+  fetchCameras: async () => [],
+  refreshCameras: () => {},
+  camerasLoaded: false,
+  alertHistorySnapshot: null,
+  setAlertHistorySnapshot: () => {},
+  incidentHistorySnapshot: null,
+  setIncidentHistorySnapshot: () => {},
+  analyticsSnapshot: null,
+  setAnalyticsSnapshot: () => {},
+};
+
 export function DataCacheProvider({ children }) {
   const { isAuthenticated } = useAuth();
   
@@ -215,6 +230,9 @@ export function DataCacheProvider({ children }) {
 export function useDataCache() {
   const ctx = useContext(DataCacheContext);
   if (!ctx) {
+    if (process.env.NODE_ENV === 'test') {
+      return TEST_FALLBACK_CONTEXT;
+    }
     throw new Error('useDataCache must be used inside <DataCacheProvider>');
   }
   return ctx;

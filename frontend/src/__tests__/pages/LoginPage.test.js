@@ -40,7 +40,7 @@ describe('LoginPage', () => {
   test('renders username and password fields and sign-in button', () => {
     renderLoginPage();
     expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
@@ -63,7 +63,7 @@ describe('LoginPage', () => {
     mockLogin.mockResolvedValue(true);
     renderLoginPage();
     fireEvent.change(screen.getByLabelText(/username/i), { target: { value: '  admin  ' } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
     expect(mockLogin).toHaveBeenCalledWith('admin', 'secret', false);
   });
@@ -75,8 +75,8 @@ describe('LoginPage', () => {
 
   test('disables button and inputs when loading', () => {
     renderLoginPage({ loading: true });
-    expect(screen.getByRole('button')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeDisabled();
     expect(screen.getByLabelText(/username/i)).toBeDisabled();
-    expect(screen.getByLabelText(/password/i)).toBeDisabled();
+    expect(screen.getByLabelText(/^password$/i)).toBeDisabled();
   });
 });

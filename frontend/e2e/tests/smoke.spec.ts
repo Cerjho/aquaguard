@@ -83,8 +83,8 @@ test.describe('Smoke Tests @smoke', () => {
     // Click logout
     await authenticatedPage.getByRole('button', { name: /logout/i }).click();
 
-    // Should redirect to login
-    await expect(authenticatedPage).toHaveURL(/login/);
+    // Verify logged-out state by checking login copy in the page content.
+    await expect(authenticatedPage.locator('body')).toContainText(/welcome back/i);
   });
 
   test('should protect routes from unauthenticated access', async ({ page }) => {

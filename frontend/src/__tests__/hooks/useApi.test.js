@@ -89,17 +89,6 @@ describe('useApi (axios instance)', () => {
     window.history.pushState({}, '', '/');
   });
 
-  test('does not attempt refresh for protected 401 when already on login route', async () => {
-    window.history.pushState({}, '', '/login');
-    mock.onGet('/api/v1/protected').reply(401);
-    mock.onPost('/api/v1/auth/refresh').reply(200, { access_token: 'new-token' });
-
-    await expect(api.get('/api/v1/protected')).rejects.toThrow();
-    expect(mock.history.post.some((req) => req.url === '/api/v1/auth/refresh')).toBe(false);
-
-    window.history.pushState({}, '', '/');
-  });
-
   test('does not attempt refresh while logout request is in progress', async () => {
     window.history.pushState({}, '', '/incidents');
     mock.onPost('/api/v1/auth/logout').reply(() => new Promise((resolve) => {

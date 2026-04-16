@@ -56,10 +56,10 @@ describe('TopBar connectivity health strip', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/API: Offline/i)).toBeInTheDocument();
-    expect(screen.getByText(/Socket: Disconnected/i)).toBeInTheDocument();
-    expect(screen.getByText(/Detection freshness: 18s/i)).toBeInTheDocument();
-    expect(screen.getByText(/Socket: Online|Socket: Disconnected/i)).toBeInTheDocument();
+    const statusStrip = screen.getByRole('status');
+    expect(statusStrip).toHaveTextContent(/API\s*:\s*Offline/i);
+    expect(statusStrip).toHaveTextContent(/Socket\s*:\s*Offline/i);
+    expect(statusStrip).toHaveTextContent(/Detection\s*:\s*18s ago/i);
   });
 
   test('shows API checking during auth bootstrap', () => {
@@ -83,7 +83,7 @@ describe('TopBar connectivity health strip', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/API: Checking/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/API\s*:\s*Checking/i);
   });
 });
 

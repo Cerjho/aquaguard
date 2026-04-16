@@ -21,6 +21,7 @@ def app():
     os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-32-bytes-long!!'
     os.environ['AQUAGUARD_API_KEY'] = 'test-internal-api-key'
     os.environ['RATELIMIT_ENABLED'] = 'false'
+    os.environ['RESET_DEFAULT_PASSWORDS_ON_STARTUP'] = '0'
     app = create_app()
     app.config.update({
         'TESTING':                   True,
@@ -39,12 +40,22 @@ def app():
 
 
 def _seed_users():
-    if not User.query.filter_by(username='admin').first():
-        pw = bcrypt.generate_password_hash('adminpass').decode('utf-8')
-        _db.session.add(User(username='admin', password_hash=pw, role='admin'))
-    if not User.query.filter_by(username='guard').first():
-        pw = bcrypt.generate_password_hash('guardpass').decode('utf-8')
-        _db.session.add(User(username='guard', password_hash=pw, role='lifeguard'))
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(username='admin', password_hash='', role='admin')
+        _db.session.add(admin)
+    admin.password_hash = bcrypt.generate_password_hash('adminpass').decode('utf-8')
+    admin.role = 'admin'
+    admin.is_active = True
+
+    guard = User.query.filter_by(username='guard').first()
+    if not guard:
+        guard = User(username='guard', password_hash='', role='lifeguard')
+        _db.session.add(guard)
+    guard.password_hash = bcrypt.generate_password_hash('guardpass').decode('utf-8')
+    guard.role = 'lifeguard'
+    guard.is_active = True
+
     _db.session.commit()
 
 

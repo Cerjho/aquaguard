@@ -60,12 +60,14 @@ export function AuthProvider({ children }) {
     window.dispatchEvent(new Event('user-logout'));
     // Small delay to allow socket to disconnect cleanly before invalidating cookies
     await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Clear local auth state immediately so UI never gets stuck waiting on network.
+    setCurrentUser(null);
+
     try {
-      await api.post('/api/v1/auth/logout');
+      await api.post('/api/v1/auth/logout', {}, { timeout: 5000 });
     } catch {
       // Ignore logout API errors — always clear local state
-    } finally {
-      setCurrentUser(null);
     }
   }, []);
 

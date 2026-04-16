@@ -46,7 +46,7 @@ describe('AlertHistory shared triage filters', () => {
           limit: 10,
           zone_id: 'zone_01',
           status: 'unacknowledged',
-          min_confidence: '0.7',
+          min_confidence: 0.7,
         }),
       });
     });
@@ -62,7 +62,7 @@ describe('AlertHistory shared triage filters', () => {
 
     render(<AlertHistory />);
 
-    expect(screen.getByRole('button', { name: /add filter/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /add filter/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/filter alerts by zone id/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /add filter/i }));

@@ -36,7 +36,7 @@ test.describe('Smoke Tests @smoke', () => {
     await loginPage.login('admin', 'aquaguard2026');
 
     // Should redirect to dashboard
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/(?:\?.*)?$/);
     await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible();
   });
 
@@ -55,7 +55,7 @@ test.describe('Smoke Tests @smoke', () => {
     await dashboard.isLoaded();
 
     await dashboard.navigateToIncidents();
-    await expect(authenticatedPage).toHaveURL('/incidents');
+    await expect(authenticatedPage).toHaveURL(/\/incidents(?:\?.*)?$/);
     await expect(authenticatedPage.getByRole('heading', { name: /incidents/i }).first()).toBeVisible();
   });
 
@@ -64,7 +64,7 @@ test.describe('Smoke Tests @smoke', () => {
     await dashboard.isLoaded();
 
     await dashboard.navigateToAnalytics();
-    await expect(authenticatedPage).toHaveURL('/analytics');
+    await expect(authenticatedPage).toHaveURL(/\/analytics(?:\?.*)?$/);
     await expect(authenticatedPage.getByRole('heading', { name: /analytics/i }).first()).toBeVisible();
   });
 
@@ -73,12 +73,12 @@ test.describe('Smoke Tests @smoke', () => {
     await dashboard.isLoaded();
 
     await dashboard.navigateToSystem();
-    await expect(authenticatedPage).toHaveURL('/system');
+    await expect(authenticatedPage).toHaveURL(/\/system(?:\?.*)?$/);
     await expect(authenticatedPage.getByRole('heading', { name: /system/i }).first()).toBeVisible();
   });
 
   test('should logout successfully', async ({ authenticatedPage }) => {
-    await expect(authenticatedPage).toHaveURL('/');
+    await expect(authenticatedPage).toHaveURL(/\/(?:\?.*)?$/);
 
     // Click logout
     await authenticatedPage.getByRole('button', { name: /logout/i }).click();

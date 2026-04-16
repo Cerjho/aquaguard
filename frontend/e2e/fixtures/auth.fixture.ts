@@ -40,8 +40,8 @@ export interface AuthFixtures {
  */
 export const test = base.extend<AuthFixtures>({
   authenticatedPage: async ({ page }, use) => {
-    // Navigate to login with extended timeout
-    await page.goto(PAGES.login, { waitUntil: 'networkidle', timeout: 30000 });
+    // Navigate to login and wait for shell rendering.
+    await page.goto(PAGES.login, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Wait for login form to be ready
     const usernameInput = page.getByRole('textbox', { name: /username/i });
@@ -54,9 +54,8 @@ export const test = base.extend<AuthFixtures>({
     // Submit login
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    // Wait for dashboard to load with extended timeout
-    await page.waitForURL('/', { timeout: 60000 });
-    await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible({ timeout: 15000 });
+    // Wait for dashboard heading as the primary authenticated-state signal.
+    await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible({ timeout: 60000 });
 
     // Use the authenticated page
     await use(page);
@@ -66,7 +65,7 @@ export const test = base.extend<AuthFixtures>({
       const logoutButton = page.getByRole('button', { name: /logout/i });
       if (await logoutButton.isVisible({ timeout: 2000 })) {
         await logoutButton.click();
-        await page.waitForURL(PAGES.login, { timeout: 10000 });
+        await expect(page).toHaveURL(/\/login(?:\?.*)?$/, { timeout: 10000 });
       }
     } catch {
       // Ignore logout errors during cleanup

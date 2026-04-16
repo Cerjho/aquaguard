@@ -34,8 +34,10 @@ DEFAULT_RATE_LIMITS = os.getenv(
     'FLASK_DEFAULT_RATE_LIMITS',
     '2000 per day,300 per hour',
 )
+RATE_LIMIT_STORAGE_URI = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
 limiter  = Limiter(
     key_func=get_remote_address,
+    storage_uri=RATE_LIMIT_STORAGE_URI,
     default_limits=[
         limit.strip()
         for limit in DEFAULT_RATE_LIMITS.split(',')

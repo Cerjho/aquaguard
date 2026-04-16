@@ -41,7 +41,8 @@ def list_cameras():
     include_inactive = request.args.get('include_inactive', '').strip().lower() in {
         '1', 'true', 'yes'
     }
-    query = CameraZone.query
+    # Soft-deleted cameras use is_active=None and are always excluded from lists.
+    query = CameraZone.query.filter(CameraZone.is_active.isnot(None))
     if not include_inactive:
         query = query.filter_by(is_active=True)
     cameras = query.all()
@@ -88,7 +89,10 @@ def create_camera():
 @jwt_required()
 @role_required('admin')
 def update_camera(zone_id):
-    camera = CameraZone.query.filter_by(zone_id=zone_id).first_or_404()
+    camera = CameraZone.query.filter(
+        CameraZone.zone_id == zone_id,
+        CameraZone.is_active.isnot(None),
+    ).first_or_404()
     data = request.get_json(silent=True) or {}
 
     if 'is_active' in data and not isinstance(data.get('is_active'), bool):
@@ -114,8 +118,17 @@ def update_camera(zone_id):
 @jwt_required()
 @role_required('admin')
 def delete_camera(zone_id):
-    camera = CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
-    camera.is_active = False
+    camera = CameraZone.query.filter_by(zone_id=zone_id).first()
+    if camera is None:
+        return jsonify({'error': f'Camera {zone_id} not found'}), 404
+
+    if camera.is_active is None:
+        return jsonify({
+            'message': f'Camera {zone_id} already soft deleted',
+            'camera': camera.to_dict(),
+        }), 200
+
+    camera.is_active = None
     try:
         db.session.commit()
     except SQLAlchemyError as exc:
@@ -123,7 +136,10 @@ def delete_camera(zone_id):
         current_app.logger.error(f'DB error deleting camera: {exc}')
         return jsonify({'error': 'Database error'}), 500
 
-    return jsonify({'message': f'Camera {zone_id} deactivated'}), 200
+    return jsonify({
+        'message': f'Camera {zone_id} soft deleted',
+        'camera': camera.to_dict(),
+    }), 200
 
 
 # ── P3-10: MJPEG stream ──────────────────────────────────────────────────────

@@ -16,20 +16,38 @@ branch_labels = None
 depends_on = None
 
 
+def _existing_columns(table_name):
+    inspector = sa.inspect(op.get_bind())
+    return {column['name'] for column in inspector.get_columns(table_name)}
+
+
 def upgrade():
+    existing_columns = _existing_columns('detection_events')
     with op.batch_alter_table('detection_events', schema=None) as batch_op:
-        # Add class_label column if it doesn't exist
-        batch_op.add_column(sa.Column('class_label', sa.String(length=64), nullable=True))
-        
-        # Add YOLO and pose confidence columns if they don't exist
-        batch_op.add_column(sa.Column('yolo_confidence', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('pose_confidence', sa.Float(), nullable=True))
-        batch_op.add_column(sa.Column('final_confidence', sa.Float(), nullable=True))
+        if 'class_label' not in existing_columns:
+            batch_op.add_column(sa.Column('class_label', sa.String(length=64), nullable=True))
+
+        if 'yolo_confidence' not in existing_columns:
+            batch_op.add_column(sa.Column('yolo_confidence', sa.Float(), nullable=True))
+
+        if 'pose_confidence' not in existing_columns:
+            batch_op.add_column(sa.Column('pose_confidence', sa.Float(), nullable=True))
+
+        if 'final_confidence' not in existing_columns:
+            batch_op.add_column(sa.Column('final_confidence', sa.Float(), nullable=True))
 
 
 def downgrade():
+    existing_columns = _existing_columns('detection_events')
     with op.batch_alter_table('detection_events', schema=None) as batch_op:
-        batch_op.drop_column('final_confidence')
-        batch_op.drop_column('pose_confidence')
-        batch_op.drop_column('yolo_confidence')
-        batch_op.drop_column('class_label')
+        if 'final_confidence' in existing_columns:
+            batch_op.drop_column('final_confidence')
+
+        if 'pose_confidence' in existing_columns:
+            batch_op.drop_column('pose_confidence')
+
+        if 'yolo_confidence' in existing_columns:
+            batch_op.drop_column('yolo_confidence')
+
+        if 'class_label' in existing_columns:
+            batch_op.drop_column('class_label')

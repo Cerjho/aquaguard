@@ -141,6 +141,15 @@ def validate_runtime_settings():
     if RTSP_STALL_THRESHOLD_SECONDS < 1:
         raise ValueError('RTSP_STALL_THRESHOLD_SECONDS must be >= 1')
 
+    env_name = resolve_backend_environment()
+    rate_limit_storage = str(
+        os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
+    ).strip().lower()
+    if env_name == 'production' and rate_limit_storage.startswith('memory://'):
+        raise ValueError(
+            'RATELIMIT_STORAGE_URI must not use memory:// in production'
+        )
+
 
 def build_backend_runtime_values(environ=None):
     """Build environment-sensitive runtime values for Flask app config."""

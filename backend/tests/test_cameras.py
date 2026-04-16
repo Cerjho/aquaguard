@@ -143,6 +143,19 @@ def test_update_camera(client, admin_token):
     assert resp.get_json()['zone_name'] == 'New Name'
 
 
+def test_update_camera_forbidden_for_guard(client, admin_token, guard_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id': 'zone_upd_guard',
+        'zone_name': 'Guard Blocked Update',
+        'rtsp_url': 'rtsp://upd-guard',
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    resp = client.put('/api/v1/cameras/zone_upd_guard', json={
+        'zone_name': 'Should Not Update'
+    }, headers={'Authorization': f'Bearer {guard_token}'})
+    assert resp.status_code == 403
+
+
 def test_update_camera_can_toggle_is_active(client, admin_token):
     client.post('/api/v1/cameras', json={
         'zone_id': 'zone_toggle', 'zone_name': 'Toggle', 'rtsp_url': 'rtsp://toggle'
@@ -198,6 +211,18 @@ def test_delete_camera(client, admin_token):
                            headers={'Authorization': f'Bearer {admin_token}'})
     zone_ids = [c['zone_id'] for c in list_resp.get_json()]
     assert 'zone_del' not in zone_ids
+
+
+def test_delete_camera_forbidden_for_guard(client, admin_token, guard_token):
+    client.post('/api/v1/cameras', json={
+        'zone_id': 'zone_del_guard',
+        'zone_name': 'Guard Blocked Delete',
+        'rtsp_url': 'rtsp://del-guard'
+    }, headers={'Authorization': f'Bearer {admin_token}'})
+
+    resp = client.delete('/api/v1/cameras/zone_del_guard',
+                         headers={'Authorization': f'Bearer {guard_token}'})
+    assert resp.status_code == 403
 
 
 def test_delete_camera_is_idempotent(client, admin_token):

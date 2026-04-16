@@ -293,6 +293,11 @@ function CameraGrid({ reloadToken = 0 }) {
     return detectionEngineStatus === 'online';
   }, [systemStatus, detectionEngineStatus]);
 
+  const focusedHealth = useMemo(() => {
+    if (!focusedCamera?.zone_id) return null;
+    return cameraHealthMap[focusedCamera.zone_id] || null;
+  }, [focusedCamera, cameraHealthMap]);
+
   useEffect(() => {
     if (!focusedCamera && lastFocusedTriggerRef.current?.focus) {
       lastFocusedTriggerRef.current.focus();
@@ -403,41 +408,48 @@ function CameraGrid({ reloadToken = 0 }) {
           role="dialog"
           aria-modal="true"
           aria-label={`Focused view for ${focusedCamera.zone_name || focusedCamera.zone_id}`}
-          className="fixed inset-0 z-50 bg-slate-950/80 p-2 sm:p-4 md:p-6"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm p-3 sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
         >
-          <div className="h-full w-full rounded-xl glass-elevated border border-white/10 shadow-xl overflow-auto">
-            <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-900/90 backdrop-blur px-3 sm:px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Focused camera</p>
-                  <h3 className="text-base sm:text-lg font-semibold text-slate-100">{focusedCamera.zone_name || focusedCamera.zone_id}</h3>
-                  <p className="text-xs text-slate-400">{focusedCamera.location_description || focusedCamera.zone_id}</p>
-                </div>
-                <button
-                  ref={closeButtonRef}
-                  type="button"
-                  onClick={closeFocus}
-                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm border border-white/20 text-slate-100 hover:bg-white/5 focus-ring"
-                  aria-label="Close camera focus and return to camera grid"
-                >
-                  <span aria-hidden="true">←</span>
-                  Back to grid
-                </button>
+          <div className="mx-auto h-full max-h-[94vh] w-full max-w-7xl rounded-3xl bg-white/95 backdrop-blur-2xl border border-[#e7ecef] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center justify-between border-b border-[#e7ecef] px-5 sm:px-7 py-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500 font-semibold">Focused camera</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-900">
+                  {focusedCamera.zone_name || focusedCamera.zone_id}
+                </h3>
+                <p className="text-xs text-slate-500">{focusedCamera.location_description || focusedCamera.zone_id}</p>
               </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={closeFocus}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+                aria-label="Close camera focus and return to camera grid"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 p-3 sm:p-4">
-              <div className="xl:col-span-8 rounded-lg overflow-hidden bg-slate-900 aspect-video min-h-[240px] sm:min-h-[320px] relative">
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 p-5 sm:p-7 h-[calc(94vh-76px)]">
+              <div className="xl:col-span-8 rounded-3xl overflow-hidden border border-[#e7ecef] bg-slate-900 relative min-h-[320px]">
+                <span className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-emerald-100/95 text-emerald-700 px-3 py-1 text-xs font-semibold shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+
                 {!isDetectionEngineOnline ? (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
                     <svg className="w-12 h-12 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                     </svg>
                     <span className="text-sm font-medium">Detection engine offline</span>
-                    <span className="text-xs text-slate-500">Live snapshots unavailable</span>
+                    <span className="text-xs text-slate-400">Live snapshots unavailable</span>
                   </div>
                 ) : focusedStreamUrl ? (
                   <img
@@ -449,20 +461,40 @@ function CameraGrid({ reloadToken = 0 }) {
                   <div className="h-full flex items-center justify-center text-slate-300 text-sm">Stream unavailable</div>
                 )}
               </div>
-              <div className="xl:col-span-4 space-y-4">
-                <section className="rounded-lg border border-white/10 p-3">
-                  <h4 className="text-sm font-semibold text-slate-200 mb-2">Recent detections</h4>
-                  <ul className="text-xs text-slate-400 space-y-1.5">
-                    {zoneEvents.length === 0 ? <li>No recent detections</li> : zoneEvents.map((ev) => (
-                      <li key={ev.event_id || ev.id}>{formatDateTime(ev.timestamp || ev.detected_at)} — {(ev.class_label || ev.class_name || 'Detection')}</li>
-                    ))}
-                  </ul>
+
+              <div className="xl:col-span-4 h-full overflow-hidden rounded-3xl border border-[#e7ecef] bg-white shadow-sm p-4 sm:p-5 flex flex-col gap-5">
+                <section className="rounded-2xl border border-[#e7ecef] bg-[#a3cef1]/10 p-4">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3">Telemetry</h4>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <p><span className="text-slate-500">Zone:</span> {focusedCamera.zone_name || focusedCamera.zone_id}</p>
+                    <p><span className="text-slate-500">Health:</span> {normalizeServiceStatus(focusedHealth?.status || focusedCamera.runtime_status || 'unknown')}</p>
+                    <p><span className="text-slate-500">FPS:</span> {typeof focusedHealth?.fps_actual === 'number' ? focusedHealth.fps_actual.toFixed(1) : '—'}</p>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Recent detections</p>
+                    <ul className="text-xs text-slate-600 space-y-1.5">
+                      {zoneEvents.length === 0 ? <li>No recent detections</li> : zoneEvents.map((ev) => (
+                        <li key={ev.event_id || ev.id}>
+                          {formatDateTime(ev.timestamp || ev.detected_at)} — {(ev.class_label || ev.class_name || 'Detection')}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </section>
-                <section className="rounded-lg border border-white/10 p-3">
-                  <h4 className="text-sm font-semibold text-slate-200 mb-2">Recent alerts</h4>
-                  <ul className="text-xs text-slate-400 space-y-1.5">
-                    {zoneAlerts.length === 0 ? <li>No recent alerts</li> : zoneAlerts.map((al) => (
-                      <li key={al.alert_id || al.id}>{formatDateTime(al.alerted_at || al.timestamp)} — {(al.status || 'unknown')}</li>
+
+                <section className="flex-1 min-h-0 rounded-2xl border border-[#e7ecef] bg-[#ffffff] p-4">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3">Recent alerts</h4>
+                  <ul className="space-y-2 max-h-full overflow-y-auto pr-1">
+                    {zoneAlerts.length === 0 ? (
+                      <li className="text-xs text-slate-500">No recent alerts</li>
+                    ) : zoneAlerts.map((al) => (
+                      <li
+                        key={al.alert_id || al.id}
+                        className="p-3 text-xs text-slate-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:bg-white border border-transparent hover:border-slate-100 rounded-xl cursor-pointer"
+                      >
+                        <p className="font-medium text-slate-900">{al.status || 'unknown'}</p>
+                        <p className="mt-1 text-slate-500">{formatDateTime(al.alerted_at || al.timestamp)}</p>
+                      </li>
                     ))}
                   </ul>
                 </section>

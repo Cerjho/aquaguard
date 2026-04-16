@@ -74,10 +74,12 @@ function DashboardPage() {
 
           <div className="glass-subtle p-5 rounded-3xl border border-slate-200">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <h3 className="text-sm font-semibold text-slate-800">System Health</h3>
             </div>
-            <SystemStatus />
+            <SystemStatus showCameraIndicators showCameraStatusList={false} />
           </div>
         </motion.div>
       </div>

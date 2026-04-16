@@ -15,6 +15,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   LineChart,
   Line,
   Area,
@@ -24,7 +25,7 @@ import {
 import api from '../../hooks/useApi';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
 
-const ENABLE_ANALYTICS_MOCK = process.env.REACT_APP_ANALYTICS_MOCK !== 'false';
+const ZONE_LINE_COLORS = ['#a3cef1', '#7fb2db', '#94a3b8', '#cbd5e1'];
 
 function AnalyticsChart() {
   const prefersReducedMotion = useReducedMotion();
@@ -96,6 +97,61 @@ function AnalyticsChart() {
     return buckets;
   }, [parseRangeDays]);
 
+  const buildHourlyMultiZone = useCallback((events, selectedDays, zones = []) => {
+    const cutoff = Date.now() - (parseRangeDays(selectedDays) * 86400000);
+    const zoneBuckets = new Map();
+    const zoneLabelRegistry = new Map();
+
+    zones.forEach((zone) => {
+      const zoneKey = String(zone.zoneId || zone.zone || 'Unknown Zone');
+      const zoneLabel = String(zone.zone || zone.zoneId || 'Unknown Zone');
+      zoneLabelRegistry.set(zoneKey, zoneLabel);
+      if (!zoneBuckets.has(zoneLabel)) {
+        zoneBuckets.set(zoneLabel, Array.from({ length: 24 }).fill(0));
+      }
+    });
+
+    events.forEach((event) => {
+      const ts = event.timestamp || event.detected_at || event.created_at;
+      const parsed = new Date(ts);
+      if (Number.isNaN(parsed.getTime()) || parsed.getTime() < cutoff) return;
+      if (!(event.alert_triggered || event.status === 'alerted')) return;
+
+      const zoneKey = String(event.zone_id || event.zone || event.zone_name || event.camera_zone || 'Unknown Zone');
+      const zoneLabel = zoneLabelRegistry.get(zoneKey)
+        || String(event.zone_name || event.zone_id || event.zone || event.camera_zone || 'Unknown Zone');
+      if (!zoneBuckets.has(zoneLabel)) {
+        zoneBuckets.set(zoneLabel, Array.from({ length: 24 }).fill(0));
+      }
+      const hour = parsed.getHours();
+      zoneBuckets.get(zoneLabel)[hour] += 1;
+    });
+
+    const zoneLabels = Array.from(zoneBuckets.keys()).sort((a, b) => a.localeCompare(b));
+    const series = zoneLabels.map((zoneLabel, idx) => ({
+      zoneLabel,
+      dataKey: `zoneSeries_${idx}`,
+      color: ZONE_LINE_COLORS[idx % ZONE_LINE_COLORS.length],
+    }));
+
+    const data = Array.from({ length: 24 }).map((_, hour) => {
+      const row = {
+        hour,
+        hourLabel: `${String(hour).padStart(2, '0')}:00`,
+      };
+      series.forEach((entry) => {
+        row[entry.dataKey] = zoneBuckets.get(entry.zoneLabel)?.[hour] || 0;
+      });
+      return row;
+    });
+
+    const hasSignal = data.some((row) => (
+      series.some((entry) => Number(row[entry.dataKey] || 0) > 0)
+    ));
+
+    return { data, series, hasSignal };
+  }, [parseRangeDays]);
+
   const formatDateLabel = useCallback((value) => {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return String(value || '');
@@ -114,6 +170,11 @@ function AnalyticsChart() {
   const frequencyHourlyData = useMemo(
     () => buildHourlyFromEvents(eventsData, frequencyRangeDays),
     [eventsData, frequencyRangeDays, buildHourlyFromEvents]
+  );
+
+  const lineMultiZone = useMemo(
+    () => buildHourlyMultiZone(eventsData, lineRangeDays, zoneData),
+    [eventsData, lineRangeDays, zoneData, buildHourlyMultiZone]
   );
 
   const fallbackLineTimeData = useMemo(
@@ -141,6 +202,12 @@ function AnalyticsChart() {
     }
     return { data: fallbackLineTimeData, xKey: 'dateLabel' };
   }, [lineHasEventSignal, fallbackLineTimeData, lineHourlyData]);
+
+  const shouldRenderMultiZoneLines = useMemo(() => (
+    lineViewMode === 'zone'
+    && resolvedLineChart.xKey === 'hourLabel'
+    && lineMultiZone.series.length > 0
+  ), [lineViewMode, resolvedLineChart.xKey, lineMultiZone]);
 
   const resolvedFrequencyChart = useMemo(() => {
     if (frequencyHasEventSignal || fallbackLineTimeData.length === 0) {
@@ -209,44 +276,6 @@ function AnalyticsChart() {
     };
   }, [zoneData, eventsData, normalizeConfidence]);
 
-  const buildMockAnalyticsData = useCallback(() => {
-    const mockZones = [
-      { zoneId: 'zone_a', zone: 'Zone A', alerts: 34, detections: 120 },
-      { zoneId: 'zone_b', zone: 'Zone B', alerts: 21, detections: 96 },
-      { zoneId: 'zone_c', zone: 'Zone C', alerts: 17, detections: 78 },
-      { zoneId: 'zone_d', zone: 'Zone D', alerts: 12, detections: 62 },
-    ];
-
-    const mockTime = Array.from({ length: 7 }).map((_, idx) => {
-      const date = new Date(Date.now() - ((6 - idx) * 86400000));
-      return {
-        date: date.toISOString().slice(0, 10),
-        alerts: 8 + (idx * 3),
-        detections: 20 + (idx * 5),
-      };
-    });
-
-    const mockEvents = Array.from({ length: 180 }).map((_, idx) => {
-      const timestamp = new Date(Date.now() - (idx * 3600000));
-      const zone = mockZones[idx % mockZones.length];
-      return {
-        id: `mock-${idx}`,
-        timestamp: timestamp.toISOString(),
-        zone_id: zone.zoneId,
-        zone_name: zone.zone,
-        status: idx % 4 === 0 ? 'alerted' : 'ok',
-        alert_triggered: idx % 4 === 0,
-        confidence: 0.72 + ((idx % 7) * 0.03),
-      };
-    });
-
-    return {
-      zoneData: mockZones,
-      timeData: mockTime,
-      eventsData: mockEvents,
-    };
-  }, []);
-
   const applyAnalyticsData = useCallback((data) => {
     setZoneData(data.zoneData || []);
     setTimeData(data.timeData || []);
@@ -266,12 +295,6 @@ function AnalyticsChart() {
       setLoading(true);
     }
     setError(null);
-    if (ENABLE_ANALYTICS_MOCK) {
-      if (requestId !== requestIdRef.current) return;
-      applyAnalyticsData(buildMockAnalyticsData());
-      setLoading(false);
-      return;
-    }
     try {
       const res = await api.get('/api/v1/reports/summary', {
         params: {
@@ -336,14 +359,9 @@ function AnalyticsChart() {
       });
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
-      if (ENABLE_ANALYTICS_MOCK) {
-        applyAnalyticsData(buildMockAnalyticsData());
-        setError(null);
-      } else {
-        setError(
-          err.response?.data?.message || 'Failed to load analytics data.'
-        );
-      }
+      setError(
+        err.response?.data?.message || 'Failed to load analytics data.'
+      );
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
@@ -352,7 +370,6 @@ function AnalyticsChart() {
   }, [
     getRangeStartIso,
     hasLocalData,
-    buildMockAnalyticsData,
     applyAnalyticsData,
   ]);
 
@@ -423,7 +440,9 @@ function AnalyticsChart() {
           delay={0.15}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Incidents by Time of Day</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {lineViewMode === 'zone' ? 'Comparative Temporal Analysis' : 'Incidents by Time of Day'}
+            </h3>
             <div className="flex items-center gap-2">
               <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-0.5">
                 <button
@@ -441,14 +460,6 @@ function AnalyticsChart() {
                   By Zone
                 </button>
               </div>
-              {lineViewMode === 'zone' && (
-                <FilterDropdown
-                  ariaLabel="Line chart zone filter"
-                  options={availableZoneOptions}
-                  value={lineZoneFilter || availableZoneOptions[0]?.value || ''}
-                  onChange={setLineZoneFilter}
-                />
-              )}
               <FilterDropdown
                 ariaLabel="Incidents by time range"
                 options={[
@@ -466,12 +477,48 @@ function AnalyticsChart() {
           ) : (
             <div className="h-[280px] w-full overflow-hidden rounded-xl sm:h-[300px] lg:h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={resolvedLineChart.data} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
+                <LineChart
+                  data={shouldRenderMultiZoneLines ? lineMultiZone.data : resolvedLineChart.data}
+                  margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#d8e1ea" />
                   <XAxis dataKey={resolvedLineChart.xKey} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="incidents" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 2 }} isAnimationActive />
+                  <Tooltip content={<CustomTooltip multiSeries={shouldRenderMultiZoneLines} />} />
+                  {shouldRenderMultiZoneLines && (
+                    <Legend
+                      align="right"
+                      verticalAlign="top"
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ paddingBottom: 8 }}
+                      formatter={(value) => <span className="text-xs text-slate-500">{value}</span>}
+                    />
+                  )}
+                  {shouldRenderMultiZoneLines ? (
+                    lineMultiZone.series.map((series) => (
+                      <Line
+                        key={series.dataKey}
+                        type="monotone"
+                        dataKey={series.dataKey}
+                        name={series.zoneLabel}
+                        stroke={series.color}
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                        isAnimationActive
+                      />
+                    ))
+                  ) : (
+                    <Line
+                      type="monotone"
+                      dataKey="incidents"
+                      stroke={ZONE_LINE_COLORS[0]}
+                      strokeWidth={3}
+                      dot={{ r: 2 }}
+                      isAnimationActive
+                    />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -709,13 +756,16 @@ function CustomTooltip({
   label,
   coordinate,
   viewBox,
+  multiSeries = false,
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
-  const point = payload[0];
-  const color = point?.color || point?.fill || '#a3cef1';
-  const keyLabel = point?.name || point?.dataKey || 'value';
-  const pointValue = point?.value ?? '—';
+  const visibleEntries = payload
+    .filter((entry) => typeof entry?.value === 'number' ? entry.value > 0 : Boolean(entry?.value))
+    .sort((a, b) => Number(b?.value || 0) - Number(a?.value || 0));
+
+  const entriesToRender = visibleEntries.length > 0 ? visibleEntries : payload;
+  const point = entriesToRender[0];
   const anchorX = coordinate?.x ?? 0;
   const chartMid = viewBox ? (viewBox.x + (viewBox.width / 2)) : 0;
   const enterFromRight = anchorX > chartMid;
@@ -727,11 +777,31 @@ function CustomTooltip({
       style={{ transform }}
     >
       <p className="text-xs text-slate-500">{label || point?.payload?.zone || 'Data'}</p>
-      <div className="mt-1 flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-        <span className="text-sm text-slate-500">{keyLabel}</span>
-      </div>
-      <p className="mt-1 text-base font-semibold text-slate-900">{pointValue}</p>
+      {multiSeries ? (
+        <div className="mt-2 space-y-1.5">
+          {entriesToRender.map((entry) => {
+            const color = entry?.color || entry?.fill || '#a3cef1';
+            const keyLabel = entry?.name || entry?.dataKey || 'Zone';
+            return (
+              <div key={`${keyLabel}-${entry?.dataKey}`} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                  <span className="text-sm text-slate-600 truncate">{keyLabel}</span>
+                </div>
+                <span className="text-sm font-semibold text-slate-900">{entry?.value ?? 0}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: point?.color || point?.fill || '#a3cef1' }} />
+            <span className="text-sm text-slate-500">{point?.name || point?.dataKey || 'value'}</span>
+          </div>
+          <p className="mt-1 text-base font-semibold text-slate-900">{point?.value ?? '—'}</p>
+        </>
+      )}
     </div>
   );
 }

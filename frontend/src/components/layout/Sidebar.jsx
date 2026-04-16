@@ -2,9 +2,12 @@
  * AquaGuard — Sidebar Navigation.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext.jsx';
+import BrandMark from './BrandMark.jsx';
 
 const navItems = [
   {
@@ -50,43 +53,26 @@ const navItems = [
   },
 ];
 
-function HexagonLogo() {
-  return (
-    <motion.div
-      className="w-10 h-10 flex items-center justify-center"
-      whileHover={{ scale: 1.05 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-    >
-      <svg className="w-10 h-10 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          d="M12 2l9 5v10l-9 5-9-5V7l9-5z" 
-        />
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          d="M12 8v8m-4-4h8" 
-        />
-      </svg>
-    </motion.div>
-  );
-}
-
 function Sidebar() {
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
-    <aside className="w-64 min-h-screen flex flex-col shrink-0 bg-white border-r border-slate-200">
+    <aside className="w-72 min-h-screen flex flex-col shrink-0 bg-white rounded-r-3xl border-r border-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
       {/* Brand Header */}
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-200">
-        <HexagonLogo />
-        <div>
-          <h1 className="text-slate-900 font-bold text-xl tracking-tight">AquaGuard</h1>
-          <p className="text-slate-500 text-xs">Drowning Detection</p>
-        </div>
+      <div className="px-7 py-7 border-b border-slate-100/70">
+        <BrandMark />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-1">
+      <nav className="flex-1 px-4 py-7 space-y-2">
         {navItems.map((item, index) => (
           <NavLink
             key={item.to}
@@ -94,8 +80,8 @@ function Sidebar() {
             end={item.end}
               className={({ isActive }) =>
                 isActive
-                  ? 'flex items-center gap-3 px-6 py-3 bg-blue-50 border-l-2 border-blue-400 text-blue-700 font-medium transition-all duration-200 rounded-r-2xl'
-                  : 'flex items-center gap-3 px-6 py-3 text-slate-600 font-medium hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 rounded-r-2xl'
+                  ? 'flex items-center gap-3 px-5 py-3 rounded-full bg-[#a3cef1]/20 text-[#6daedc] font-medium transition-all duration-200'
+                  : 'flex items-center gap-3 px-5 py-3 rounded-full text-slate-600 font-medium hover:text-slate-900 hover:bg-slate-50 transition-all duration-200'
               }
             >
             {({ isActive }) => (
@@ -113,20 +99,75 @@ function Sidebar() {
         ))}
       </nav>
 
-      {/* System Status */}
-      <div className="px-4 py-3 mx-3 mb-3 rounded-2xl bg-[#f8fbff] border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-600">System</span>
-          <span className="flex items-center gap-1.5 text-emerald-700">
-            <span className="status-dot-online" />
-            Online
-          </span>
-        </div>
-      </div>
+      <div className="px-5 pb-7 mt-auto space-y-4">
+        <button
+          onClick={handleLogout}
+          aria-label="Logout"
+          disabled={isLoggingOut}
+          className={`relative overflow-hidden rounded-2xl border border-[#a3cef1]/60 bg-gradient-to-r from-[#a3cef1] to-[#b6d9f4] text-slate-900 shadow-[0_10px_24px_rgba(163,206,241,0.45)] transition-all duration-500 ease-in-out ${
+            isLoggingOut
+              ? 'w-14 py-3.5 cursor-not-allowed'
+              : 'w-full py-3.5 hover:shadow-[0_14px_28px_rgba(163,206,241,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]'
+          }`}
+          title="Sign out"
+        >
+          {isLoggingOut ? (
+            <span className="mx-auto block h-6 w-6 rounded-full border border-white/90 bg-white/20">
+              <motion.span
+                className="absolute inset-0 m-auto h-6 w-6 rounded-full border border-white/90"
+                animate={{ scale: [1, 1.5, 1], opacity: [0.85, 0, 0.85] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </span>
+          ) : (
+            <span className="inline-flex items-center justify-start gap-2 px-4">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+                />
+              </svg>
+              <span className="text-sm font-medium">Logout</span>
+            </span>
+          )}
+        </button>
+        <motion.p
+          className="mt-1 text-center text-xs text-slate-500"
+          initial={false}
+          animate={{
+            opacity: isLoggingOut ? 1 : 0,
+            y: isLoggingOut ? 0 : -4,
+            height: isLoggingOut ? 'auto' : 0,
+          }}
+          transition={{ duration: 0.5, ease: 'easeInOut' }}
+        >
+          Logging out...
+        </motion.p>
 
-      {/* Footer */}
-      <div className="px-6 py-4 border-t border-slate-200">
-        <p className="text-slate-500 text-xs">v2.0.0 · Minimalist</p>
+        <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-[#a3cef1]/30 border border-[#a3cef1]/40 flex items-center justify-center">
+              <svg className="h-5 w-5 text-slate-700" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 truncate">
+                {currentUser?.username || 'Unknown User'}
+              </p>
+              <p className="text-xs text-slate-500 capitalize truncate">
+                {currentUser?.role || 'User'}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   );

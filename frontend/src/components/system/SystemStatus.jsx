@@ -110,8 +110,8 @@ function StatusIndicator({ label, status, detail, icon }) {
   );
 }
 
-function SystemStatus() {
-  const { cameraStatuses, cameraHealthMap, systemStatus } = useSystemState();
+function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true }) {
+  const { cameraStatuses, cameraHealthMap, systemStatus, apiStatus } = useSystemState();
   const { socketConnected } = useSocketState();
 
   const detection = useMemo(
@@ -144,45 +144,50 @@ function SystemStatus() {
     const health = cameraHealthMap?.[cam.zone_id];
     return normalizeServiceStatus(health?.status) === 'degraded';
   }).length;
+  const apiOnline = apiStatus?.connected === true;
+  const aiOnline = !isDetectionStale && (
+    detection.status === 'online'
+    || detection.status === 'active'
+    || detection.status === 'running'
+    || detection.status === 'healthy'
+  );
+  const aiDetectionCount = Array.isArray(systemStatus?.recent_detections)
+    ? systemStatus.recent_detections.length
+    : (typeof systemStatus?.detection_count === 'number'
+      ? systemStatus.detection_count
+      : (typeof detectionFreshness === 'number' ? detectionFreshness : 0));
 
   return (
     <div className="space-y-3">
-      {/* Socket Status */}
-      <div className={`flex items-center justify-between rounded-2xl px-4 py-2.5 text-xs ${
-        socketConnected 
-          ? 'bg-emerald-100 border border-emerald-200' 
-          : 'bg-amber-100 border border-amber-200'
-      }`}>
-        <span className="text-slate-600 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
-          </svg>
-          Socket
-        </span>
-        <span className={`font-semibold ${socketConnected ? 'text-emerald-400' : 'text-amber-400'}`}>
-          {socketConnected ? 'Connected' : 'Polling'}
-        </span>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="sm:col-span-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-500">
+            <span className={`w-1.5 h-1.5 rounded-full ${apiOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            API
+          </div>
+          <p className={`mt-2 text-sm font-semibold ${apiOnline ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {apiOnline ? 'Online' : 'Offline'}
+          </p>
+        </div>
+        <div className="sm:col-span-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-500">
+            <span className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            Socket
+          </div>
+          <p className={`mt-2 text-sm font-semibold ${socketConnected ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {socketConnected ? 'Online' : 'Offline'}
+          </p>
+        </div>
+        <div className="sm:col-span-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-500">
+            <span className={`w-1.5 h-1.5 rounded-full ${aiOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            AI
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">
+            Detections: <span className={aiOnline ? 'text-emerald-700' : 'text-rose-600'}>{aiDetectionCount}</span>
+          </p>
+        </div>
       </div>
-
-      {/* Detection Engine */}
-      <StatusIndicator
-        label="Detection Engine"
-        status={isDetectionStale ? 'warning' : detection.status}
-        detail={
-          detection.message
-          || detection.detail
-          || (
-            typeof detectionFreshness === 'number'
-              ? `${detectionFreshness}s ago`
-              : 'Waiting…'
-          )
-        }
-        icon={
-          <svg className={`w-4 h-4 ${isDetectionStale ? 'text-amber-400' : 'text-emerald-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611l-.628.105a9.002 9.002 0 01-9.014 0l-.628-.105c-1.717-.293-2.299-2.379-1.067-3.611L5 14.5" />
-          </svg>
-        }
-      />
 
       {/* ESP32 Device */}
       <StatusIndicator
@@ -204,51 +209,63 @@ function SystemStatus() {
         }
       />
 
-      {/* Camera Summary */}
-      <div className="flex gap-3 text-xs">
-        <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 text-center shadow-sm">
-          <p className="text-2xl font-bold text-emerald-600">{cameraEntries.length - staleCameraCount}</p>
-          <p className="text-slate-500 mt-0.5">Online</p>
-        </div>
-        <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 text-center shadow-sm">
-          <p className={`text-2xl font-bold ${degradedCameraCount > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
-            {degradedCameraCount}
-          </p>
-          <p className="text-slate-500 mt-0.5">Degraded</p>
-        </div>
-        <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 text-center shadow-sm">
-          <p className="text-2xl font-bold text-slate-800">{cameraEntries.length}</p>
-          <p className="text-slate-500 mt-0.5">Total</p>
-        </div>
-      </div>
+      {showCameraIndicators && (
+        <>
+          {/* Camera Summary */}
+          <div className="flex gap-3 text-xs">
+            <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
+              <div className="flex min-h-[76px] flex-col items-center justify-center text-center">
+                <p className="text-2xl font-bold leading-none text-emerald-600">{cameraEntries.length - staleCameraCount}</p>
+                <p className="mt-1 text-slate-500">Online</p>
+              </div>
+            </div>
+            <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
+              <div className="flex min-h-[76px] flex-col items-center justify-center text-center">
+                <p className={`text-2xl font-bold leading-none ${degradedCameraCount > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
+                  {degradedCameraCount}
+                </p>
+                <p className="mt-1 text-slate-500">Degraded</p>
+              </div>
+            </div>
+            <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
+              <div className="flex min-h-[76px] flex-col items-center justify-center text-center">
+                <p className="text-2xl font-bold leading-none text-slate-800">{cameraEntries.length}</p>
+                <p className="mt-1 text-slate-500">Total</p>
+              </div>
+            </div>
+          </div>
 
-      {/* Camera statuses */}
-      {cameraEntries.length === 0 ? (
-        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-600 text-center">
-          Waiting for camera status…
-        </div>
-      ) : (
-        cameraEntries.map((cam) => (
-          <StatusIndicator
-            key={cam.zone_id}
-            label={cam.zone_name || cam.zone_id}
-            status={cam.status === 'online' ? 'online' : 'warning'}
-            detail={`${cam.zone_id}${
-              cameraHealthMap?.[cam.zone_id]?.fps_actual != null
-                ? ` · ${Number(cameraHealthMap[cam.zone_id].fps_actual).toFixed(1)} FPS`
-                : ''
-            }${
-              cameraHealthMap?.[cam.zone_id]?.corruption_rate != null
-                ? ` · ${(Number(cameraHealthMap[cam.zone_id].corruption_rate) * 100).toFixed(1)}% corr.`
-                : ''
-            }`}
-            icon={
-              <svg className={`w-4 h-4 ${cam.status === 'online' ? 'text-emerald-400' : 'text-amber-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            }
-          />
-        ))
+          {/* Camera statuses */}
+          {showCameraStatusList && (
+            cameraEntries.length === 0 ? (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-600 text-center">
+                Waiting for camera status…
+              </div>
+            ) : (
+              cameraEntries.map((cam) => (
+                <StatusIndicator
+                  key={cam.zone_id}
+                  label={cam.zone_name || cam.zone_id}
+                  status={cam.status === 'online' ? 'online' : 'warning'}
+                  detail={`${cam.zone_id}${
+                    cameraHealthMap?.[cam.zone_id]?.fps_actual != null
+                      ? ` · ${Number(cameraHealthMap[cam.zone_id].fps_actual).toFixed(1)} FPS`
+                      : ''
+                  }${
+                    cameraHealthMap?.[cam.zone_id]?.corruption_rate != null
+                      ? ` · ${(Number(cameraHealthMap[cam.zone_id].corruption_rate) * 100).toFixed(1)}% corr.`
+                      : ''
+                  }`}
+                  icon={
+                    <svg className={`w-4 h-4 ${cam.status === 'online' ? 'text-emerald-400' : 'text-amber-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                  }
+                />
+              ))
+            )
+          )}
+        </>
       )}
     </div>
   );

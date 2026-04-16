@@ -14,6 +14,190 @@ import { useDataCache } from '../../context/DataCacheContext.jsx';
 
 const PAGE_SIZE = 10;
 const ALERT_STATUS_VALUES = new Set(['unacknowledged', 'acknowledged']);
+const STATUS_OPTIONS = [
+  { value: '', label: 'Pending (All)', dotClass: 'bg-slate-400' },
+  { value: 'unacknowledged', label: 'Critical', dotClass: 'bg-rose-500' },
+  { value: 'acknowledged', label: 'Reviewed', dotClass: 'bg-blue-500' },
+];
+const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+function formatDateInput(value) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+  const d = String(parsed.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function StatusDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+  const selected = STATUS_OPTIONS.find((opt) => opt.value === value) || STATUS_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onOutside = (event) => {
+      if (wrapperRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:border-[#a3cef1]"
+        aria-label="Filter alerts by status"
+      >
+        <span className="inline-flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${selected.dotClass}`} />
+          {selected.label}
+        </span>
+        <svg className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.16 }}
+            className="absolute left-0 right-0 top-11 z-20 bg-white/95 backdrop-blur-xl shadow-lg rounded-2xl border border-slate-100 p-1.5"
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <button
+                key={option.value || 'all'}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                className="w-full text-left rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${option.dotClass}`} />
+                  {option.label}
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function CalendarInput({
+  value,
+  onChange,
+  ariaLabel,
+  popoverAlign = 'left',
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+  const parsedValue = value ? new Date(value) : null;
+  const initialMonth = parsedValue && !Number.isNaN(parsedValue.getTime()) ? parsedValue : new Date();
+  const [cursorDate, setCursorDate] = useState(new Date(initialMonth.getFullYear(), initialMonth.getMonth(), 1));
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onOutside = (event) => {
+      if (wrapperRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  const monthStart = new Date(cursorDate.getFullYear(), cursorDate.getMonth(), 1);
+  const monthEnd = new Date(cursorDate.getFullYear(), cursorDate.getMonth() + 1, 0);
+  const leadingBlankDays = monthStart.getDay();
+  const totalDays = monthEnd.getDate();
+  const selectedDate = formatDateInput(value);
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-left text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:border-[#a3cef1]"
+        aria-label={ariaLabel}
+      >
+        {selectedDate || 'Select date'}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.16 }}
+            className={`absolute top-11 z-20 w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-slate-100 bg-white p-3 shadow-lg ${
+              popoverAlign === 'right' ? 'right-0' : 'left-0'
+            }`}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCursorDate(new Date(cursorDate.getFullYear(), cursorDate.getMonth() - 1, 1))}
+                className="h-8 w-8 rounded-full hover:bg-slate-50 text-slate-500"
+              >
+                ‹
+              </button>
+              <p className="text-sm font-medium text-slate-800">
+                {cursorDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setCursorDate(new Date(cursorDate.getFullYear(), cursorDate.getMonth() + 1, 1))}
+                className="h-8 w-8 rounded-full hover:bg-slate-50 text-slate-500"
+              >
+                ›
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {WEEKDAY_LABELS.map((label) => (
+                <div key={label} className="text-center text-xs text-slate-400 py-1">{label}</div>
+              ))}
+              {Array.from({ length: leadingBlankDays }).map((_, idx) => (
+                <div key={`blank-${idx}`} />
+              ))}
+              {Array.from({ length: totalDays }).map((_, idx) => {
+                const day = idx + 1;
+                const dateValue = `${cursorDate.getFullYear()}-${String(cursorDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isSelected = dateValue === selectedDate;
+                return (
+                  <button
+                    key={dateValue}
+                    type="button"
+                    onClick={() => {
+                      onChange(dateValue);
+                      setOpen(false);
+                    }}
+                    className={`h-9 rounded-xl text-sm transition-colors ${
+                      isSelected
+                        ? 'bg-[#a3cef1] text-slate-900 font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function AlertHistory() {
   const prefersReducedMotion = useReducedMotion();
@@ -26,6 +210,7 @@ function AlertHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [draftFilters, setDraftFilters] = useState(triageFilters || {});
+  const [appliedFilters, setAppliedFilters] = useState(triageFilters || {});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const requestIdRef = useRef(0);
@@ -51,25 +236,8 @@ function AlertHistory() {
 
   useEffect(() => {
     setDraftFilters(triageFilters || {});
+    setAppliedFilters(triageFilters || {});
   }, [triageFilters]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const next = draftFilters || {};
-      const current = triageFilters || {};
-      const hasChanged = (
-        (next.zone_id || '') !== (current.zone_id || '')
-        || (next.status || '') !== (current.status || '')
-        || (next.min_confidence || '') !== (current.min_confidence || '')
-        || (next.from || '') !== (current.from || '')
-        || (next.to || '') !== (current.to || '')
-      );
-      if (hasChanged) {
-        setTriageFilters(next);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [draftFilters, triageFilters, setTriageFilters]);
 
   const fetchAlerts = useCallback(async (pageNum) => {
     const requestId = requestIdRef.current + 1;
@@ -81,7 +249,7 @@ function AlertHistory() {
     }
     setError(null);
     try {
-      const filterState = triageFilters || {};
+      const filterState = appliedFilters || {};
       const minConfidence = toNumericFilter(filterState.min_confidence);
       const normalizedStatus = ALERT_STATUS_VALUES.has(filterState.status)
         ? filterState.status
@@ -132,7 +300,7 @@ function AlertHistory() {
         setRefreshing(false);
       }
     }
-  }, [triageFilters, alerts.length, setAlertHistorySnapshot]);
+  }, [appliedFilters, alerts.length, setAlertHistorySnapshot]);
 
   useEffect(() => {
     fetchAlerts(page);
@@ -140,7 +308,7 @@ function AlertHistory() {
 
   useEffect(() => {
     setPage(1);
-  }, [triageFilters]);
+  }, [appliedFilters]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -269,16 +437,12 @@ function AlertHistory() {
                   placeholder="Zone ID"
                   className="input-field bg-white"
                 />
-                <select
-                  aria-label="Filter alerts by status"
-                  value={draftFilters?.status || ''}
-                  onChange={(e) => setDraftFilters((prev) => ({ ...prev, status: e.target.value }))}
-                  className="input-field bg-white"
-                >
-                  <option value="">All statuses</option>
-                  <option value="unacknowledged">Unacknowledged</option>
-                  <option value="acknowledged">Acknowledged</option>
-                </select>
+                <div className="relative">
+                  <StatusDropdown
+                    value={draftFilters?.status || ''}
+                    onChange={(nextStatus) => setDraftFilters((prev) => ({ ...prev, status: nextStatus }))}
+                  />
+                </div>
                 <input
                   type="number"
                   aria-label="Filter alerts by minimum confidence"
@@ -290,36 +454,53 @@ function AlertHistory() {
                   placeholder="Min confidence"
                   className="input-field bg-white"
                 />
-                <input
-                  type="datetime-local"
-                  aria-label="Filter alerts from datetime"
+                <CalendarInput
+                  ariaLabel="Filter alerts from datetime"
                   value={draftFilters?.from || ''}
-                  onChange={(e) => setDraftFilters((prev) => ({ ...prev, from: e.target.value }))}
-                  className="input-field bg-white"
+                  onChange={(nextDate) => setDraftFilters((prev) => ({ ...prev, from: nextDate }))}
+                  popoverAlign="left"
                 />
-                <input
-                  type="datetime-local"
-                  aria-label="Filter alerts to datetime"
+                <CalendarInput
+                  ariaLabel="Filter alerts to datetime"
                   value={draftFilters?.to || ''}
-                  onChange={(e) => setDraftFilters((prev) => ({ ...prev, to: e.target.value }))}
-                  className="input-field bg-white"
+                  onChange={(nextDate) => setDraftFilters((prev) => ({ ...prev, to: nextDate }))}
+                  popoverAlign="right"
                 />
               </div>
-              <div className="mt-3 flex justify-end">
+              <div className="mt-4 flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
                 <button
                   onClick={() => {
                     resetTriageFilters();
-                    setDraftFilters({
+                    const cleared = {
                       zone_id: '',
                       status: '',
                       min_confidence: '',
                       from: '',
                       to: '',
-                    });
+                    };
+                    setDraftFilters(cleared);
+                    setAppliedFilters(cleared);
+                    setTriageFilters(cleared);
                   }}
-                  className="px-3 py-1.5 text-xs rounded-full border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all focus-ring"
+                  className="px-3 py-1.5 text-xs rounded-full text-slate-500 hover:text-slate-800 transition-all focus-ring"
                 >
-                  Reset filters
+                  Reset
+                </button>
+                <button
+                  onClick={() => {
+                    const next = {
+                      zone_id: draftFilters?.zone_id || '',
+                      status: draftFilters?.status || '',
+                      min_confidence: draftFilters?.min_confidence || '',
+                      from: draftFilters?.from ? formatDateInput(draftFilters.from) : '',
+                      to: draftFilters?.to ? formatDateInput(draftFilters.to) : '',
+                    };
+                    setAppliedFilters(next);
+                    setTriageFilters(next);
+                  }}
+                  className="bg-slate-800 text-white rounded-full px-4 py-2 text-sm hover:bg-slate-700 shadow-md transition-all"
+                >
+                  Apply Filters
                 </button>
               </div>
             </motion.div>

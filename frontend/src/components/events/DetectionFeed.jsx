@@ -99,24 +99,28 @@ function DetectionFeed() {
   }, [lastPollAt, nowTick]);
 
   return (
-    <div className="glass-subtle overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_16px_32px_rgba(15,23,42,0.06)] backdrop-blur-md">
+      <div className="px-4 py-3.5 border-b border-slate-200/70 flex items-center justify-between bg-white/80">
+        <div className="flex items-center gap-2.5">
+          <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#a3cef1]/40 bg-[#a3cef1]/15 text-[#7fb2db] shadow-sm">
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
           <h3 className="text-sm font-semibold text-slate-800">Live Detection Feed</h3>
         </div>
         <span
-          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg ${
+          className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${
             socketConnected && !isStale 
-              ? 'text-emerald-600 bg-emerald-100' 
-              : 'text-amber-700 bg-amber-100'
+              ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
+              : 'text-rose-700 bg-rose-50 border-rose-200'
           }`}
         >
           <span
             className={`w-1.5 h-1.5 rounded-full ${
               socketConnected && !isStale
                 ? 'bg-emerald-400 animate-pulse'
-                : 'bg-amber-400'
+                : 'bg-rose-400'
             }`}
           />
           {socketConnected ? (isStale ? 'Stale' : 'Live') : 'Polling'}
@@ -127,15 +131,17 @@ function DetectionFeed() {
         <p className="px-4 py-2 text-xs text-rose-700 bg-rose-100 border-b border-rose-200">{error}</p>
       )}
 
-      <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+      <ul className="divide-y divide-slate-100/80 max-h-80 overflow-y-auto">
         {events.length === 0 && !error ? (
           <li className="px-4 py-8 text-center">
-            <div className="w-12 h-12 rounded-lg bg-slate-800/50 mx-auto flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            <div className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#a3cef1]/45 bg-gradient-to-b from-[#a3cef1]/25 via-white to-[#a3cef1]/10 shadow-sm">
+              <span className="absolute inset-0 rounded-2xl border border-white/60" />
+              <span className="absolute -inset-1 rounded-2xl border border-[#a3cef1]/25 animate-pulse" />
+              <svg className="relative z-10 h-7 w-7 text-[#7fb2db]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
-            <p className="text-slate-400 text-sm">No detection events yet</p>
+            <p className="text-slate-500 text-sm font-medium">No detection events yet</p>
           </li>
         ) : (
           <AnimatePresence initial={false}>
@@ -149,8 +155,8 @@ function DetectionFeed() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.2 }}
-                  className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-sm ${
-                    ev.alert_triggered ? 'bg-rose-50' : ''
+                  className={`mx-2 my-1.5 flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-white hover:shadow-sm transition-all text-sm ${
+                    ev.alert_triggered ? 'bg-rose-50/70 border border-rose-100' : 'bg-slate-50/40'
                   }`}
                 >
                   <span

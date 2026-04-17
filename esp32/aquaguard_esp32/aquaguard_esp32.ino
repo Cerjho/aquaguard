@@ -488,7 +488,16 @@ void connectMQTT() {
   Serial.printf("[MQTT] Connecting to broker %s:%d as client '%s'...\n",
                 mqttBrokerTarget, MQTT_PORT, DEVICE_ID);
 
-  if (mqttClient.connect(DEVICE_ID)) {
+  char willPayload[128];
+  snprintf(
+    willPayload,
+    sizeof(willPayload),
+    "{\"device_id\":\"%s\",\"status\":\"offline\"}",
+    DEVICE_ID
+  );
+
+  // Use MQTT Last Will so sudden power loss/unplug marks device offline.
+  if (mqttClient.connect(DEVICE_ID, TOPIC_STATUS, 1, true, willPayload)) {
     Serial.println("[MQTT] Connected to broker.");
 
     // Subscribe to alert topic (QoS 1)
@@ -600,7 +609,7 @@ void publishHeartbeat() {
   char jsonBuffer[128];
   size_t n = serializeJson(doc, jsonBuffer, sizeof(jsonBuffer));
 
-  if (mqttClient.publish(TOPIC_STATUS, jsonBuffer)) {
+  if (mqttClient.publish(TOPIC_STATUS, jsonBuffer, true)) {
     Serial.printf("[Heartbeat] Published to '%s': %s\n", TOPIC_STATUS, jsonBuffer);
   } else {
     Serial.printf("[Heartbeat] ERROR: Failed to publish to '%s'\n", TOPIC_STATUS);

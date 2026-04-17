@@ -54,6 +54,9 @@ CAMERA_CORRUPTION_WARN_THRESHOLD = 0.10  # 10% corruption rate triggers warning
 
 # ── Alert ─────────────────────────────────────────────────────────────────────
 ALARM_DURATION_SECONDS = 30
+ALERT_RETRIGGER_INTERVAL_SECONDS = float(
+    os.environ.get('ALERT_RETRIGGER_INTERVAL_SECONDS', '2.0')
+)
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
 SNAPSHOT_FORMAT = "jpg"

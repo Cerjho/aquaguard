@@ -91,6 +91,8 @@ services:
       - WEBRTC_ICE_TRANSPORT_POLICY=${WEBRTC_ICE_TRANSPORT_POLICY:-all}
       - WEBRTC_FORCE_RELAY=${WEBRTC_FORCE_RELAY:-false}
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-aquaguard2026}
+      - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD:-lifeguard2026}
     volumes:
       - ./backend/snapshots:/app/snapshots
     depends_on:

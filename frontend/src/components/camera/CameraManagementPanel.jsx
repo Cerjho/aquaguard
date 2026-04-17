@@ -130,7 +130,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
     setFormOpen(true);
   };
 
-  const openEditForm = (camera) => {
+  const openEditForm = useCallback((camera) => {
     setFeedback({ type: '', message: '' });
     setMenuOpenZoneId(null);
     setEditingZoneId(camera.zone_id);
@@ -144,7 +144,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
       is_active: Boolean(camera.is_active),
     });
     setFormOpen(true);
-  };
+  }, []);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({
@@ -202,7 +202,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
     }
   };
 
-  const toggleActive = async (camera) => {
+  const toggleActive = useCallback(async (camera) => {
     setMenuOpenZoneId(null);
     setFeedback({ type: '', message: '' });
     try {
@@ -228,12 +228,12 @@ function CameraManagementPanel({ onCamerasChanged }) {
         message: err.response?.data?.error || 'Failed to update camera status.',
       });
     }
-  };
+  }, [onCamerasChanged]);
 
-  const openDeleteConfirmation = (camera) => {
+  const openDeleteConfirmation = useCallback((camera) => {
     setMenuOpenZoneId(null);
     setDeleteConfirm({ open: true, camera });
-  };
+  }, []);
 
   const closeDeleteConfirmation = () => {
     setDeleteConfirm({ open: false, camera: null });
@@ -333,7 +333,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
 
     document.addEventListener('keydown', handleMenuHotkeys);
     return () => document.removeEventListener('keydown', handleMenuHotkeys);
-  }, [menuCamera]);
+  }, [menuCamera, openDeleteConfirmation, openEditForm, toggleActive]);
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-md">

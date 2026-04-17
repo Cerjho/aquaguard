@@ -412,33 +412,33 @@ function CameraManagementPanel({ onCamerasChanged }) {
                           : 'hover:bg-slate-50/80 focus-within:bg-slate-50/80'
                     }`}
                   >
-                    <td className="px-4 py-3">
+                    <td className="p-0 align-middle">
                       <button
                         type="button"
                         data-testid={`camera-row-${camera.zone_id}`}
                         onClick={() => openCameraDetails(camera.zone_id)}
-                        className="w-full rounded-lg px-1 py-0.5 text-left font-mono text-xs text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        className="block h-full w-full rounded-none px-4 py-3 text-left font-mono text-xs text-slate-600 transition-colors hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
                         aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
                       >
                         {camera.zone_id}
                       </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="p-0 align-middle">
                       <button
                         type="button"
                         onClick={() => openCameraDetails(camera.zone_id)}
-                        className="w-full rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        className="block h-full w-full rounded-none px-4 py-3 text-left transition-colors hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
                         aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
                       >
-                        <p className="font-medium text-slate-700">{camera.zone_name}</p>
-                        <p className="text-xs text-slate-500 truncate max-w-[280px]">{camera.rtsp_url}</p>
+                        <span className="block font-medium text-slate-700">{camera.zone_name}</span>
+                        <span className="block truncate max-w-[280px] text-xs text-slate-500">{camera.rtsp_url}</span>
                       </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="p-0 align-middle">
                       <button
                         type="button"
                         onClick={() => openCameraDetails(camera.zone_id)}
-                        className="rounded-lg px-1 py-0.5 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        className="block h-full w-full rounded-none px-4 py-3 text-left transition-colors hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
                         aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
                       >
                         <span

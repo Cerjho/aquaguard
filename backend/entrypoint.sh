@@ -66,7 +66,7 @@ run_migrations_with_retry() {
 
 	while (( attempt <= retries )); do
 		echo "==> Running database migrations (attempt ${attempt}/${retries})..."
-		if python -m flask db upgrade; then
+		if AQUAGUARD_SKIP_STARTUP_BOOTSTRAP=1 python -m flask db upgrade; then
 			echo "==> Database migrations completed."
 			return 0
 		fi

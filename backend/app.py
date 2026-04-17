@@ -39,6 +39,10 @@ def _is_localhost_origin(origin):
     return hostname in {'localhost', '127.0.0.1'}
 
 
+def _is_truthy(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
 def create_app():
     load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
     validate_runtime_settings()
@@ -142,10 +146,14 @@ def create_app():
             'message': 'An unexpected error occurred.',
         }, 500
 
-    # Auto-create database tables and default admin user on startup
+    # Skip startup bootstrap during migration CLI commands to avoid
+    # creating tables before `flask db upgrade` runs.
+    skip_bootstrap = _is_truthy(os.environ.get('AQUAGUARD_SKIP_STARTUP_BOOTSTRAP'))
+
     with app.app_context():
-        db.create_all()
-        _ensure_default_users(app)
+        if not skip_bootstrap:
+            db.create_all()
+            _ensure_default_users(app)
 
     bridge = start_esp32_mqtt_bridge(app)
     if bridge is not None:

@@ -219,6 +219,119 @@ jobs:
           path: frontend/e2e/reports/
           retention-days: 7
 
+  compose-deployment-gate:
+    name: Compose Deployment Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare compose environment
+        run: |
+          cp .env.example .env
+          cat >> .env <<'EOF'
+          APP_ENV=production
+          SECRET_KEY=ci-secret-key-change-me-1234567890
+          JWT_SECRET_KEY=ci-jwt-secret-key-change-me-1234567890
+          AQUAGUARD_API_KEY=ci-internal-api-key-change-me-1234567890
+          SEED_ADMIN_PASSWORD=aquaguard2026
+          SEED_GUARD_PASSWORD=lifeguard2026
+          DATABASE_URL=mysql+pymysql://aquaguard:aquaguardpass@mysql:3306/aquaguard
+          CORS_ALLOWED_ORIGINS=https://aquaguard.ci.local
+          RATELIMIT_STORAGE_URI=redis://redis:6379/1
+          REACT_APP_API_URL=http://localhost:5000
+          REACT_APP_WS_URL=http://localhost:5000
+          EOF
+
+      - name: Validate compose contract
+        run: |
+          docker compose --env-file .env config > /tmp/aquaguard-compose.rendered.yml
+
+      - name: Start compose services
+        run: |
+          docker compose --env-file .env up -d --build mysql redis mosquitto coturn backend frontend
+
+      - name: Wait for backend and frontend readiness
+        run: |
+          for i in {1..90}; do
+            backend_status="$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health || true)"
+            frontend_status="$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || true)"
+
+            if [ "$backend_status" = "200" ] && [ "$frontend_status" = "200" ]; then
+              echo "Compose services are ready"
+              exit 0
+            fi
+
+            if [ "$i" -eq 90 ]; then
+              echo "ERROR: Timed out waiting for compose services"
+              echo "Backend status: $backend_status"
+              echo "Frontend status: $frontend_status"
+              docker compose --env-file .env ps
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+      - name: Run backend smoke assertions
+        run: |
+          python3 - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+
+          def request(url: str, method: str = "GET", data: dict | None = None, headers: dict | None = None):
+              payload = None
+              if data is not None:
+                  payload = json.dumps(data).encode("utf-8")
+              req = urllib.request.Request(url=url, method=method, data=payload)
+              if headers:
+                  for key, value in headers.items():
+                      req.add_header(key, value)
+              if data is not None:
+                  req.add_header("Content-Type", "application/json")
+
+              with urllib.request.urlopen(req, timeout=10) as response:
+                  body = response.read().decode("utf-8")
+                  return response.status, body
+
+
+          health_status, _ = request("http://localhost:5000/api/health")
+          if health_status != 200:
+              raise SystemExit(f"Expected /api/health=200, got {health_status}")
+
+          login_status, login_body = request(
+              "http://localhost:5000/api/v1/auth/login",
+              method="POST",
+              data={"username": "admin", "password": "aquaguard2026"},
+          )
+          if login_status != 200:
+              raise SystemExit(f"Expected login=200, got {login_status}. body={login_body}")
+
+          token = json.loads(login_body).get("access_token")
+          if not token:
+              raise SystemExit("Login response did not include access_token")
+
+          system_status, _ = request(
+              "http://localhost:5000/api/v1/system/status",
+              headers={"Authorization": f"Bearer {token}"},
+          )
+          if system_status != 200:
+              raise SystemExit(f"Expected system status=200, got {system_status}")
+          PY
+
+      - name: Show compose status and logs
+        if: always()
+        run: |
+          docker compose --env-file .env ps
+          docker compose --env-file .env logs --no-color --tail=120 backend frontend mysql redis mosquitto
+
+      - name: Tear down compose services
+        if: always()
+        run: |
+          docker compose --env-file .env down -v --remove-orphans
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

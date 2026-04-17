@@ -29,7 +29,6 @@ import {
   MAX_DETECTION_EVENTS,
   STATUS_POLL_BASE_INTERVAL_MS,
   STATUS_POLL_HIDDEN_INTERVAL_MS,
-  STATUS_POLL_MAX_INTERVAL_MS,
 } from './alertConfig';
 import { normalizeAlertPayload, resolveAlertId } from './alertUtils';
 
@@ -272,15 +271,11 @@ export function AlertProvider({ children }) {
       if (statusPollTimerRef.current) clearTimeout(statusPollTimerRef.current);
       statusPollTimerRef.current = setTimeout(async () => {
         if (document.hidden) {
-          scheduleNextPoll(Math.min(STATUS_POLL_MAX_INTERVAL_MS, STATUS_POLL_HIDDEN_INTERVAL_MS));
+          scheduleNextPoll(STATUS_POLL_HIDDEN_INTERVAL_MS);
           return;
         }
         await Promise.all([refreshSystemStatus(), refreshCameraHealth()]);
-        const backoff = Math.min(
-          STATUS_POLL_BASE_INTERVAL_MS * (2 ** statusPollFailuresRef.current),
-          STATUS_POLL_MAX_INTERVAL_MS
-        );
-        scheduleNextPoll(backoff);
+        scheduleNextPoll(STATUS_POLL_BASE_INTERVAL_MS);
       }, delayMs);
     };
 

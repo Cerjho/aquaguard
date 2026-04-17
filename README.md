@@ -239,6 +239,22 @@ See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
 See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
 
+## Deployment Checklist
+
+See [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)
+
+## Operator Runbook
+
+See [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)
+
+## Incident Response
+
+See [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md)
+
+## Handoff Template
+
+See [docs/HANDOFF_TEMPLATE.md](docs/HANDOFF_TEMPLATE.md)
+
 ## Security
 
 See [SECURITY.md](SECURITY.md) for the latest vulnerability report, and

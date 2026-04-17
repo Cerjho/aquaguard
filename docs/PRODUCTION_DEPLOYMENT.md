@@ -166,3 +166,12 @@ Capture and hand over:
 3. Incident test procedure (alert + reset)
 4. Service ownership and escalation contacts
 5. Last known good release tag and rollback tag
+
+## 12. Operations Runbooks and Checklists
+
+Use the following documents together during pre-release, go-live, and handoff:
+
+- `docs/DEPLOYMENT_CHECKLIST.md` — staged pre-go-live and hypercare checklist
+- `docs/OPERATOR_RUNBOOK.md` — day-to-day startup, shutdown, and backup flow
+- `docs/INCIDENT_RESPONSE.md` — incident diagnosis and recovery playbook
+- `docs/HANDOFF_TEMPLATE.md` — deployment handoff record template

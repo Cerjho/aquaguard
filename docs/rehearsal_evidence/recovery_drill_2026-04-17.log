@@ -1,0 +1,42 @@
+Docker Compose version v2.40.3-desktop.1
+ Container aquaguard-mqtt  Restarting
+ Container aquaguard-mqtt  Started
+[1/6] Logging in
+[2/6] Validating authenticated system status
+[3/6] Verifying stream-token access
+[4/6] Triggering detection event and alert
+[5/6] Verifying alert visibility
+[6/6] Acknowledging alert
+SMOKE PASSED: defense workflow is healthy
+ Container aquaguard-backend  Restarting
+ Container aquaguard-backend  Started
+[1/6] Logging in
+[2/6] Validating authenticated system status
+[3/6] Verifying stream-token access
+[4/6] Triggering detection event and alert
+[5/6] Verifying alert visibility
+[6/6] Acknowledging alert
+SMOKE PASSED: defense workflow is healthy
+AquaGuard recovery drill starting
+$ docker compose version
+[drill] restarting service: mosquitto
+$ docker compose restart mosquitto
+$ C:\Users\Jhocer Barcela\Desktop\AquaGuard\aquaguard_env\Scripts\python.exe C:\Users\Jhocer Barcela\Desktop\AquaGuard\scripts\defense_smoke.py --base-url http://localhost:5000
+[drill] mosquitto recovered in 1.95s
+[drill] restarting service: backend
+$ docker compose restart backend
+$ C:\Users\Jhocer Barcela\Desktop\AquaGuard\aquaguard_env\Scripts\python.exe C:\Users\Jhocer Barcela\Desktop\AquaGuard\scripts\defense_smoke.py --base-url http://localhost:5000
+[drill] backend recovered in 8.61s
+RECOVERY DRILL PASSED
+{
+  "results": [
+    {
+      "service": "mosquitto",
+      "recovery_seconds": 1.95
+    },
+    {
+      "service": "backend",
+      "recovery_seconds": 8.61
+    }
+  ]
+}

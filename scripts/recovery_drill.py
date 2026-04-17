@@ -11,6 +11,7 @@ import json
 import subprocess
 import sys
 import time
+from http.client import HTTPException, RemoteDisconnected
 from pathlib import Path
 from typing import Any
 from urllib import error, request
@@ -46,7 +47,13 @@ def wait_for_url(url: str, timeout_seconds: int, expected_statuses: set[int]) ->
         except error.HTTPError as exc:
             if exc.code in expected_statuses:
                 return
-        except error.URLError:
+        except (
+            error.URLError,
+            TimeoutError,
+            ConnectionError,
+            HTTPException,
+            RemoteDisconnected,
+        ):
             pass
         time.sleep(2)
     raise RuntimeError(f"Timed out waiting for {url}")

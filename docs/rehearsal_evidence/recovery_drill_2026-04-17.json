@@ -1,0 +1,12 @@
+{
+  "results": [
+    {
+      "service": "mosquitto",
+      "recovery_seconds": 1.95
+    },
+    {
+      "service": "backend",
+      "recovery_seconds": 8.61
+    }
+  ]
+}

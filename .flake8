@@ -4,7 +4,10 @@ exclude =
     backend/migrations,
     __pycache__,
     .git,
-    node_modules
+    node_modules,
+    aquaguard_env,
+    venv,
+    .venv
 ignore =
     E221,
     E241,

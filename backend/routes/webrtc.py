@@ -73,7 +73,7 @@ if AIORTC_AVAILABLE:
                 # Read file bytes first to avoid partial reads
                 with open(path, 'rb') as f:
                     data = f.read()
-                
+
                 # Validate JPEG markers (SOI at start, EOI at end)
                 if len(data) < 4:
                     return None
@@ -81,7 +81,7 @@ if AIORTC_AVAILABLE:
                     return None
                 if data[-2:] != b'\xff\xd9':  # EOI marker
                     return None
-                
+
                 # Decode from memory buffer
                 arr = np.frombuffer(data, dtype=np.uint8)
                 frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)

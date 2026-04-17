@@ -6,17 +6,22 @@ offer_sdp = "v=0\no=- 0 0 IN IP4 0.0.0.0\ns=-\nt=0 0"
 
 # Try login
 try:
-    resp = requests.post('http://127.0.0.1:5000/api/v1/auth/login', 
-                        json={'username': 'admin', 'password': 'adminpass'}, 
+    resp = requests.post('http://127.0.0.1:5000/api/v1/auth/login',
+                        json={'username': 'admin', 'password': 'adminpass'},
                         timeout=5)
     if resp.status_code == 200:
         token = resp.json().get('access_token')
         print(f'Token: {token[:20]}...')
-        
+
         # Now try WebRTC with token
         headers = {'Authorization': f'Bearer {token}'}
+        webrtc_payload = {
+            'offer_type': 'offer',
+            'offer_sdp': offer_sdp,
+            'zone_id': 'zone_dev',
+        }
         resp2 = requests.post('http://127.0.0.1:5000/api/v1/webrtc/offer',
-                             json={'offer_type': 'offer', 'offer_sdp': offer_sdp, 'zone_id': 'zone_dev'},
+                             json=webrtc_payload,
                              headers=headers,
                              timeout=5)
         print(f'WebRTC /offer status: {resp2.status_code}')

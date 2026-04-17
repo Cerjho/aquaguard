@@ -171,6 +171,8 @@ Capture and hand over:
 
 Use the following documents together during pre-release, go-live, and handoff:
 
+- `docs/DEPLOYMENT_PACKAGE.md` — one-command setup, troubleshooting map, and rollback handoff package
+- `docs/GO_LIVE_HYPERCARE_PLAN.md` — week-one budgets, cadence, and hotfix guardrails
 - `docs/DEPLOYMENT_CHECKLIST.md` — staged pre-go-live and hypercare checklist
 - `docs/OPERATOR_RUNBOOK.md` — day-to-day startup, shutdown, and backup flow
 - `docs/INCIDENT_RESPONSE.md` — incident diagnosis and recovery playbook

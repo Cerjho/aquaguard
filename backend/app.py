@@ -92,6 +92,18 @@ def create_app():
     app.register_blueprint(system_bp)
     app.register_blueprint(webrtc_bp)
 
+    @app.get('/api/health')
+    def health_check():
+        """Public liveness probe for orchestrators and CI."""
+        return {
+            'status': 'success',
+            'data': {
+                'service': 'backend',
+                'environment': env_name,
+            },
+            'message': 'ok',
+        }, 200
+
     # Register SocketIO handlers
     import sockets  # noqa: F401
 

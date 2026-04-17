@@ -1,6 +1,16 @@
 from datetime import datetime, timedelta, timezone
 
 
+def test_health_check_is_public(client):
+    resp = client.get('/api/health')
+    assert resp.status_code == 200
+
+    payload = resp.get_json()
+    assert payload['status'] == 'success'
+    assert payload['data']['service'] == 'backend'
+    assert payload['message'] == 'ok'
+
+
 def test_system_status_requires_auth(client):
     resp = client.get('/api/v1/system/status')
     assert resp.status_code == 401

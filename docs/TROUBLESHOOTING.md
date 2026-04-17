@@ -94,3 +94,12 @@ Notes:
   --audit-level=high`).
 - Pin upgrades in `frontend/package.json` and re-run full CI-equivalent checks
   locally.
+
+## Related Operations Documents
+
+For structured deployment and operations response, use:
+
+1. `docs/DEPLOYMENT_CHECKLIST.md`
+2. `docs/OPERATOR_RUNBOOK.md`
+3. `docs/INCIDENT_RESPONSE.md`
+4. `docs/HANDOFF_TEMPLATE.md`

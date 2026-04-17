@@ -1,6 +1,29 @@
-# Deferred Rehearsal Note (2026-04-17)
+# Rehearsal Status Note (2026-04-17)
 
 - Owner: deployment prep session
-- Reason: active camera source was not available in the current local environment
-- Blocked step: deterministic smoke flow and full end-to-end alert rehearsal validation
-- Next planned action: rerun `scripts/defense_smoke.py` and `scripts/recovery_drill.py` when at least one active camera zone is available
+
+## Previous Deferral
+
+- Original reason: no active camera zone was available in the local environment.
+
+## Current Status (Updated)
+
+- `scripts/defense_smoke.py` now passes with zone `zone_dev`.
+- `scripts/recovery_drill.py` now passes for services `mosquitto` and `backend`.
+
+## Evidence Artifacts
+
+- `docs/rehearsal_evidence/defense_smoke_2026-04-17.log`
+- `docs/rehearsal_evidence/recovery_drill_2026-04-17.log`
+- `docs/rehearsal_evidence/recovery_drill_2026-04-17.json`
+
+## Remaining Partial Defer
+
+- Detection engine restart was not included in this run.
+- During full-stack bring-up, container build flow hit network instability (`npm ci`
+	ECONNRESET), so frontend/detection full compose rehearsal remains a follow-up.
+
+## Next Planned Action
+
+- Re-run `scripts/recovery_drill.py --services mosquitto backend detection_engine`
+	once full stack images are built and healthy on the target network.

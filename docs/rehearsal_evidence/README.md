@@ -4,8 +4,9 @@ Store deployment rehearsal outputs in this folder.
 
 ## Required Artifacts
 
-- `defense_smoke_YYYY-MM-DD.txt` from `scripts/defense_smoke.py`
+- `defense_smoke_YYYY-MM-DD.log` from `scripts/defense_smoke.py`
 - `recovery_drill_YYYY-MM-DD.json` from `scripts/recovery_drill.py`
+- `recovery_drill_YYYY-MM-DD.log` from `scripts/recovery_drill.py`
 - Optional screenshots, logs, or incident timelines for drill outcomes
 
 ## Deferred Rehearsal Handling

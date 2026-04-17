@@ -384,7 +384,7 @@ def _process_zone_frame(
 def main():
     """
     AquaGuard detection engine main loop — Multi-threaded Three-Lane Highway.
-    
+
     Architecture:
     ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
     │   Camera    │ ───► │  Detection  │ ───► │   Frame     │
@@ -446,7 +446,7 @@ def main():
 
     # ── Shared PoseEstimator (stateless, safe to share) ───────────────────────
     pose_estimator = PoseEstimator()
-    
+
     # ── Per-zone stateful analyzers/filters (prevents cross-zone track collisions)
     behavior_analyzers = {
         zone_id: BehaviorAnalyzer()
@@ -468,16 +468,15 @@ def main():
 
     # ── Detection callback for alert processing ───────────────────────────────
     last_heartbeat_at = {}
-    
+
     def _on_detection(zone_id: str, frame_data, filtered_detections: list):
         """Called by detection worker for each processed frame."""
         frame = frame_data.frame
-        timestamp = frame_data.timestamp
-        
+
         # Get camera health
         camera = registry.cameras.get(zone_id)
         camera_health = camera.health if camera else None
-        
+
         # Send heartbeat if due
         now_ts = time.time()
         try:
@@ -491,27 +490,27 @@ def main():
             )
         except (OSError, RuntimeError, ValueError) as hb_exc:
             logger.warning("Heartbeat publish failed for zone %s: %s", zone_id, hb_exc)
-        
+
         # Process detections for alerts
         behavior_analyzer = behavior_analyzers[zone_id]
         confidence_filter = confidence_filters[zone_id]
         active_track_ids = {str(det.track_id) for det in filtered_detections}
-        
+
         for det in filtered_detections:
             # Get behavior score from detection (set by detection_worker)
             behavior_score = getattr(det, 'behavior_flags', None)
             if behavior_score is None:
                 continue
-            
+
             # Pass score through confidence filter for rolling-window smoothing
             alert_confirmed = confidence_filter.evaluate(
                 track_id=str(det.track_id),
                 score=float(behavior_score),
             )
-            
+
             if not alert_confirmed:
                 continue
-            
+
             # Check if alert should trigger (cooldown, deduplication, etc.)
             should_alert = alert_engine.should_trigger_alert(
                 zone_id=zone_id,
@@ -520,7 +519,7 @@ def main():
                 class_label=det.class_label,
                 behavior_flags=det.behavior_flags,
             )
-            
+
             if should_alert:
                 alert_engine.dispatch_alert(
                     zone_id=zone_id,
@@ -533,7 +532,7 @@ def main():
                     final_confidence=float(behavior_score),
                 )
                 logger.info("Zone %s track %s: alert dispatched", zone_id, det.track_id)
-        
+
         behavior_analyzer.cleanup_stale_tracks(active_track_ids)
         confidence_filter.cleanup_stale_tracks(active_track_ids)
 
@@ -564,7 +563,7 @@ def main():
         detection_callback=_on_detection,
         target_fps=30,
     )
-    
+
     # Create pipeline for each camera zone
     for zone_id, camera in registry.cameras.items():
         pipeline_manager.create_pipeline(
@@ -575,13 +574,13 @@ def main():
             behavior_analyzer=behavior_analyzers[zone_id],
             confidence_filter=confidence_filters[zone_id],
         )
-    
+
     logger.info("Created %d multi-threaded pipelines (Three-Lane Highway)", len(registry.cameras))
 
     # ── Start all workers ─────────────────────────────────────────────────────
     registry.start_all()  # Start camera capture threads
     pipeline_manager.start_all()  # Start detection workers + frame writers
-    
+
     logger.info("=" * 60)
     logger.info("AquaGuard Detection Engine RUNNING")
     logger.info("  Architecture: Multi-threaded Three-Lane Highway")

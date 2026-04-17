@@ -15,7 +15,10 @@ def list_cameras():
         print(f"\nFound {len(cameras)} camera(s) in database:\n")
         for cam in cameras:
             status = "ACTIVE" if cam.is_active else "DISABLED"
-            print(f"  [{status}] zone_id='{cam.zone_id}' name='{cam.zone_name}' rtsp='{cam.rtsp_url}'")
+            print(
+                f"  [{status}] zone_id='{cam.zone_id}' "
+                f"name='{cam.zone_name}' rtsp='{cam.rtsp_url}'"
+            )
         print()
 
 

@@ -10,7 +10,7 @@ from models import User
 app = create_app()
 with app.app_context():
     admin = User.query.filter_by(username='admin').first()
-    
+
     if admin:
         # Set password to: aquaguard2026
         new_password = 'aquaguard2026'
@@ -18,10 +18,10 @@ with app.app_context():
         admin.is_active = True  # Ensure user is active!
         db.session.commit()
         print(f"✅ Admin password reset to: {new_password}")
-        print(f"   Username: admin")
+        print("   Username: admin")
         print(f"   Password: {new_password}")
         print(f"   is_active: {admin.is_active}")
-        
+
         # Verify the password works
         if bcrypt.check_password_hash(admin.password_hash, new_password):
             print("✅ Password verification: SUCCESS")

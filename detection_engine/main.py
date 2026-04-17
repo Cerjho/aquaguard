@@ -90,13 +90,25 @@ def _load_api_env_from_backend_env() -> None:
 
 def _get_required_api_url() -> str:
     api_url = os.environ.get("AQUAGUARD_API_URL", "").strip()
+    if api_url:
+        return api_url
+
+    legacy_api_url = os.environ.get("API_BASE_URL", "").strip()
+    if legacy_api_url:
+        logger.warning(
+            "API_BASE_URL is deprecated; use AQUAGUARD_API_URL. "
+            "Using API_BASE_URL for backward compatibility."
+        )
+        os.environ["AQUAGUARD_API_URL"] = legacy_api_url
+        return legacy_api_url
+
     if not api_url:
         logger.error(
-            "AQUAGUARD_API_URL is missing. Set it in shell env or backend/.env "
+            "AQUAGUARD_API_URL is missing. Set AQUAGUARD_API_URL "
+            "(or legacy API_BASE_URL) in shell env or backend/.env "
             "before starting detection_engine.main"
         )
         raise RuntimeError("Missing AQUAGUARD_API_URL for backend internal API")
-    return api_url
 
 
 def _annotate_live_frame(frame, detections, zone_id: str, frame_timestamp: str):

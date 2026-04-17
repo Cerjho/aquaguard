@@ -5,15 +5,22 @@ This runbook is for on-site operators and support staff.
 ## 1. Daily Startup Procedure (Windows)
 
 1. Open PowerShell in project root.
-1. Start core services.
+1. Start stack using one command.
+
+```powershell
+.\scripts\start_stack.ps1 -TimeoutSeconds 300
+```
+
+1. If images are already present, use no-build mode.
+
+```powershell
+.\scripts\start_stack.ps1 -NoBuild -TimeoutSeconds 300
+```
+
+1. Fallback manual start sequence if startup script is unavailable.
 
 ```powershell
 docker compose up -d mysql redis mosquitto coturn backend frontend
-```
-
-1. Start detection engine if not included in your startup profile.
-
-```powershell
 docker compose up -d detection_engine
 ```
 
@@ -76,7 +83,7 @@ docker compose stop coturn mosquitto redis mysql
 ## 6. Rollback Procedure
 
 1. Checkout known good release tag/commit.
-2. Re-run startup sequence.
+2. Re-run startup sequence with one-command path (`scripts/start_stack.ps1`).
 3. Restore database backup if schema/data mismatch exists.
 4. Re-verify end-to-end alert flow before resuming operations.
 

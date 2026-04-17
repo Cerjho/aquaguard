@@ -2,6 +2,11 @@
 
 Use this checklist for final defense preparation and first facility deployment.
 
+Companion documents for final operations handoff:
+
+- `docs/DEPLOYMENT_PACKAGE.md` (Phase 8 package and rollback path)
+- `docs/GO_LIVE_HYPERCARE_PLAN.md` (Phase 9 week-one execution and budgets)
+
 ## 1. 48 Hours Before Go-Live
 
 ### Environment and Secrets
@@ -59,7 +64,7 @@ Rehearsal flow:
 
 ### Startup Sequence
 
-- [ ] Start services using documented command sequence.
+- [ ] Start services using one-command setup path (`scripts/start_stack.ps1` or `scripts/start_stack.sh`).
 - [ ] Verify `/api/health` is healthy.
 - [ ] Verify authenticated `/api/v1/system/status` reports expected subsystem state.
 - [ ] Verify at least one camera feed is live.
@@ -76,5 +81,5 @@ Rehearsal flow:
 
 - [ ] Daily health snapshot captured in `docs/HYPERCARE_LOG_TEMPLATE.md`.
 - [ ] Incident log maintained with time, symptom, action, and resolution.
-- [ ] Latency and alert reliability reviewed daily.
-- [ ] Hotfixes, if any, are tracked as separate single-concern PRs.
+- [ ] Health/latency/error budgets tracked daily per `docs/GO_LIVE_HYPERCARE_PLAN.md`.
+- [ ] Hotfixes, if any, remain scope-preserving and tracked as separate single-concern PRs.

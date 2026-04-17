@@ -239,6 +239,14 @@ See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
 See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
 
+## Deployment Package and Handoff
+
+See [docs/DEPLOYMENT_PACKAGE.md](docs/DEPLOYMENT_PACKAGE.md)
+
+## Go-Live and Hypercare
+
+See [docs/GO_LIVE_HYPERCARE_PLAN.md](docs/GO_LIVE_HYPERCARE_PLAN.md)
+
 ## Deployment Checklist
 
 See [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)

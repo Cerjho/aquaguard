@@ -115,8 +115,19 @@ def test_load_api_env_from_backend_env_does_not_override_shell_values(tmp_path, 
 
 def test_get_required_api_url_raises_when_missing(monkeypatch):
     monkeypatch.delenv("AQUAGUARD_API_URL", raising=False)
+    monkeypatch.delenv("API_BASE_URL", raising=False)
     try:
         _get_required_api_url()
         assert False, "Expected RuntimeError when AQUAGUARD_API_URL is missing"
     except RuntimeError as exc:
         assert "Missing AQUAGUARD_API_URL" in str(exc)
+
+
+def test_get_required_api_url_uses_legacy_api_base_url(monkeypatch):
+    monkeypatch.delenv("AQUAGUARD_API_URL", raising=False)
+    monkeypatch.setenv("API_BASE_URL", "http://legacy-backend:5000")
+
+    resolved = _get_required_api_url()
+
+    assert resolved == "http://legacy-backend:5000"
+    assert os.environ.get("AQUAGUARD_API_URL") == "http://legacy-backend:5000"

@@ -44,6 +44,8 @@ class DetectionEngineWatchdog:
         """Handle graceful shutdown signals."""
         logger.info("Shutdown signal received (signal %d)", signum)
         self.shutdown_requested = True
+        # Interrupt blocking loops so main_func can reach its cleanup path.
+        raise KeyboardInterrupt()
 
     def _calculate_backoff(self):
         """Calculate backoff time with exponential increase."""

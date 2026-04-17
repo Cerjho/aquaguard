@@ -144,6 +144,7 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
     const health = cameraHealthMap?.[cam.zone_id];
     return normalizeServiceStatus(health?.status) === 'degraded';
   }).length;
+  const onlineCameraCount = cameraEntries.length - staleCameraCount;
   const apiOnline = apiStatus?.connected === true;
   const aiOnline = !isDetectionStale && (
     detection.status === 'online'
@@ -156,6 +157,136 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
     : (typeof systemStatus?.detection_count === 'number'
       ? systemStatus.detection_count
       : (typeof detectionFreshness === 'number' ? detectionFreshness : 0));
+  const showDashboardDiagnostics = showCameraIndicators && !showCameraStatusList;
+  const onlineRatio = cameraEntries.length > 0 ? (onlineCameraCount / cameraEntries.length) * 100 : 0;
+
+  if (showDashboardDiagnostics) {
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold tracking-tight text-slate-800">System Diagnostics</h3>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+            SYSTEM SECURE
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+          <div>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              Network &amp; AI
+            </p>
+            <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+              <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2.5">
+                <span className="text-xs font-medium text-slate-500">API</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      apiOnline
+                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse'
+                        : 'bg-rose-500'
+                    }`}
+                  />
+                  <span className={`text-xs font-semibold ${apiOnline ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {apiOnline ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2.5">
+                <span className="text-xs font-medium text-slate-500">Socket</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      socketConnected
+                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse'
+                        : 'bg-rose-500'
+                    }`}
+                  />
+                  <span className={`text-xs font-semibold ${socketConnected ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {socketConnected ? 'Connected' : 'Disconnected'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-white px-3 py-3">
+                <p className="text-[11px] uppercase tracking-wider text-slate-400">AI Detections</p>
+                <div className="mt-1 flex items-end justify-between">
+                  <p className="text-xl font-bold text-slate-800">{aiDetectionCount}</p>
+                  <span className={`text-xs font-semibold ${aiOnline ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {aiOnline ? 'Live' : 'Degraded'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              Hardware Edge
+            </p>
+            <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+              <div className="rounded-lg bg-white px-3 py-3">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-500">Cameras</span>
+                  <span className="font-semibold text-slate-700">
+                    {onlineCameraCount} / {cameraEntries.length} Online
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${onlineRatio}%` }}
+                  />
+                </div>
+                <p className={`mt-2 text-[11px] font-semibold ${degradedCameraCount > 0 ? 'text-amber-500' : 'text-slate-500'}`}>
+                  {degradedCameraCount > 0 ? `${degradedCameraCount} degraded` : 'All camera streams healthy'}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${espOnline ? 'bg-emerald-50' : isEspStale ? 'bg-amber-50' : 'bg-rose-50'}`}>
+                    <svg
+                      className={`h-4 w-4 ${espOnline ? 'text-emerald-500 animate-pulse' : isEspStale ? 'text-amber-500' : 'text-rose-500'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">ESP32 Alarm</p>
+                    <p className="text-xs text-slate-500">
+                      {esp?.detail
+                        ? esp.detail
+                        : esp?.lastSeen
+                        ? timeAgo(esp.lastSeen)
+                        : (typeof espFreshness === 'number' ? `${espFreshness}s ago` : 'No heartbeat')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      espOnline
+                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse'
+                        : isEspStale
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500'
+                    }`}
+                  />
+                  <span className={`text-xs font-semibold ${espOnline ? 'text-emerald-600' : isEspStale ? 'text-amber-500' : 'text-rose-600'}`}>
+                    {espOnline ? 'Online' : isEspStale ? 'Stale' : 'Offline'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -215,7 +346,7 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
           <div className="flex gap-3 text-xs">
             <div className="flex-1 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
               <div className="flex min-h-[76px] flex-col items-center justify-center text-center">
-                <p className="text-2xl font-bold leading-none text-emerald-600">{cameraEntries.length - staleCameraCount}</p>
+                <p className="text-2xl font-bold leading-none text-emerald-600">{onlineCameraCount}</p>
                 <p className="mt-1 text-slate-500">Online</p>
               </div>
             </div>

@@ -6,6 +6,13 @@ import * as AuthContext from '../../context/AuthContext.jsx';
 
 // Prevent axios ESM import errors from transitive deps
 jest.mock('../../hooks/useApi', () => ({ post: jest.fn(), get: jest.fn() }));
+jest.mock(
+  '@lottiefiles/dotlottie-react',
+  () => ({
+    DotLottieReact: (props) => <div data-testid="lottie-player" {...props} />,
+  }),
+  { virtual: true }
+);
 
 // Mock useNavigate
 jest.mock('react-router-dom', () => ({

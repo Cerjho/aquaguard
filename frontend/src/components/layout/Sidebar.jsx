@@ -108,7 +108,7 @@ function Sidebar() {
           onClick={handleLogout}
           aria-label="Logout"
           disabled={isLoggingOut}
-          className={`relative overflow-hidden rounded-2xl border border-[#a3cef1]/60 bg-gradient-to-r from-[#a3cef1] to-[#b6d9f4] text-slate-900 shadow-[0_10px_24px_rgba(163,206,241,0.45)] transition-all duration-500 ease-in-out ${
+          className={`relative overflow-hidden rounded-3xl border border-[#a3cef1]/60 bg-gradient-to-r from-[#a3cef1] to-[#b6d9f4] text-slate-900 shadow-[0_10px_24px_rgba(163,206,241,0.45)] transition-all duration-500 ease-in-out ${
             isLoggingOut
               ? 'w-14 py-3.5 cursor-not-allowed'
               : 'w-full py-3.5 hover:shadow-[0_14px_28px_rgba(163,206,241,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]'

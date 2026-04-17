@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import BrandMark from './BrandMark.jsx';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import swimmingAnimation from '../../vector/swimming.lottie';
 
 function FullScreenLoader() {
   return (
@@ -11,11 +12,16 @@ function FullScreenLoader() {
         animate={{ opacity: 1 }}
       >
         <motion.div
-          className="mx-auto w-fit animate-pulse"
+          className="mx-auto w-fit"
           animate={{ y: [0, -4, 0] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
         >
-          <BrandMark />
+          <DotLottieReact
+            src={swimmingAnimation}
+            autoplay
+            loop
+            className="h-40 w-40"
+          />
         </motion.div>
         <p className="mt-5 text-sm tracking-wide text-slate-500">
           Initializing Secure Workspace...

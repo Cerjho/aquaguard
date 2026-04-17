@@ -67,7 +67,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: aquaguard-backend
     ports:
       - "5000:5000"

@@ -1,120 +1,168 @@
 # AquaGuard Production Deployment Guide
 
-This guide defines the minimum production baseline for AquaGuard.
+This document defines a practical deployment baseline for a target facility,
+from pilot commissioning through steady-state operations.
 
-## 1. Deployment Topology
+## 1. Deployment Objectives
 
-- Reverse proxy: Nginx (TLS termination, security headers, static frontend)
-- Backend app: Gunicorn + gevent worker serving Flask/Socket.IO
+Primary objectives:
+
+- Reliable drowning alert dispatch within operational target windows
+- Stable MQTT connectivity between edge host and ESP32 devices
+- Clear operator workflow for start, stop, verify, and recover
+
+## 2. Recommended Topology (Facility)
+
+- Edge Host: Detection engine + backend API + dashboard hosting
+- MQTT Broker: Docker Mosquitto on edge host (or dedicated broker host)
 - Database: MySQL (managed or self-hosted)
-- Message broker: Mosquitto MQTT
-- Detection engine: dedicated process/node with GPU access
-- Monitoring: centralized logs + health checks + alerting
+- Reverse proxy: Nginx (TLS, headers, websocket forwarding)
+- ESP32 devices: One per alarm zone, same LAN reachability as broker
 
-## 2. Required Environment Variables
+## 3. Network Design Requirements
 
-Set these before starting backend and detection engine:
+Minimum network requirements:
+
+1. Dedicated LAN/VLAN for AquaGuard components
+2. No AP/client isolation on the SSID/VLAN used by ESP32 devices
+3. Reserved/static IP for MQTT endpoint (recommended)
+4. Port allow rules within facility LAN:
+   - 1883 (MQTT)
+   - 5000 (API/backend)
+   - 3000 or reverse-proxy port for dashboard as deployed
+
+Do not use a phone hotspot as production transport.
+
+## 4. Environment Variables
+
+Backend and detection engine:
 
 - `FLASK_ENV=production`
-- `SECRET_KEY=<strong-random-value>`
-- `JWT_SECRET_KEY=<strong-random-value>`
+- `SECRET_KEY=STRONG_RANDOM_SECRET`
+- `JWT_SECRET_KEY=STRONG_RANDOM_SECRET`
 - `DATABASE_URL=mysql+pymysql://user:pass@host:3306/aquaguard`
 - `CORS_ALLOWED_ORIGINS=https://your-dashboard-domain`
-- `AQUAGUARD_API_KEY=<min-32-char-random-key>`
+- `AQUAGUARD_API_KEY=MIN_32_CHAR_RANDOM_KEY`
 - `REDIS_URL=redis://host:6379/0`
-- `MQTT_BROKER_HOST=<broker-host>`
+- `MQTT_BROKER_HOST=FACILITY_BROKER_HOST_OR_IP`
 - `MQTT_BROKER_PORT=1883`
 - `AQUAGUARD_API_URL=https://your-api-domain`
 
-Frontend environment:
+Frontend:
 
 - `REACT_APP_API_URL=https://your-api-domain`
 - `REACT_APP_WS_URL=https://your-api-domain`
 
-## 3. Backend Startup (Production)
+## 5. MQTT Service Policy (Windows Edge Host)
 
-Do not run Werkzeug dev server in production.
+Recommended policy:
 
-Example (Linux):
+- Use Docker Mosquitto from project docker-compose.yml
+- Keep Windows Mosquitto service disabled to avoid port conflicts
+
+Admin PowerShell one-time policy commands:
+
+```powershell
+sc.exe stop mosquitto
+sc.exe config mosquitto start= disabled
+sc.exe qc mosquitto
+```
+
+Start broker:
+
+```powershell
+docker compose up -d mosquitto
+```
+
+Verify listener and reachability:
+
+```powershell
+Get-NetTCPConnection -LocalPort 1883 -State Listen
+Test-NetConnection <EDGE_HOST_IP> -Port 1883
+```
+
+## 6. Backend Startup (Production)
+
+Do not use Werkzeug in production.
+
+Linux example:
 
 ```bash
-
 cd backend
 source ../aquaguard_env/bin/activate
 gunicorn -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
-
 ```
 
-Example (Windows service shell):
+Windows example:
 
 ```powershell
-
 Set-Location .\backend
 & "..\aquaguard_env\Scripts\gunicorn.exe" -k gevent -w 1 -b 0.0.0.0:5000 wsgi:app
-
 ```
 
-## 4. Nginx Reverse Proxy Baseline
+## 7. ESP32 Commissioning Runbook
 
-Minimum recommendations:
+For each ESP32 zone:
 
-- Force HTTPS redirect for all HTTP traffic
-- Forward websocket upgrades for Socket.IO routes
-- Set strict security headers (`X-Content-Type-Options`, `X-Frame-Options`,
-  `Referrer-Policy`, `Content-Security-Policy`)
-- Set request body limits aligned with snapshot upload constraints
-- Enable access and error logs
+1. Flash current firmware
+2. Open Serial Monitor (115200, Newline)
+3. Provision Wi-Fi credentials via serial prompt
+4. Confirm broker auto-discovery or enter broker IP if prompted
+5. Verify successful subscriptions and 30-second heartbeats
 
-## 5. Database and Migrations
+Expected healthy logs include:
 
-Run migrations before releasing each version:
+- [MQTT] Connected to broker.
+- [MQTT] Subscribed to aquaguard/alert
+- [Heartbeat] Published ... uptime_ms ...
 
-```bash
+## 8. Facility Commissioning Acceptance
 
-cd backend
-flask db upgrade
+Minimum acceptance tests before go-live:
 
-```
+1. 30-minute heartbeat stability test per ESP32 (no disconnect loops)
+2. 10 consecutive MQTT alert publish tests succeed
+3. Dashboard remains connected and event feed updates in real time
+4. Detection engine process remains stable during alert burst testing
+5. Backend status endpoint reports healthy throughout test window
 
-Backup policy (minimum):
+## 9. Operations and Monitoring
 
-- Nightly full backup
-- Point-in-time recovery enabled when available
-- Restore drill at least once per quarter
+Monitor continuously:
 
-## 6. Detection Engine Deployment
-
-- Install as package (`pip install -e ./detection_engine` for managed source
-  deployments)
-- Run one `DrowningDetector` instance per camera zone
-- Ensure GPU/CUDA drivers are pinned and validated in staging before
-  production rollout
-- Keep model file out of git and deploy from artifact storage
-
-## 7. Operational Health Checks
-
-Monitor these continuously:
-
-- Backend `/api/v1/system/status` freshness
-- Detection engine heartbeat freshness
+- Backend status freshness (/api/v1/system/status)
 - ESP32 heartbeat freshness
-- MQTT broker availability
+- MQTT broker availability and reconnect counts
+- Detection engine error rate
 - DB connectivity and query latency
-- Error rate and restart count
 
-## 8. Release Checklist
+Operational controls:
 
-- All CI jobs green (backend, frontend, detection_engine, lint)
-- Critical/high security findings remediated or explicitly accepted
-- Secrets rotated for release
-- Migrations executed successfully
-- Rollback plan documented and tested
+- Keep restart runbooks documented onsite
+- Keep secrets in environment files only
+- Rotate keys on release cycles
 
-## 9. Rollback Strategy
+## 10. Backup, Release, and Rollback
 
-If release health degrades:
+Release gate:
 
-- Roll back backend and frontend to previous container/image tag
-- Re-run previous migration state only if schema change is incompatible
-- Keep detection engine on last known-good model and code package
-- Verify system status and camera streams before reopening traffic
+1. CI checks green
+2. Security findings triaged
+3. Migrations tested in staging
+4. Rollback plan documented
+
+Rollback baseline:
+
+1. Revert backend/frontend image or package to last known good
+2. Keep detection engine on last known good model + code
+3. Validate broker, API, and heartbeat recovery before reopening operations
+
+## 11. Handover Checklist for Target Facility
+
+Capture and hand over:
+
+1. Final network map (IP addresses and hostnames)
+2. Operator startup/shutdown procedure
+3. Incident test procedure (alert + reset)
+4. Service ownership and escalation contacts
+5. Last known good release tag and rollback tag

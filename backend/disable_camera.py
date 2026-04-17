@@ -34,7 +34,7 @@ if __name__ == '__main__':
         print("Usage: python disable_camera.py <zone_id>")
         print("Example: python disable_camera.py 2")
         sys.exit(1)
-    
+
     zone_id = sys.argv[1]
     success = disable_camera(zone_id)
     sys.exit(0 if success else 1)

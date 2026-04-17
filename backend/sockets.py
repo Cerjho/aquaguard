@@ -14,15 +14,15 @@ def handle_connect(auth):
     auth dict may contain {'token': '<access_token>'}.
     """
     logger.info('WebSocket connect attempt from %s', request.remote_addr)
-    
+
     auth_token = (auth or {}).get('token')
     cookie_token = (
         request.cookies.get('access_token_cookie')
         or request.cookies.get('csrf_access_token')
         or None
     )
-    
-    logger.debug('Auth token present: %s, Cookie token present: %s', 
+
+    logger.debug('Auth token present: %s, Cookie token present: %s',
                  bool(auth_token), bool(cookie_token))
 
     decoded = None

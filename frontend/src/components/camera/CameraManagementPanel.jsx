@@ -292,6 +292,11 @@ function CameraManagementPanel({ onCamerasChanged }) {
     [cameras, menuOpenZoneId]
   );
 
+  const openCameraDetails = useCallback((zoneId) => {
+    setMenuOpenZoneId(null);
+    setSelectedZoneId(zoneId);
+  }, []);
+
   useEffect(() => {
     if (!menuCamera) return undefined;
 
@@ -411,30 +416,41 @@ function CameraManagementPanel({ onCamerasChanged }) {
                       <button
                         type="button"
                         data-testid={`camera-row-${camera.zone_id}`}
-                        onClick={() => {
-                          setMenuOpenZoneId(null);
-                          setSelectedZoneId(camera.zone_id);
-                        }}
-                        className="rounded-lg px-1 py-0.5 text-left font-mono text-xs text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        onClick={() => openCameraDetails(camera.zone_id)}
+                        className="w-full rounded-lg px-1 py-0.5 text-left font-mono text-xs text-slate-600 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
                         aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
                       >
                         {camera.zone_id}
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-700">{camera.zone_name}</p>
-                      <p className="text-xs text-slate-500 truncate max-w-[280px]">{camera.rtsp_url}</p>
+                      <button
+                        type="button"
+                        onClick={() => openCameraDetails(camera.zone_id)}
+                        className="w-full rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
+                      >
+                        <p className="font-medium text-slate-700">{camera.zone_name}</p>
+                        <p className="text-xs text-slate-500 truncate max-w-[280px]">{camera.rtsp_url}</p>
+                      </button>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                          camera.is_active
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}
+                      <button
+                        type="button"
+                        onClick={() => openCameraDetails(camera.zone_id)}
+                        className="rounded-lg px-1 py-0.5 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
                       >
-                        {camera.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            camera.is_active
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          {camera.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </button>
                     </td>
                     <td className="relative px-4 py-3">
                       <div className="relative z-20 flex justify-end">

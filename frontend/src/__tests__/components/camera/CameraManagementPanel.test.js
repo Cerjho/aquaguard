@@ -218,7 +218,7 @@ describe('CameraManagementPanel', () => {
 
     render(<CameraManagementPanel />);
 
-    fireEvent.click(await screen.findByTestId('camera-row-zone_01'));
+    fireEvent.click(await screen.findByText('Main Pool'));
 
     expect(await screen.findByTestId('camera-detail-drawer')).toBeInTheDocument();
     expect(screen.getByText(/camera details/i)).toBeInTheDocument();

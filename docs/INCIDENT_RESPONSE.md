@@ -97,3 +97,8 @@ docker compose restart backend
 2. Authenticated `/api/v1/system/status` shows expected subsystem states.
 3. Camera stream and alert flow both recover.
 4. Incident timeline and resolution are logged.
+5. Run controlled restart drill to validate service recovery budgets.
+
+```powershell
+& ".\aquaguard_env\Scripts\python.exe" .\scripts\recovery_drill.py --services mosquitto backend detection_engine
+```

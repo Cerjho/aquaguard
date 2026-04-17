@@ -21,6 +21,7 @@ from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 from utils.logging_utils import configure_app_logging
 from utils.error_reporting import init_error_reporting
+from services.esp32_mqtt_bridge import start_esp32_mqtt_bridge
 
 
 def create_app():
@@ -113,6 +114,10 @@ def create_app():
     with app.app_context():
         db.create_all()
         _ensure_default_users(app)
+
+    bridge = start_esp32_mqtt_bridge(app)
+    if bridge is not None:
+        app.extensions['esp32_mqtt_bridge'] = bridge
 
     return app
 

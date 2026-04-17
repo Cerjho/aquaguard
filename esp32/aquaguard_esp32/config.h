@@ -39,8 +39,8 @@
 #define TOPIC_ALERT_RESET   "aquaguard/alert/reset"
 #define TOPIC_STATUS        "aquaguard/device/status"
 
-// Heartbeat interval (ms) — every 30 seconds
-#define HEARTBEAT_INTERVAL_MS  30000
+// Heartbeat interval (ms) — every 10 seconds
+#define HEARTBEAT_INTERVAL_MS  10000
 
 // Reconnect retry interval (ms)
 #define RECONNECT_INTERVAL_MS  5000

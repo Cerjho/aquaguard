@@ -1,18 +1,35 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Wi-Fi credentials — change before flashing
-#define WIFI_SSID           "BarcelaFi_2.4GHz"
-#define WIFI_PASSWORD       "FamilyNet@24"
+// Wi-Fi credentials override.
+// Keep empty to use serial provisioning + cached credentials in NVS.
+#define WIFI_SSID           ""
+#define WIFI_PASSWORD       ""
 
-// MQTT broker — edge server LAN IP
-#define MQTT_BROKER         "192.168.1.15"
+// Wi-Fi provisioning and connect behavior
+#define WIFI_CONNECT_MAX_ATTEMPTS      20
+#define WIFI_PROVISIONING_TIMEOUT_MS   120000
+#define WIFI_PROVISIONING_RETRY_DELAY_MS 5000
+
+// MQTT broker override.
+// Leave empty to auto-discover a broker on the local subnet at runtime.
+#define MQTT_BROKER         ""
 #define MQTT_PORT           1883
+
+// Auto-discovery tuning (used only when MQTT_BROKER is empty)
+#define MQTT_DISCOVERY_INTERVAL_MS      30000
+#define MQTT_DISCOVERY_MAX_HOST_PROBES  254
+#define MQTT_SCAN_CONNECT_TIMEOUT_MS    70
+#define MQTT_DISCOVERY_FAILURES_BEFORE_PROMPT 1
+#define MQTT_PROVISIONING_PROMPT_WINDOW_MS 5000
+#define MQTT_PROVISIONING_INPUT_TIMEOUT_MS 30000
+#define MQTT_PROVISIONING_RETRY_DELAY_MS 5000
 
 // GPIO pin driving buzzer/relay
 #define ALARM_PIN           26
-// How long to sound the alarm (ms) — 30 seconds
-#define ALARM_DURATION_MS   30000
+// Alarm hold timeout after the latest alert message (ms).
+// If new alerts keep arriving, this window keeps extending.
+#define ALARM_DURATION_MS   5000
 
 // Unique device identifier published in heartbeat
 #define DEVICE_ID           "ESP32_AquaGuard_01"

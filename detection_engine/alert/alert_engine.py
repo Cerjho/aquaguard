@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import logging
 import uuid
 import os
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -117,6 +117,47 @@ class AlertEngine:
         self._executor.submit(self._send_mqtt, payload_dict)
         self._executor.submit(self._send_api, payload)
         self._executor.submit(self._log_alert, zone_id, track_id, score, event_id, timestamp)
+
+    def should_trigger_alert(
+        self,
+        zone_id: str,
+        track_id: str,
+        final_confidence: float,
+        class_label: str | None = None,
+        behavior_flags: Any | None = None,
+    ) -> bool:
+        """Compatibility gate for pipeline callback alert dispatch decisions.
+
+        The confidence filter already applies rolling-window and interval control,
+        so this gate currently returns True to allow sustained drowning re-alerts.
+        """
+        _ = (zone_id, track_id, final_confidence, class_label, behavior_flags)
+        return True
+
+    def dispatch_alert(
+        self,
+        zone_id: str,
+        track_id: str,
+        frame: np.ndarray,
+        bbox: Optional[Tuple[float, float, float, float]] = None,
+        class_label: str | None = None,
+        yolo_confidence: float | None = None,
+        pose_confidence: float | None = None,
+        final_confidence: float | None = None,
+    ) -> None:
+        """Compatibility wrapper used by the multi-threaded pipeline callback."""
+        score = float(final_confidence) if final_confidence is not None else 0.0
+        self.dispatch(
+            zone_id=zone_id,
+            track_id=str(track_id),
+            score=score,
+            frame=frame,
+            bbox=bbox,
+            class_label=class_label,
+            yolo_confidence=yolo_confidence,
+            pose_confidence=pose_confidence,
+            final_confidence=final_confidence,
+        )
 
     def close(self) -> None:
         if self._closed:

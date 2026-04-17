@@ -84,3 +84,34 @@ def test_close_is_idempotent(monkeypatch, tmp_path):
     engine.close()
 
     assert executor.shutdown_calls == 1
+
+
+def test_pipeline_compat_methods_dispatch_alert(monkeypatch, tmp_path):
+    executor = _ImmediateExecutor()
+    monkeypatch.setattr(
+        "detection_engine.alert.alert_engine.ThreadPoolExecutor",
+        lambda *args, **kwargs: executor,
+    )
+
+    mqtt = _DummyMQTT()
+    api = _DummyAPI()
+    engine = AlertEngine(mqtt, api, str(tmp_path))
+
+    frame = np.zeros((8, 8, 3), dtype=np.uint8)
+    assert engine.should_trigger_alert("zone_a", "track_1", 0.92) is True
+
+    engine.dispatch_alert(
+        zone_id="zone_a",
+        track_id="track_1",
+        frame=frame,
+        bbox=(0.0, 0.0, 1.0, 1.0),
+        class_label="drowning",
+        yolo_confidence=0.9,
+        final_confidence=0.92,
+    )
+
+    assert len(mqtt.payloads) == 1
+    assert len(api.payloads) == 1
+    assert mqtt.payloads[0]["track_id"] == "track_1"
+
+    engine.close()

@@ -31,6 +31,11 @@ Invoke-WebRequest -UseBasicParsing http://localhost:5000/api/health
 2. Authenticated system status shows detection engine freshness and camera counts.
 3. ESP32 heartbeat age remains below stale threshold.
 4. No repeated crash/restart logs in backend or detection engine.
+5. Run the deterministic smoke flow after startup and after any recovery action.
+
+```powershell
+& ".\aquaguard_env\Scripts\python.exe" .\scripts\defense_smoke.py
+```
 
 ## 3. Shift Handover Checks
 

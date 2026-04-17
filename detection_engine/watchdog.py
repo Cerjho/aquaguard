@@ -12,10 +12,8 @@ Features:
 """
 import logging
 import os
-import sys
 import time
 import signal
-from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -30,23 +28,25 @@ BACKOFF_MULTIPLIER = 2
 
 class DetectionEngineWatchdog:
     """Supervises detection engine and restarts on crash."""
-    
+
     def __init__(self):
         self.consecutive_failures = 0
         self.total_restarts = 0
         self.start_time = time.time()
         self.last_success_time = None
         self.shutdown_requested = False
-        
+
         # Register signal handlers
         signal.signal(signal.SIGINT, self._handle_shutdown)
         signal.signal(signal.SIGTERM, self._handle_shutdown)
-    
+
     def _handle_shutdown(self, signum, frame):
         """Handle graceful shutdown signals."""
         logger.info("Shutdown signal received (signal %d)", signum)
         self.shutdown_requested = True
-    
+        # Interrupt blocking loops so main_func can reach its cleanup path.
+        raise KeyboardInterrupt()
+
     def _calculate_backoff(self):
         """Calculate backoff time with exponential increase."""
         backoff = min(
@@ -54,11 +54,11 @@ class DetectionEngineWatchdog:
             MAX_BACKOFF_SECONDS
         )
         return backoff
-    
+
     def run_supervised(self, main_func):
         """
         Run the main detection function with supervision.
-        
+
         Args:
             main_func: The main() function to supervise
         """
@@ -67,7 +67,7 @@ class DetectionEngineWatchdog:
         )
         logger.info("Process PID: %d", os.getpid())
         logger.info("Auto-restart enabled - system will NEVER stop")
-        
+
         while not self.shutdown_requested:
             try:
                 logger.info(
@@ -75,15 +75,15 @@ class DetectionEngineWatchdog:
                     self.total_restarts,
                     self.consecutive_failures
                 )
-                
+
                 # Run the main detection loop
                 main_func()
-                
+
                 # If we get here, main() exited normally
                 logger.info("Detection engine exited normally")
                 self.last_success_time = time.time()
                 self.consecutive_failures = 0
-                
+
                 # Normal exit - only restart if not shutdown
                 if not self.shutdown_requested:
                     logger.warning(
@@ -94,17 +94,17 @@ class DetectionEngineWatchdog:
                 else:
                     logger.info("Shutdown requested - stopping watchdog")
                     break
-                    
+
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt - initiating shutdown")
                 self.shutdown_requested = True
                 break
-                
+
             except Exception as exc:
                 # CRITICAL: Never let exceptions crash the watchdog!
                 self.consecutive_failures += 1
                 self.total_restarts += 1
-                
+
                 logger.error(
                     "🚨 CRITICAL: Detection engine crashed! "
                     "(Consecutive failures: %d, Total restarts: %d)",
@@ -112,7 +112,7 @@ class DetectionEngineWatchdog:
                     self.total_restarts,
                     exc_info=True
                 )
-                
+
                 # Alert if too many failures
                 if self.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
                     logger.critical(
@@ -125,7 +125,7 @@ class DetectionEngineWatchdog:
                     )
                     # TODO: Send email/SMS alert to admin
                     # TODO: Trigger MQTT critical alert
-                
+
                 # Calculate backoff before restart
                 backoff = self._calculate_backoff()
                 logger.info(
@@ -133,7 +133,7 @@ class DetectionEngineWatchdog:
                     backoff
                 )
                 time.sleep(backoff)
-        
+
         # Watchdog shutdown
         uptime = time.time() - self.start_time
         logger.info(
@@ -147,10 +147,10 @@ class DetectionEngineWatchdog:
 def run_with_watchdog(main_func):
     """
     Run detection engine with watchdog supervision.
-    
+
     Usage:
         from detection_engine.watchdog import run_with_watchdog
-        
+
         if __name__ == '__main__':
             run_with_watchdog(main)
     """
@@ -168,5 +168,5 @@ if __name__ == '__main__':
             if random.random() < 0.3:
                 raise RuntimeError(f"Random crash at iteration {i}")
         print("Test completed successfully!")
-    
+
     run_with_watchdog(test_crash)

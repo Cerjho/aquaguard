@@ -42,6 +42,26 @@ Actions:
 1. Call `GET /api/v1/webrtc/ice-config` to inspect active ICE config.
 1. Check backend logs for `webrtc_answer_failed` or `ice_candidate_rejected`.
 
+## ESP32 Wi-Fi Connected But MQTT Not Connected
+
+Symptoms:
+
+- ESP32 logs show Wi-Fi connected but repeated MQTT reconnect attempts
+- `Discovery failed — no broker responded on port 1883`
+
+Actions:
+
+1. Verify broker listener is exposed on LAN (not only localhost):
+   - `docker ps --filter "name=aquaguard-mqtt" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`
+   - `Get-NetTCPConnection -LocalPort 1883 -State Listen`
+1. Verify host LAN/IP reachability:
+   - `Test-NetConnection <EDGE_HOST_IP> -Port 1883`
+1. If native Windows Mosquitto service exists, stop/disable it (Admin shell) to
+   avoid conflicts with Docker broker binding.
+1. On ESP32 serial monitor (115200, Newline), enter broker IP when prompted
+   after discovery failure.
+1. Confirm AP/client isolation is disabled on hotspot/router SSID.
+
 ## Alerts Not Showing In Dashboard
 
 Symptoms:
@@ -74,3 +94,12 @@ Notes:
   --audit-level=high`).
 - Pin upgrades in `frontend/package.json` and re-run full CI-equivalent checks
   locally.
+
+## Related Operations Documents
+
+For structured deployment and operations response, use:
+
+1. `docs/DEPLOYMENT_CHECKLIST.md`
+2. `docs/OPERATOR_RUNBOOK.md`
+3. `docs/INCIDENT_RESPONSE.md`
+4. `docs/HANDOFF_TEMPLATE.md`

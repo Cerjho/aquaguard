@@ -18,7 +18,7 @@ import { useAuth } from './AuthContext.jsx';
 
 const DataCacheContext = createContext(null);
 
-const CAMERA_REFRESH_INTERVAL_MS = 30000;
+const CAMERA_REFRESH_INTERVAL_MS = 15000;
 const DEFAULT_HISTORY_PAGE_SIZE = 10;
 
 const TEST_FALLBACK_CONTEXT = {

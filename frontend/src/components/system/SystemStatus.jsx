@@ -10,7 +10,7 @@ import { timeAgo } from '../../utils/dateFormat';
 import { useSocketState, useSystemState } from '../../context/AlertContext.jsx';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
 
-const ESP32_ONLINE_THRESHOLD_SECONDS = 90;
+const ESP32_ONLINE_THRESHOLD_SECONDS = 30;
 
 function normalizeDetectionEnginePayload(payload) {
   if (!payload || typeof payload !== 'object') {

@@ -4,7 +4,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
-from extensions import db
 from models import User
 
 app = create_app()
@@ -16,6 +15,6 @@ with app.app_context():
         print(f"Role: {user.role}")
         print(f"Password hash: {user.password_hash[:50]}...")
         print()
-    
+
     if not users:
         print("⚠️  NO USERS FOUND! You need to run: python seed.py")

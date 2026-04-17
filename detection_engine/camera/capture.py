@@ -397,9 +397,11 @@ class CameraCapture:
         """Open video capture with optimized settings for RTSP."""
         with self._cap_lock:
             # Local webcam (numeric index)
-            if isinstance(self.rtsp_url, int) or (isinstance(self.rtsp_url, str) and self.rtsp_url.isdigit()):
+            if isinstance(self.rtsp_url, int) or (
+                isinstance(self.rtsp_url, str) and self.rtsp_url.isdigit()
+            ):
                 cam_idx = int(self.rtsp_url)
-                
+
                 # On Windows, try DirectShow first, then MSMF, then default
                 if platform.system() == 'Windows':
                     # Try DirectShow (better compatibility with most webcams)
@@ -409,14 +411,14 @@ class CameraCapture:
                         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                         return cap
                     cap.release()
-                    
+
                     # Fallback to Media Foundation
                     cap = cv2.VideoCapture(cam_idx, cv2.CAP_MSMF)
                     if cap.isOpened():
                         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                         return cap
                     cap.release()
-                    
+
                     # Last resort: default backend
                     logger.debug("[%s] Trying default backend for webcam %d", self.zone_id, cam_idx)
                     return cv2.VideoCapture(cam_idx)

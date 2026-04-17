@@ -1,6 +1,7 @@
 """AquaGuard system-wide constants and runtime profile helpers."""
 
 import os
+from urllib.parse import urlparse
 
 # ── Confidence Filter (Rolling Window) ────────────────────────────────────────
 CONFIDENCE_WINDOW_SIZE = 15         # N — rolling window size
@@ -54,6 +55,9 @@ CAMERA_CORRUPTION_WARN_THRESHOLD = 0.10  # 10% corruption rate triggers warning
 
 # ── Alert ─────────────────────────────────────────────────────────────────────
 ALARM_DURATION_SECONDS = 30
+ALERT_RETRIGGER_INTERVAL_SECONDS = float(
+    os.environ.get('ALERT_RETRIGGER_INTERVAL_SECONDS', '2.0')
+)
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
 SNAPSHOT_FORMAT = "jpg"
@@ -116,6 +120,19 @@ def _to_int(value, default):
     return int(value)
 
 
+def _is_sqlite_database(database_url):
+    return str(database_url).strip().lower().startswith('sqlite://')
+
+
+def _parse_cors_origins(raw_origins):
+    return [origin.strip() for origin in str(raw_origins).split(',') if origin.strip()]
+
+
+def _is_localhost_origin(origin):
+    hostname = (urlparse(origin).hostname or '').lower()
+    return hostname in {'localhost', '127.0.0.1'}
+
+
 def validate_runtime_settings():
     """Validate cross-module configuration invariants early at startup."""
     if CONFIDENCE_WINDOW_SIZE <= 0:
@@ -142,6 +159,25 @@ def validate_runtime_settings():
         raise ValueError('RTSP_STALL_THRESHOLD_SECONDS must be >= 1')
 
     env_name = resolve_backend_environment()
+    if env_name == 'production':
+        database_url = str(os.getenv('DATABASE_URL', '')).strip()
+        if not database_url:
+            raise ValueError('DATABASE_URL is required in production')
+        if _is_sqlite_database(database_url):
+            raise ValueError('DATABASE_URL must not use sqlite in production')
+
+        cors_allowed_origins = str(os.getenv('CORS_ALLOWED_ORIGINS', '')).strip()
+        if not cors_allowed_origins:
+            raise ValueError('CORS_ALLOWED_ORIGINS is required in production')
+
+        origins = _parse_cors_origins(cors_allowed_origins)
+        if not origins:
+            raise ValueError('CORS_ALLOWED_ORIGINS is required in production')
+        if any(_is_localhost_origin(origin) for origin in origins):
+            raise ValueError(
+                'CORS_ALLOWED_ORIGINS must not include localhost in production'
+            )
+
     rate_limit_storage = str(
         os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
     ).strip().lower()

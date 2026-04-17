@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import timedelta
+from urllib.parse import urlparse
 from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
@@ -21,6 +22,25 @@ from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 from utils.logging_utils import configure_app_logging
 from utils.error_reporting import init_error_reporting
+from services.esp32_mqtt_bridge import start_esp32_mqtt_bridge
+
+
+def _resolve_database_uri(env_name):
+    database_url = os.environ.get('DATABASE_URL', '').strip()
+    if database_url:
+        return database_url
+    if env_name == 'production':
+        raise RuntimeError('DATABASE_URL is required in production')
+    return 'sqlite:///aquaguard.db'
+
+
+def _is_localhost_origin(origin):
+    hostname = (urlparse(origin).hostname or '').lower()
+    return hostname in {'localhost', '127.0.0.1'}
+
+
+def _is_truthy(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
 def create_app():
@@ -49,9 +69,7 @@ def create_app():
     app.config['AQUAGUARD_API_KEY'] = api_key
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=60)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-        'DATABASE_URL', 'sqlite:///aquaguard.db'
-    )
+    app.config['SQLALCHEMY_DATABASE_URI'] = _resolve_database_uri(env_name)
 
     # Init extensions
     db.init_app(app)
@@ -59,10 +77,17 @@ def create_app():
     bcrypt.init_app(app)
     migrate.init_app(app, db)
     limiter.init_app(app)
-    allowed_origins_raw = app.config.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+    allowed_origins_raw = app.config.get('CORS_ALLOWED_ORIGINS', '')
     allowed_origins = [
         origin.strip() for origin in allowed_origins_raw.split(',') if origin.strip()
-    ] or ['http://localhost:3000']
+    ]
+    if not allowed_origins:
+        if env_name == 'production':
+            raise RuntimeError('CORS_ALLOWED_ORIGINS is required in production')
+        allowed_origins = ['http://localhost:3000']
+    if env_name == 'production' and any(_is_localhost_origin(origin) for origin in allowed_origins):
+        raise RuntimeError('CORS_ALLOWED_ORIGINS must not include localhost in production')
+
     cors.init_app(
         app,
         resources={r"/api/*": {"origins": allowed_origins}},
@@ -91,6 +116,18 @@ def create_app():
     app.register_blueprint(system_bp)
     app.register_blueprint(webrtc_bp)
 
+    @app.get('/api/health')
+    def health_check():
+        """Public liveness probe for orchestrators and CI."""
+        return {
+            'status': 'success',
+            'data': {
+                'service': 'backend',
+                'environment': env_name,
+            },
+            'message': 'ok',
+        }, 200
+
     # Register SocketIO handlers
     import sockets  # noqa: F401
 
@@ -109,10 +146,18 @@ def create_app():
             'message': 'An unexpected error occurred.',
         }, 500
 
-    # Auto-create database tables and default admin user on startup
+    # Skip startup bootstrap during migration CLI commands to avoid
+    # creating tables before `flask db upgrade` runs.
+    skip_bootstrap = _is_truthy(os.environ.get('AQUAGUARD_SKIP_STARTUP_BOOTSTRAP'))
+
     with app.app_context():
-        db.create_all()
-        _ensure_default_users(app)
+        if not skip_bootstrap:
+            db.create_all()
+            _ensure_default_users(app)
+
+    bridge = start_esp32_mqtt_bridge(app)
+    if bridge is not None:
+        app.extensions['esp32_mqtt_bridge'] = bridge
 
     return app
 

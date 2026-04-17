@@ -12,6 +12,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY . /app/detection_engine
 
-CMD ["python", "main.py"]
+ENV PYTHONPATH=/app
+
+CMD ["python", "-m", "detection_engine.main"]

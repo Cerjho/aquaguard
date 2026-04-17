@@ -126,7 +126,7 @@ describe('CameraManagementPanel', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: /open actions menu for main pool/i })
     );
-    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^edit/i }));
 
     fireEvent.change(screen.getByLabelText(/camera name/i), {
       target: { value: 'Main Pool Updated' },
@@ -189,7 +189,7 @@ describe('CameraManagementPanel', () => {
         name: /open actions menu for kiddie pool/i,
       })
     );
-    fireEvent.click(await screen.findByRole('button', { name: /^delete$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
     fireEvent.click(await screen.findByRole('button', { name: /yes, remove camera/i }));
 
     await waitFor(() => {
@@ -199,5 +199,76 @@ describe('CameraManagementPanel', () => {
     await waitFor(() => {
       expect(screen.queryByText('Kiddie Pool')).not.toBeInTheDocument();
     });
+  });
+
+  test('opens camera details drawer when a row is clicked', async () => {
+    api.get.mockResolvedValueOnce({
+      data: [
+        {
+          zone_id: 'zone_01',
+          zone_name: 'Main Pool',
+          rtsp_url: 'rtsp://one',
+          location_description: 'North wing',
+          frame_rate: 25,
+          resolution: '1920x1080',
+          is_active: true,
+        },
+      ],
+    });
+
+    render(<CameraManagementPanel />);
+
+    fireEvent.click(await screen.findByText('Main Pool'));
+
+    expect(await screen.findByTestId('camera-detail-drawer')).toBeInTheDocument();
+    expect(screen.getByText(/camera details/i)).toBeInTheDocument();
+    expect(screen.getByText('North wing')).toBeInTheDocument();
+    expect(screen.getByText('1920x1080')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close camera details/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('camera-detail-drawer')).not.toBeInTheDocument();
+    });
+  });
+
+  test('supports keyboard shortcuts in actions menu', async () => {
+    api.get.mockResolvedValueOnce({
+      data: [
+        {
+          zone_id: 'zone_01',
+          zone_name: 'Main Pool',
+          rtsp_url: 'rtsp://one',
+          is_active: true,
+        },
+      ],
+    });
+    api.put.mockResolvedValueOnce({ data: { is_active: false } });
+
+    render(<CameraManagementPanel />);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /open actions menu for main pool/i,
+      })
+    );
+
+    fireEvent.keyDown(document, { key: 't', ctrlKey: true, altKey: true });
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith('/api/v1/cameras/zone_01', {
+        is_active: false,
+      });
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /open actions menu for main pool/i,
+      })
+    );
+
+    fireEvent.keyDown(document, { key: 'Delete' });
+
+    expect(await screen.findByRole('heading', { name: /remove camera/i })).toBeInTheDocument();
   });
 });

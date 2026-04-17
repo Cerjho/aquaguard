@@ -1,6 +1,37 @@
-version: '3.9'
-
 services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: aquaguard-db
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-aquaguard}
+      - MYSQL_USER=${MYSQL_USER:-aquaguard}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-aquaguardpass}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: aquaguard-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -9,6 +40,12 @@ services:
       - "1883:1883"
     volumes:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 1883 -t aquaguard/healthcheck -m ping >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   coturn:
@@ -30,15 +67,20 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: aquaguard-backend
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - APP_ENV=production
+      - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://aquaguard:aquaguardpass@mysql:3306/aquaguard}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-me}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://aquaguard.local}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-redis://redis:6379/1}
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
       - WEBRTC_SESSION_TTL_SECONDS=${WEBRTC_SESSION_TTL_SECONDS:-300}
@@ -48,33 +90,49 @@ services:
       - WEBRTC_TURN_CREDENTIAL=${WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
       - WEBRTC_ICE_TRANSPORT_POLICY=${WEBRTC_ICE_TRANSPORT_POLICY:-all}
       - WEBRTC_FORCE_RELAY=${WEBRTC_FORCE_RELAY:-false}
-      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-}
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-aquaguard2026}
+      - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD:-lifeguard2026}
     volumes:
       - ./backend/snapshots:/app/snapshots
     depends_on:
-      - mosquitto
-      - coturn
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+      coturn:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-http://localhost:5000}
+        REACT_APP_WEBRTC_STUN_URLS: ${REACT_APP_WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
+        REACT_APP_WEBRTC_TURN_URL: ${REACT_APP_WEBRTC_TURN_URL:-turn:localhost:3478?transport=udp}
+        REACT_APP_WEBRTC_TURN_USERNAME: ${REACT_APP_WEBRTC_TURN_USERNAME:-aquaguard}
+        REACT_APP_WEBRTC_TURN_CREDENTIAL: ${REACT_APP_WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
+        REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY: ${REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY:-all}
+        REACT_APP_WEBRTC_FORCE_RELAY: ${REACT_APP_WEBRTC_FORCE_RELAY:-false}
+        REACT_APP_WEBRTC_ENABLE: ${REACT_APP_WEBRTC_ENABLE:-true}
     container_name: aquaguard-frontend
     ports:
       - "3000:80"
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000
-      - REACT_APP_WS_URL=http://localhost:5000
-      - REACT_APP_WEBRTC_STUN_URLS=${REACT_APP_WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
-      - REACT_APP_WEBRTC_TURN_URL=${REACT_APP_WEBRTC_TURN_URL:-turn:localhost:3478?transport=udp}
-      - REACT_APP_WEBRTC_TURN_USERNAME=${REACT_APP_WEBRTC_TURN_USERNAME:-aquaguard}
-      - REACT_APP_WEBRTC_TURN_CREDENTIAL=${REACT_APP_WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
-      - REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY=${REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY:-all}
-      - REACT_APP_WEBRTC_FORCE_RELAY=${REACT_APP_WEBRTC_FORCE_RELAY:-false}
-      - REACT_APP_WEBRTC_ENABLE=${REACT_APP_WEBRTC_ENABLE:-true}
     depends_on:
-      - backend
-      - coturn
+      backend:
+        condition: service_healthy
+      coturn:
+        condition: service_started
     restart: unless-stopped
 
   detection_engine:
@@ -84,14 +142,17 @@ services:
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
-      - API_BASE_URL=http://backend:5000
+      - AQUAGUARD_API_URL=http://backend:5000
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
     volumes:
-      - ./detection_engine/models:/app/models:ro
+      - ./detection_engine/models:/app/detection_engine/models:ro
       - ./config:/app/config:ro
-      - ./backend/snapshots:/app/snapshots
+      - ./backend/snapshots:/app/backend/snapshots
     depends_on:
-      - mosquitto
-      - backend
+      mosquitto:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -100,3 +161,7 @@ services:
               count: 1
               capabilities: [gpu]
     restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:

@@ -64,6 +64,23 @@ _ESP32_HEARTBEAT = {
 }
 _ESP32_HEARTBEAT_LOCK = Lock()
 
+_ONLINE_STATUS_VALUES = {'online', 'active', 'running', 'healthy', 'ok', 'connected'}
+_OFFLINE_STATUS_VALUES = {'offline', 'inactive', 'stopped', 'down', 'disconnected'}
+
+
+def _normalize_esp32_status(raw_status):
+    if isinstance(raw_status, bool):
+        return 'online' if raw_status else 'offline'
+    if raw_status is None:
+        return 'online'
+
+    value = str(raw_status).strip().lower()
+    if value in _ONLINE_STATUS_VALUES:
+        return 'online'
+    if value in _OFFLINE_STATUS_VALUES:
+        return 'offline'
+    return value or 'online'
+
 
 def update_esp32_heartbeat(device_id, status='online', uptime_ms=None, timestamp=None):
     heartbeat_time = timestamp or datetime.now(timezone.utc)
@@ -78,18 +95,18 @@ def update_esp32_heartbeat(device_id, status='online', uptime_ms=None, timestamp
     with _ESP32_HEARTBEAT_LOCK:
         _ESP32_HEARTBEAT.update({
             'device_id': device_id,
-            'status': status or 'online',
+            'status': _normalize_esp32_status(status),
             'uptime_ms': uptime_ms,
             'last_heartbeat_at': heartbeat_time.isoformat(),
         })
 
 
 def get_esp32_status():
-    threshold_raw = os.getenv('ESP32_HEARTBEAT_STALE_THRESHOLD_SECONDS', '90')
+    threshold_raw = os.getenv('ESP32_HEARTBEAT_STALE_THRESHOLD_SECONDS', '30')
     try:
         threshold = max(float(threshold_raw), 0.0)
     except (TypeError, ValueError):
-        threshold = 90.0
+        threshold = 30.0
 
     with _ESP32_HEARTBEAT_LOCK:
         heartbeat_snapshot = dict(_ESP32_HEARTBEAT)
@@ -113,7 +130,11 @@ def get_esp32_status():
         last_dt = last_dt.replace(tzinfo=timezone.utc)
 
     age_seconds = max(datetime.now(timezone.utc).timestamp() - last_dt.timestamp(), 0.0)
-    resolved_status = 'online' if age_seconds <= threshold else 'offline'
+    snapshot_status = _normalize_esp32_status(heartbeat_snapshot.get('status'))
+    if snapshot_status == 'offline':
+        resolved_status = 'offline'
+    else:
+        resolved_status = 'online' if age_seconds <= threshold else 'offline'
 
     return {
         'device_id': heartbeat_snapshot.get('device_id'),

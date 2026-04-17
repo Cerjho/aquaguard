@@ -33,6 +33,7 @@ Use this checklist for final defense preparation and first facility deployment.
 - [ ] Run backend tests.
 - [ ] Run detection engine tests.
 - [ ] Run frontend unit tests and smoke E2E tests.
+- [ ] Run deterministic smoke script: `python scripts/defense_smoke.py`.
 - [ ] Run one full end-to-end alert rehearsal.
 
 Rehearsal flow:

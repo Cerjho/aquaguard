@@ -1,0 +1,75 @@
+{
+  "date": "2026-04-17",
+  "health": {
+    "data": {
+      "environment": "production",
+      "service": "backend"
+    },
+    "message": "ok",
+    "status": "success"
+  },
+  "system_status": {
+    "camera_status": [
+      {
+        "last_snapshot_at": "2026-04-16T23:23:00.355184+08:00",
+        "snapshot_age_seconds": 82331.302,
+        "status": "offline",
+        "zone_id": "zone_dev",
+        "zone_name": "Dev Webcam"
+      },
+      {
+        "last_snapshot_at": "2026-04-17T20:40:52.879788+08:00",
+        "snapshot_age_seconds": 5658.787,
+        "status": "offline",
+        "zone_id": "zone_01",
+        "zone_name": "zone_01"
+      },
+      {
+        "last_snapshot_at": "2026-04-04T11:44:58.409933+08:00",
+        "snapshot_age_seconds": 1161013.259,
+        "status": "offline",
+        "zone_id": "zone_02",
+        "zone_name": "zone_02"
+      }
+    ],
+    "detection_engine": {
+      "component": "detection_engine",
+      "message": "No fresh live snapshots",
+      "stale_threshold_seconds": 10.0,
+      "status": "offline"
+    },
+    "esp32": {
+      "device_id": null,
+      "heartbeat_age_seconds": null,
+      "last_heartbeat_at": null,
+      "stale_threshold_seconds": 30.0,
+      "status": "offline",
+      "uptime_ms": null
+    },
+    "generated_at": "2026-04-17T22:15:11.607497+08:00",
+    "subsystems": {
+      "cameras": {
+        "health": "offline",
+        "offline": 3,
+        "online": 0,
+        "stale_threshold_seconds": 10.0,
+        "total": 3
+      },
+      "detection_engine": {
+        "freshness_seconds": 5658.787,
+        "health": "degraded",
+        "last_event_at": null,
+        "stale_threshold_seconds": 10.0,
+        "status": "offline"
+      },
+      "esp32": {
+        "freshness_seconds": null,
+        "health": "offline",
+        "last_heartbeat_at": null,
+        "stale_threshold_seconds": 30.0,
+        "status": "offline"
+      }
+    }
+  },
+  "camera_count": 1
+}

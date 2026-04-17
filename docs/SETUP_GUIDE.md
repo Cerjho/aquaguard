@@ -1,364 +1,256 @@
-# AquaGuard Setup Guide (Windows)
+# AquaGuard Setup Guide (Demo + Facility Readiness)
 
-This guide walks a new developer through a full Windows setup of AquaGuard from
-zero to running system.
+This guide is optimized for two outcomes:
 
-## 1. Prerequisites
+- Fast demo setup (single operator, Windows laptop, ESP32, one or more cameras)
+- Clean handoff path to target-facility deployment
 
-Install these tools before cloning the project.
+Use this guide for first-time setup, onsite demos, and pre-deployment validation.
+
+## 1. Setup Modes
+
+### Mode A - Demo (recommended first)
+
+Use when you need to prove end-to-end flow quickly:
+
+- ESP32 receives MQTT alerts and publishes heartbeats
+- Dashboard is live
+- Detection engine is running
+
+### Mode B - Facility Pilot / Deployment Prep
+
+Use when preparing for the target facility:
+
+- Stable LAN instead of phone hotspot
+- Fixed addressing and firewall policy
+- Service hardening and operational runbook
+
+## 2. Prerequisites (Windows)
 
 ### Core software
 
-- Python 3.11.x: <https://www.python.org/downloads/release/python-3119/>
-- Node.js 20 LTS: <https://nodejs.org/en/download>
-- Git for Windows: <https://git-scm.com/download/win>
-- Eclipse Mosquitto 2.x: <https://mosquitto.org/download/>
-- Arduino IDE 2.x: <https://www.arduino.cc/en/software>
+- Python 3.11.x
+- Node.js 20 LTS
+- Git
+- Docker Desktop
+- Arduino IDE 2.x
 
-### GPU and build tools
+### Optional local Mosquitto install
 
-- NVIDIA driver (latest stable): <https://www.nvidia.com/Download/index.aspx>
-- Visual Studio Build Tools (Desktop development with C++ workload):
-  <https://visualstudio.microsoft.com/visual-cpp-build-tools/>
+- Eclipse Mosquitto 2.x
 
-Important: Install Visual Studio C++ Build Tools before installing torch-related
-packages.
+Note: If you use Docker Mosquitto (recommended), do not rely on the Windows
+Mosquitto service for production-like tests.
 
 ### Hardware
 
-- NVIDIA GPU (RTX 2050 or equivalent)
+- NVIDIA GPU machine (edge host)
 - ESP32-WROOM-32
-- USB webcam or IP camera (RTSP)
+- USB webcam or RTSP camera
 
-## 2. Repository Setup
-
-Clone the repo and create the project virtual environment.
+## 3. Repository and Environment
 
 ```powershell
-
 git clone https://github.com/Cerjho/aquaguard.git
 Set-Location aquaguard
-python -m venv aquaguard_env
+
+# Use existing env if already present
+if (-not (Test-Path .\aquaguard_env)) {
+  python -m venv aquaguard_env
+}
+
 .\aquaguard_env\Scripts\Activate.ps1
-
-```
-
-Critical: Use `aquaguard_env\Scripts\python.exe` or
-`.\aquaguard_env\Scripts\Activate.ps1` for all Python commands in this guide.
-Use venv, not conda.
-
-## 3. Python Environment
-
-Install backend and detection dependencies.
-
-```powershell
-
 python -m pip install --upgrade pip
 python -m pip install -r .\backend\requirements.txt
 python -m pip install -r .\detection_engine\requirements.txt
-
 ```
 
-Verify Python stack and CUDA:
+Frontend:
 
 ```powershell
-
-python .\scripts\verify_cuda.py
-python -c "import torch; print(torch.cuda.is_available());
-print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO GPU')"
-
+Set-Location .\frontend
+npm install
+Set-Location ..
 ```
 
-Model file requirement:
+Model file:
 
-- `aquaguard_yolov11s.pt` is not committed to git.
-- Place it manually at `detection_engine/models/aquaguard_yolov11s.pt`.
+- Place aquaguard_yolov11s.pt at detection_engine/models/aquaguard_yolov11s.pt
 
-## 4. MQTT Broker Setup (Mosquitto)
+## 4. MQTT for Demo (Recommended: Docker Mosquitto)
 
-Install Mosquitto, then run broker using project config.
+Start broker with project config:
 
 ```powershell
-
-& "C:\Program Files\mosquitto\mosquitto.exe" -c ".\mqtt\mosquitto.conf"
-
+docker compose up -d mosquitto
 ```
 
-In another terminal, verify pub/sub works:
+If Windows Mosquitto service is installed, disable it once (Admin PowerShell)
+so it does not conflict with Docker binding:
 
 ```powershell
-
-& "C:\Program Files\mosquitto\mosquitto_sub.exe" -h localhost -p 1883 -t aquaguard/alert
-
+sc.exe stop mosquitto
+sc.exe config mosquitto start= disabled
+sc.exe query mosquitto
 ```
 
+Verify listener and LAN reachability (replace host IP if different):
+
 ```powershell
-
-& "C:\Program Files\mosquitto\mosquitto_pub.exe" -h localhost -p 1883 -t
-aquaguard/alert -m "{\"test\":true}"
-
+Get-NetTCPConnection -LocalPort 1883 -State Listen
+Test-NetConnection 10.126.83.130 -Port 1883
 ```
 
-If the subscriber terminal receives the payload, MQTT is ready.
+Success criteria:
 
-## 5. Environment Variables
+- Docker shows 0.0.0.0:1883 published
+- Test-NetConnection returns TcpTestSucceeded : True
 
-Create backend and frontend env files.
+## 5. Env Files and Database
+
+Backend env:
 
 ```powershell
-
-Copy-Item .\.env.example .\backend\.env
-
+Copy-Item .\.env.example .\backend\.env -ErrorAction SilentlyContinue
 ```
 
-Set frontend environment:
+Frontend env:
 
 ```powershell
-
 @"
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_WS_URL=http://localhost:5000
 "@ | Set-Content .\frontend\.env
-
 ```
 
-Backend `backend/.env` minimum values:
-
-```env
-
-SECRET_KEY=change-me-to-a-random-secret
-JWT_SECRET_KEY=change-me-to-another-random-secret
-DATABASE_URL=sqlite:///aquaguard.db
-FLASK_ENV=development
-FLASK_DEBUG=1
-FLASK_APP=wsgi.py
-
-```
-
-## 6. Database Initialization
-
-Run Flask migrations and seed default users.
+Initialize DB:
 
 ```powershell
-
 Set-Location .\backend
 $env:FLASK_APP = "wsgi.py"
 python -m flask db upgrade
 python seed.py
 Set-Location ..
-
 ```
 
-If this is a clean repo and migration state is missing:
+## 6. ESP32 Provisioning Flow (No Hardcoded Network Values)
+
+Open in Arduino IDE:
+
+- esp32/aquaguard_esp32/aquaguard_esp32.ino
+
+Ensure config defaults are empty for runtime provisioning:
+
+- WIFI_SSID=""
+- WIFI_PASSWORD=""
+- MQTT_BROKER=""
+
+Upload firmware and open Serial Monitor:
+
+- Baud: 115200
+- Line ending: Newline
+
+First boot behavior:
+
+1. Wi-Fi serial provisioning prompt appears if no credentials are cached.
+2. Enter SSID, then password.
+3. Firmware connects and stores credentials in NVS.
+4. MQTT broker is auto-discovered on subnet.
+5. If auto-discovery fails, firmware prompts for broker IP quickly.
+
+When prompted, enter host broker IP (example):
+
+- 10.126.83.130
+
+Expected healthy logs:
+
+- [WiFi] Connected! IP address: ...
+- [MQTT] Connected to broker.
+- [MQTT] Subscribed to aquaguard/alert
+- [Heartbeat] Published ... every 30 seconds
+
+## 7. Start Demo Services
+
+Recommended sequence:
+
+### Terminal 1
 
 ```powershell
-
-Set-Location .\backend
-$env:FLASK_APP = "wsgi.py"
-python -m flask db init
-python -m flask db migrate -m "initial schema"
-python -m flask db upgrade
-python seed.py
-Set-Location ..
-
-```
-
-Default seeded accounts:
-
-- admin / aquaguard2026
-- lifeguard / lifeguard123
-
-## 7. Frontend Setup
-
-Install and run React app.
-
-```powershell
-
-Set-Location .\frontend
-npm install
-npm test -- --watchAll=false
-Set-Location ..
-
-```
-
-The frontend consumes URLs from `frontend/src/utils/constants.js` using
-`process.env.REACT_APP_API_URL` and `process.env.REACT_APP_WS_URL`.
-
-## 8. ESP32 Firmware Setup
-
-1. Open Arduino IDE.
-1. Open `esp32/aquaguard_esp32/aquaguard_esp32.ino`.
-1. Install libraries:
-   - PubSubClient by Nick O'Leary
-   - ArduinoJson by Benoit Blanchon
-
-   If Arduino shows `Failed to install library: 'PubSubClient:2.8.0'` with a
-   missing path similar to
-   `C:\Users\...\OneDrive\...\Arduino\libraries`, fix the Sketchbook path:
-   - Arduino IDE -> File -> Preferences -> Sketchbook location
-   - Set it to an existing folder (example:
-     `C:\Users\Jhocer Barcela\Documents\Arduino`)
-   - Ensure a `libraries` folder exists there, then retry install
-
-   PowerShell quick fix:
-
-   ```powershell
-   New-Item -ItemType Directory -Force "C:\Users\Jhocer Barcela\Documents\Arduino\libraries"
-   ```
-
-1. Open `esp32/aquaguard_esp32/config.h` and update:
-   - `WIFI_SSID`
-   - `WIFI_PASSWORD`
-   - `MQTT_BROKER` (your machine local IPv4)
-   - `MQTT_PORT`
-   - `ALARM_PIN`
-1. Select board: ESP32 Dev Module.
-1. Select COM port and Upload.
-
-To find your machine local IPv4 for `MQTT_BROKER`:
-
-```powershell
-
-ipconfig
-
-```
-
-Use the IPv4 address of your active Wi-Fi/Ethernet adapter.
-
-## 9. Start All Services
-
-Preferred method (single command):
-
-```powershell
-
 .\scripts\start_dev.ps1
-
 ```
 
-Manual method (separate terminals):
-
-Terminal 1 - MQTT:
+### Terminal 2
 
 ```powershell
-
-& "C:\Program Files\mosquitto\mosquitto.exe" -c ".\mqtt\mosquitto.conf"
-
-```
-
-Terminal 2 - Flask backend:
-
-```powershell
-
-.\aquaguard_env\Scripts\Activate.ps1
-Set-Location .\backend
-$env:FLASK_APP = "wsgi.py"
-python -m flask run --port=5000
-
-```
-
-Terminal 3 - React frontend:
-
-```powershell
-
-Set-Location .\frontend
-npm start
-
-```
-
-## 10. Run the Detection Engine
-
-In a new terminal at repo root:
-
-```powershell
-
 .\aquaguard_env\Scripts\Activate.ps1
 python .\detection_engine\main.py
-
 ```
 
-## 11. Verify Everything Works
-
-1. Run environment verification:
-
-```powershell
-
-python .\scripts\verify_cuda.py
-
-```
-
-1. Open dashboard in browser:
+Dashboard:
 
 - <http://localhost:3000>
 
-1. Login with seeded user.
-1. Confirm camera list loads and WebSocket connection is established.
-1. Trigger a test detection flow and verify:
-   - Alert appears in dashboard
-   - Event appears in API results
-   - ESP32 receives MQTT alert and actuates alarm
+## 8. Demo Validation Checklist
 
-## 12. Troubleshooting
+Use this checklist before presenting onsite:
 
-### Issue: `torch.cuda.is_available()` is False
+1. MQTT broker reachable on host LAN IP:1883
+2. ESP32 connected and heartbeats publishing every 30s
+3. Backend reachable at /api/v1/system/status
+4. Dashboard login succeeds
+5. Camera feed visible
+6. Test alert reaches ESP32 alarm + dashboard event
 
-- Update NVIDIA driver.
-- Confirm GPU is visible in `nvidia-smi`.
-- Reopen terminal and reactivate venv.
-
-### Issue: Model file not found
-
-Error example: missing `detection_engine/models/aquaguard_yolov11s.pt`
-
-Fix:
-
-- Copy the trained weight file manually to `detection_engine/models/`.
-- Re-run `python scripts/verify_cuda.py`.
-
-### Issue: Mosquitto does not start
-
-- Verify installation path `C:\Program Files\mosquitto\`.
-- Check port 1883 is free:
+Optional MQTT smoke test from host:
 
 ```powershell
-
-netstat -ano | findstr :1883
-
+.\aquaguard_env\Scripts\Activate.ps1
+python .\scripts\test_mqtt.py
 ```
 
-### Issue: Flask port already in use
+## 9. Target Facility Deployment Prep Checklist
 
-```powershell
+Network and infrastructure:
 
-netstat -ano | findstr :5000
+1. Use dedicated router/AP or VLAN (avoid phone hotspot for production)
+2. Disable AP/client isolation so ESP32 can reach edge host
+3. Reserve static IP for edge host MQTT endpoint
+4. Validate inbound LAN policy for port 1883 and backend port 5000
+5. Ensure reliable power (UPS preferred)
 
-```
+System hardening:
 
-Stop conflicting process, then restart backend.
+1. Keep Windows Mosquitto service disabled when using Docker broker
+2. Keep Docker Mosquitto on restart policy unless-stopped
+3. Use strong backend secrets in backend/.env
+4. Document service restart runbook for operators
 
-### Issue: Frontend cannot connect to API
+Commissioning acceptance (minimum):
 
-- Confirm `frontend/.env` contains:
-  - `REACT_APP_API_URL=http://localhost:5000`
-  - `REACT_APP_WS_URL=http://localhost:5000`
-- Restart `npm start` after editing `.env`.
+1. ESP32 online heartbeat is stable for 30+ minutes
+2. At least 10/10 alert publish tests succeed
+3. Dashboard remains connected while alert tests run
+4. Detection engine and backend show no crash/restart loops
 
-### Issue: Unauthorized (401) on API endpoints
+## 10. Fast Troubleshooting
 
-- Login again to refresh token.
-- Ensure Authorization header format is `Bearer <token>`.
+### ESP32 connected to Wi-Fi but MQTT not connected
 
-### Issue: ESP32 receives no MQTT alert
+- Recheck host broker IP and port 1883 reachability
+- Confirm Docker broker is published to 0.0.0.0:1883
+- Confirm AP isolation is disabled
 
-- Confirm `MQTT_BROKER` in `config.h` matches PC IPv4.
-- Confirm ESP32 and PC are on same network.
-- Test broker manually with `mosquitto_pub` and `mosquitto_sub`.
+### Broker reachable from host but not from ESP32
 
-### Issue: WebSocket `connect_error`
+- Verify both are on same SSID/subnet
+- Avoid guest SSID with client isolation
+- Enter broker IP during ESP32 MQTT prompt
 
-- Check backend is running on port 5000.
-- Ensure token is present in browser localStorage.
-- Check backend logs for JWT decode failures.
+### Port 1883 conflicts
 
-______________________________________________________________________
+- Stop/disable Windows Mosquitto service (Admin PowerShell)
+- Keep only Docker Mosquitto active
 
-You now have a complete local AquaGuard developer environment on Windows.
+---
+
+For production-specific baseline controls, continue to docs/PRODUCTION_DEPLOYMENT.md.

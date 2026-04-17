@@ -20,6 +20,7 @@ def app():
     os.environ['SECRET_KEY'] = 'test-secret-key-32-bytes-long!!'
     os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-32-bytes-long!!'
     os.environ['AQUAGUARD_API_KEY'] = 'test-internal-api-key'
+    os.environ['ESP32_MQTT_BRIDGE_ENABLED'] = '0'
     os.environ['RATELIMIT_ENABLED'] = 'false'
     os.environ['RESET_DEFAULT_PASSWORDS_ON_STARTUP'] = '0'
     app = create_app()

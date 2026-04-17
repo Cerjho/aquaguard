@@ -42,12 +42,14 @@ Fill this document during deployment handoff.
 - End-to-end alert drill result:
 - ESP32 heartbeat stability result:
 - 30-minute stability soak result:
+- Rehearsal evidence artifact path(s):
 
 ## 6. Operational Notes
 
 - Known limitations:
 - Workarounds:
 - Pending improvements:
+- Hypercare log location:
 
 ## 7. Recovery and Rollback
 

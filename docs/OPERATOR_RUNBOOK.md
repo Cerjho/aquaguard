@@ -32,6 +32,7 @@ Invoke-WebRequest -UseBasicParsing http://localhost:5000/api/health
 3. ESP32 heartbeat age remains below stale threshold.
 4. No repeated crash/restart logs in backend or detection engine.
 5. Run the deterministic smoke flow after startup and after any recovery action.
+6. Record the daily snapshot in `docs/HYPERCARE_LOG_TEMPLATE.md`.
 
 ```powershell
 & ".\aquaguard_env\Scripts\python.exe" .\scripts\defense_smoke.py
@@ -43,6 +44,7 @@ Invoke-WebRequest -UseBasicParsing http://localhost:5000/api/health
 2. Confirm open/unacknowledged alerts count.
 3. Confirm last successful heartbeat timestamp from ESP32 devices.
 4. Note any incident and recovery actions in operations log.
+5. Save rehearsal outputs or deferred notes in `docs/rehearsal_evidence/`.
 
 ## 4. Controlled Shutdown
 

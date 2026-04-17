@@ -36,6 +36,7 @@ Use this checklist for final defense preparation and first facility deployment.
 - [ ] Run deterministic smoke script: `python scripts/defense_smoke.py`.
 - [ ] Run one full end-to-end alert rehearsal.
 - [ ] Run controlled recovery drill: `python scripts/recovery_drill.py --services mosquitto backend detection_engine`.
+- [ ] Save rehearsal artifacts in `docs/rehearsal_evidence/`.
 
 Rehearsal flow:
 
@@ -51,6 +52,7 @@ Rehearsal flow:
 - [ ] Print or share `docs/OPERATOR_RUNBOOK.md` with operators.
 - [ ] Print or share `docs/INCIDENT_RESPONSE.md` with operators.
 - [ ] Fill `docs/HANDOFF_TEMPLATE.md` with facility-specific values.
+- [ ] Create Day 1 entry in `docs/HYPERCARE_LOG_TEMPLATE.md`.
 - [ ] Record rollback tag/commit and backup location.
 
 ## 3. Go-Live Day
@@ -72,7 +74,7 @@ Rehearsal flow:
 
 ## 4. First 7 Days (Hypercare)
 
-- [ ] Daily health snapshot captured.
+- [ ] Daily health snapshot captured in `docs/HYPERCARE_LOG_TEMPLATE.md`.
 - [ ] Incident log maintained with time, symptom, action, and resolution.
 - [ ] Latency and alert reliability reviewed daily.
 - [ ] Hotfixes, if any, are tracked as separate single-concern PRs.

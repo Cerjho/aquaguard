@@ -171,6 +171,7 @@ Capture and hand over:
 
 Use the following documents together during pre-release, go-live, and handoff:
 
+- `docs/DEPLOYMENT_MACHINE_SETUP.md` — first-time machine bootstrap for production-like and facility deployment modes
 - `docs/DEPLOYMENT_PACKAGE.md` — one-command setup, troubleshooting map, and rollback handoff package
 - `docs/GO_LIVE_HYPERCARE_PLAN.md` — week-one budgets, cadence, and hotfix guardrails
 - `docs/DEPLOYMENT_CHECKLIST.md` — staged pre-go-live and hypercare checklist

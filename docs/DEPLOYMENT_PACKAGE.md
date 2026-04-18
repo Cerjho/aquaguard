@@ -12,6 +12,7 @@ Provide this package as a complete handoff set:
 
 - One-command startup script (Windows): `scripts/start_stack.ps1`
 - One-command startup script (Linux/macOS): `scripts/start_stack.sh`
+- Deployment machine bootstrap runbook: `docs/DEPLOYMENT_MACHINE_SETUP.md`
 - Release checklist: `docs/DEPLOYMENT_CHECKLIST.md`
 - Operator procedures: `docs/OPERATOR_RUNBOOK.md`
 - Incident playbook: `docs/INCIDENT_RESPONSE.md`
@@ -84,17 +85,17 @@ Use this map for first-response triage:
 docker compose down
 ```
 
-3. Checkout last known good release tag/commit.
-4. Restore database backup if required by the incident.
-5. Start stack using one-command setup path from section 2.
-6. Validate recovery using:
+1. Checkout last known good release tag/commit.
+2. Restore database backup if required by the incident.
+3. Start stack using one-command setup path from section 2.
+4. Validate recovery using:
 
 ```powershell
 & ".\aquaguard_env\Scripts\python.exe" .\scripts\defense_smoke.py
 & ".\aquaguard_env\Scripts\python.exe" .\scripts\recovery_drill.py --services mosquitto backend
 ```
 
-7. Update handoff and incident logs before resuming normal operations.
+1. Update handoff and incident logs before resuming normal operations.
 
 ## 6. Handoff Acceptance
 

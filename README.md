@@ -235,6 +235,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
+## Deployment Machine Setup
+
+See [docs/DEPLOYMENT_MACHINE_SETUP.md](docs/DEPLOYMENT_MACHINE_SETUP.md)
+
 ## Production Deployment
 
 See [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)

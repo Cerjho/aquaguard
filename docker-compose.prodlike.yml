@@ -1,0 +1,28 @@
+services:
+  frontend:
+    build:
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-https://aquaguard.local}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-https://aquaguard.local}
+        REACT_APP_WEBRTC_TURN_URL: ${REACT_APP_WEBRTC_TURN_URL:-turn:aquaguard.local:3478?transport=udp}
+
+  edge:
+    image: caddy:2.8-alpine
+    container_name: aquaguard-edge
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

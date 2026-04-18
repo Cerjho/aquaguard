@@ -32,21 +32,13 @@ function SystemPage() {
 
       <div className="grid grid-cols-1 2xl:grid-cols-3 gap-6">
         <motion.section
-          aria-labelledby="system-health-title"
-          className="2xl:col-span-1 glass-subtle p-5 rounded-3xl border border-slate-200"
+          aria-label="System diagnostics"
+          className="2xl:col-span-1"
           initial={{ opacity: 0, x: prefersReducedMotion ? 0 : -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: prefersReducedMotion ? 0 : 0.1 }}
         >
-          <div className="flex items-center gap-2 mb-4">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 id="system-health-title" className="text-sm font-semibold text-slate-800">
-              System Health
-            </h3>
-          </div>
-          <SystemStatus />
+          <SystemStatus showCameraIndicators showCameraStatusList={false} />
         </motion.section>
 
         <motion.section

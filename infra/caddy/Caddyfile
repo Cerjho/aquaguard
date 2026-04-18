@@ -1,0 +1,12 @@
+https://aquaguard.local {
+    tls internal
+
+    @api path /api/* /socket.io/*
+    reverse_proxy @api backend:5000
+
+    reverse_proxy frontend:80
+}
+
+http://aquaguard.local {
+    redir https://aquaguard.local{uri} 308
+}

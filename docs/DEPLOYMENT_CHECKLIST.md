@@ -4,6 +4,7 @@ Use this checklist for final defense preparation and first facility deployment.
 
 Companion documents for final operations handoff:
 
+- `docs/DEPLOYMENT_MACHINE_SETUP.md` (first-time deployment machine setup)
 - `docs/DEPLOYMENT_PACKAGE.md` (Phase 8 package and rollback path)
 - `docs/GO_LIVE_HYPERCARE_PLAN.md` (Phase 9 week-one execution and budgets)
 

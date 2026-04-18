@@ -146,8 +146,8 @@ def _authorized_actor():
         verify_jwt_in_request()
         auth_type = 'jwt_header' if request.headers.get('Authorization') else 'jwt_cookie'
         return {'authorized': True, 'auth_type': auth_type}
-    except JWTExtendedException:
-        pass
+    except JWTExtendedException as exc:
+        LOGGER.debug('JWT verification failed: %s; attempting API key auth', exc)
 
     expected_key = current_app.config.get('AQUAGUARD_API_KEY')
     provided_key = request.headers.get('X-API-Key')

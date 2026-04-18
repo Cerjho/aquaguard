@@ -24,7 +24,7 @@ describe('SystemPage', () => {
     render(<SystemPage />);
 
     expect(screen.getByRole('heading', { name: /system status/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /system health/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /system diagnostics/i })).toBeInTheDocument();
     expect(screen.getByText('Mock System Status')).toBeInTheDocument();
     expect(screen.getByText('Mock Camera Management')).toBeInTheDocument();
   });

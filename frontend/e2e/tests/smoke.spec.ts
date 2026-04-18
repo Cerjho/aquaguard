@@ -85,8 +85,11 @@ test.describe('Smoke Tests @smoke', () => {
     // Click logout
     await authenticatedPage.getByRole('button', { name: /logout/i }).click();
 
-    // Verify logged-out state by checking login copy in the page content.
-    await expect(authenticatedPage.locator('body')).toContainText(/welcome back/i);
+    // Verify logged-out state by URL and login form visibility.
+    await expect(authenticatedPage).toHaveURL(/\/login(?:\?.*)?$/);
+    await expect(
+      authenticatedPage.getByRole('textbox', { name: /email|username/i })
+    ).toBeVisible();
   });
 
   test('should protect routes from unauthenticated access', async ({ page }) => {

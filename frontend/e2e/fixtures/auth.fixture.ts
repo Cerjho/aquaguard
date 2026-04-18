@@ -44,7 +44,7 @@ export const test = base.extend<AuthFixtures>({
     await page.goto(PAGES.login, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Wait for login form to be ready
-    const usernameInput = page.getByRole('textbox', { name: /username/i });
+    const usernameInput = page.getByRole('textbox', { name: /email|username/i });
     await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
 
     // Fill credentials
@@ -52,7 +52,7 @@ export const test = base.extend<AuthFixtures>({
     await page.getByRole('textbox', { name: /password/i }).fill(TEST_CREDENTIALS.admin.password);
 
     // Submit login
-    await page.getByRole('button', { name: /sign in/i }).click();
+    await page.getByRole('button', { name: /sign in|secure login|login/i }).click();
 
     // Wait for dashboard heading as the primary authenticated-state signal.
     await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible({ timeout: 60000 });

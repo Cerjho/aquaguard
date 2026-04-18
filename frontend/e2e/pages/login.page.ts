@@ -14,12 +14,12 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.usernameInput = page.getByRole('textbox', { name: /username/i });
+    this.usernameInput = page.getByRole('textbox', { name: /email|username/i });
     this.passwordInput = page.getByRole('textbox', { name: /password/i });
     this.rememberMeCheckbox = page.getByRole('checkbox', { name: /remember me/i });
-    this.signInButton = page.getByRole('button', { name: /sign in/i });
+    this.signInButton = page.getByRole('button', { name: /sign in|secure login|login/i });
     this.errorMessage = page.getByRole('alert');
-    this.logo = page.getByRole('heading', { name: /aquaguard/i });
+    this.logo = page.locator('h1').first();
   }
 
   async goto() {

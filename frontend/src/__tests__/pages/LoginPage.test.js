@@ -4,6 +4,29 @@ import { MemoryRouter } from 'react-router-dom';
 import LoginPage from '../../pages/LoginPage.jsx';
 import * as AuthContext from '../../context/AuthContext.jsx';
 
+jest.mock('framer-motion', () => ({
+  ...jest.requireActual('framer-motion'),
+  useReducedMotion: () => true,
+}));
+
+jest.mock('gsap', () => {
+  const timeline = {
+    to: jest.fn().mockReturnThis(),
+    kill: jest.fn(),
+  };
+
+  return {
+    __esModule: true,
+    default: {
+      set: jest.fn(),
+      to: jest.fn(),
+      fromTo: jest.fn(),
+      killTweensOf: jest.fn(),
+      timeline: jest.fn(() => timeline),
+    },
+  };
+}, { virtual: true });
+
 // Prevent axios ESM import errors from transitive deps
 jest.mock('../../hooks/useApi', () => ({ post: jest.fn(), get: jest.fn() }));
 jest.mock(
@@ -44,24 +67,24 @@ afterEach(() => {
 });
 
 describe('LoginPage', () => {
-  test('renders username and password fields and sign-in button', () => {
+  test('renders email and password fields and sign-in button', () => {
     renderLoginPage();
-    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in|login/i })).toBeInTheDocument();
   });
 
   test('shows validation error when username is empty', () => {
     renderLoginPage();
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /sign in|login/i }));
     expect(screen.getByRole('alert')).toHaveTextContent('Username is required.');
     expect(mockLogin).not.toHaveBeenCalled();
   });
 
   test('shows validation error when password is empty', () => {
     renderLoginPage();
-    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'admin' } });
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'admin' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in|login/i }));
     expect(screen.getByRole('alert')).toHaveTextContent('Password is required.');
     expect(mockLogin).not.toHaveBeenCalled();
   });
@@ -69,9 +92,9 @@ describe('LoginPage', () => {
   test('calls login with trimmed username and password on valid submit', async () => {
     mockLogin.mockResolvedValue(true);
     renderLoginPage();
-    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: '  admin  ' } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: '  admin  ' } });
     fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'secret' } });
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /sign in|login/i }));
     expect(mockLogin).toHaveBeenCalledWith('admin', 'secret', false);
   });
 
@@ -82,8 +105,8 @@ describe('LoginPage', () => {
 
   test('disables button and inputs when loading', () => {
     renderLoginPage({ loading: true });
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeDisabled();
-    expect(screen.getByLabelText(/username/i)).toBeDisabled();
+    expect(screen.getByRole('button', { name: /sign in|login/i })).toBeDisabled();
+    expect(screen.getByLabelText(/email/i)).toBeDisabled();
     expect(screen.getByLabelText(/^password$/i)).toBeDisabled();
   });
 });

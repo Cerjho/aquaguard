@@ -1,4 +1,5 @@
 """Unit tests for DrowningDetector."""
+import logging
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -78,6 +79,8 @@ class TestDrowningDetectorDetect:
         assert d.class_label == "drowning"
         assert abs(d.confidence - 0.85) < 1e-4
         assert d.bbox == (10.0, 20.0, 100.0, 200.0)
+        _, kwargs = mock_model.track.call_args
+        assert kwargs["tracker"] == "bytetrack.yaml"
 
     def test_returns_empty_on_runtime_error(self):
         mock_model = MagicMock()
@@ -118,3 +121,30 @@ class TestDrowningDetectorDetect:
 
         assert len(results) == 1
         assert results[0].class_label == "swimming"
+
+
+def test_ultralytics_noise_filter_blocks_known_messages():
+    from detection_engine.vision.detector import _UltralyticsNoiseFilter
+
+    noise_filter = _UltralyticsNoiseFilter()
+    noisy_record = logging.LogRecord(
+        name="ultralytics",
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg="WARNING ⚠️ NMS time limit 2.050s exceeded",
+        args=(),
+        exc_info=None,
+    )
+    normal_record = logging.LogRecord(
+        name="ultralytics",
+        level=logging.WARNING,
+        pathname=__file__,
+        lineno=1,
+        msg="tracking pass completed",
+        args=(),
+        exc_info=None,
+    )
+
+    assert noise_filter.filter(noisy_record) is False
+    assert noise_filter.filter(normal_record) is True

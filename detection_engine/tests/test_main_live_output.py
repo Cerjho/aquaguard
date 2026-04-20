@@ -7,6 +7,7 @@ import numpy as np
 
 from detection_engine.main import (
     _annotate_live_frame,
+    _connect_mqtt_with_retries,
     _get_required_api_url,
     _load_api_env_from_backend_env,
     _send_zone_heartbeat_if_due,
@@ -131,3 +132,41 @@ def test_get_required_api_url_uses_legacy_api_base_url(monkeypatch):
 
     assert resolved == "http://legacy-backend:5000"
     assert os.environ.get("AQUAGUARD_API_URL") == "http://legacy-backend:5000"
+
+
+def test_connect_mqtt_with_retries_succeeds_after_transient_failures(monkeypatch):
+    attempts = {"count": 0}
+    sleeps = []
+
+    class _FlakyMQTT:
+        def connect(self):
+            attempts["count"] += 1
+            if attempts["count"] < 3:
+                raise OSError("connection refused")
+
+    monkeypatch.setattr(
+        "detection_engine.main.MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS",
+        [1, 2, 4],
+    )
+    monkeypatch.setattr("detection_engine.main.time.sleep", lambda delay: sleeps.append(delay))
+
+    assert _connect_mqtt_with_retries(_FlakyMQTT()) is True
+    assert attempts["count"] == 3
+    assert sleeps == [1, 2]
+
+
+def test_connect_mqtt_with_retries_returns_false_after_exhausting_attempts(monkeypatch):
+    sleeps = []
+
+    class _DownMQTT:
+        def connect(self):
+            raise OSError("broker down")
+
+    monkeypatch.setattr(
+        "detection_engine.main.MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS",
+        [1, 2],
+    )
+    monkeypatch.setattr("detection_engine.main.time.sleep", lambda delay: sleeps.append(delay))
+
+    assert _connect_mqtt_with_retries(_DownMQTT()) is False
+    assert sleeps == [1, 2]

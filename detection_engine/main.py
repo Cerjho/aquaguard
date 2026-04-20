@@ -8,17 +8,42 @@ Usage:
     # or
     python detection_engine/main.py
 """
+import json
 import logging
 import os
 import sys
-import json
 import time
+import warnings
 from datetime import datetime, timezone
+
+
+def _configure_third_party_runtime() -> None:
+    """Configure noisy third-party runtimes before dependent imports."""
+    os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+    os.environ.setdefault("GLOG_minloglevel", "2")
+    os.environ.setdefault("ABSL_LOG_LEVEL", "2")
+
+
+_configure_third_party_runtime()
+
 import cv2
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:  # pragma: no cover - exercised in CI envs without python-dotenv
     load_dotenv = None
+
+
+def _suppress_known_runtime_warnings() -> None:
+    """Suppress noisy third-party runtime warnings that do not affect behavior."""
+    warnings.filterwarnings(
+        "ignore",
+        message=r"SymbolDatabase\.GetPrototype\(\) is deprecated\..*",
+        category=UserWarning,
+        module=r"google\.protobuf\.symbol_database",
+    )
+
+
+_suppress_known_runtime_warnings()
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -27,6 +52,8 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("aquaguard.main")
+logging.getLogger("absl").setLevel(logging.ERROR)
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
 # ── Base directories ──────────────────────────────────────────────────────────
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,6 +72,7 @@ _BACKEND_ENV_PATH = os.path.join(_BASE_DIR, "backend", ".env")
 from config.settings import (
     MQTT_BROKER_HOST,
     MQTT_BROKER_PORT,
+    MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS,
     DETECTION_ENGINE_HEARTBEAT_INTERVAL_SECONDS,
     LIVE_SNAPSHOT_JPEG_QUALITY,
     LIVE_ARTIFACT_REPLACE_RETRIES,
@@ -56,6 +84,45 @@ from config.secrets import get_secret
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _connect_mqtt_with_retries(mqtt_client) -> bool:
+    """Best-effort MQTT startup connect with bounded retries."""
+    retry_delays = tuple(MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS)
+    max_attempts = len(retry_delays) + 1
+
+    for attempt_index in range(max_attempts):
+        attempt_number = attempt_index + 1
+        try:
+            mqtt_client.connect()
+            if attempt_number > 1:
+                logger.info(
+                    "MQTT connected on startup attempt %d/%d",
+                    attempt_number,
+                    max_attempts,
+                )
+            return True
+        except (OSError, RuntimeError, ValueError) as exc:
+            if attempt_number >= max_attempts:
+                logger.warning(
+                    "MQTT broker unavailable at startup after %d attempts: %s "
+                    "— continuing without MQTT",
+                    max_attempts,
+                    exc,
+                )
+                return False
+
+            delay_s = retry_delays[attempt_index]
+            logger.info(
+                "MQTT startup connect attempt %d/%d failed: %s. Retrying in %ss",
+                attempt_number,
+                max_attempts,
+                exc,
+                delay_s,
+            )
+            time.sleep(delay_s)
+
+    return False
 
 
 def _load_api_env_from_backend_env() -> None:
@@ -472,11 +539,7 @@ def main():
     # ── Alert dispatch ────────────────────────────────────────────────────────
     mqtt_client = MQTTClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
     alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=_SNAPSHOT_DIR)
-
-    try:
-        mqtt_client.connect()
-    except (OSError, RuntimeError, ValueError) as exc:
-        logger.warning("MQTT broker unavailable at startup: %s — continuing without MQTT", exc)
+    _connect_mqtt_with_retries(mqtt_client)
 
     # ── Detection callback for alert processing ───────────────────────────────
     last_heartbeat_at = {}

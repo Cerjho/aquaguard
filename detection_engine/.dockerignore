@@ -16,3 +16,8 @@ dist/
 venv/
 .vscode/
 .idea/
+
+# Tests/reports are not needed in the runtime image build context.
+tests/
+.pytest_cache/
+*.log

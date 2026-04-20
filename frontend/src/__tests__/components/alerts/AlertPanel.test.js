@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AlertPanel, { resolveSnapshotUrl } from '../../../components/alerts/AlertPanel.jsx';
 import * as AlertContext from '../../../context/AlertContext.jsx';
 
@@ -119,6 +119,50 @@ describe('AlertPanel', () => {
 
     expect(getElementByIdSpy).toHaveBeenCalledWith('camera-card-zone_01');
     expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  test('falls back to oscillator tone when alert.mp3 playback fails', async () => {
+    const play = jest.fn().mockRejectedValue(new Error('404'));
+    global.Audio.mockImplementationOnce(() => ({
+      play,
+      pause: jest.fn(),
+      loop: false,
+      volume: 1,
+    }));
+
+    const oscillator = {
+      connect: jest.fn(),
+      start: jest.fn(),
+      stop: jest.fn(),
+      disconnect: jest.fn(),
+      frequency: { value: 0 },
+      type: 'sine',
+    };
+    const gainNode = {
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      gain: { value: 0 },
+    };
+    const audioContextMock = jest.fn().mockImplementation(() => ({
+      state: 'running',
+      resume: jest.fn().mockResolvedValue(undefined),
+      createOscillator: () => oscillator,
+      createGain: () => gainNode,
+      destination: {},
+      close: jest.fn().mockResolvedValue(undefined),
+    }));
+
+    const previousAudioContext = global.AudioContext;
+    global.AudioContext = audioContextMock;
+
+    renderAlertPanel({ activeAlert: sampleAlert });
+
+    await waitFor(() => {
+      expect(audioContextMock).toHaveBeenCalled();
+      expect(oscillator.start).toHaveBeenCalled();
+    });
+
+    global.AudioContext = previousAudioContext;
   });
 
   describe('resolveSnapshotUrl', () => {

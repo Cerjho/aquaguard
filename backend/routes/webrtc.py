@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import os
 import time
@@ -24,8 +25,6 @@ _WEBRTC_FUTURE_TIMEOUT_SECONDS = 10
 LOGGER = logging.getLogger(__name__)
 
 try:
-    import cv2
-    import numpy as np
     from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
     from aiortc.sdp import candidate_from_sdp
     from av import VideoFrame
@@ -35,6 +34,24 @@ try:
 except ImportError as exc:
     AIORTC_AVAILABLE = False
     AIORTC_IMPORT_ERROR = str(exc)
+
+try:
+    import cv2
+    import numpy as np
+
+    _CV2_DECODER_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    np = None
+    _CV2_DECODER_AVAILABLE = False
+
+try:
+    from PIL import Image
+
+    _PIL_DECODER_AVAILABLE = True
+except ImportError:
+    Image = None
+    _PIL_DECODER_AVAILABLE = False
 
 
 LIVE_SNAPSHOT_DIR = os.path.join(
@@ -59,7 +76,7 @@ if AIORTC_AVAILABLE:
             try:
                 # Run I/O in thread pool to avoid blocking event loop
                 frame = await loop.run_in_executor(None, self._safe_read_jpeg, frame_path)
-                if frame is not None and frame.size > 0:
+                if frame is not None:
                     self._cached_frame = frame
                     self._frame_timestamp = time.time()
                     return frame
@@ -82,12 +99,29 @@ if AIORTC_AVAILABLE:
                 if data[-2:] != b'\xff\xd9':  # EOI marker
                     return None
 
-                # Decode from memory buffer
-                arr = np.frombuffer(data, dtype=np.uint8)
-                frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-                return frame
+                if _CV2_DECODER_AVAILABLE:
+                    # Decode with OpenCV when available.
+                    arr = np.frombuffer(data, dtype=np.uint8)
+                    return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+
+                if _PIL_DECODER_AVAILABLE:
+                    with Image.open(io.BytesIO(data)) as image:
+                        return image.convert('RGB')
+
+                return None
             except (IOError, OSError):
                 return None
+
+        def _build_black_frame(self):
+            if _CV2_DECODER_AVAILABLE:
+                black = np.zeros((480, 640, 3), dtype=np.uint8)
+                return VideoFrame.from_ndarray(black, format='bgr24')
+
+            if _PIL_DECODER_AVAILABLE:
+                image = Image.new('RGB', (640, 480), color=(0, 0, 0))
+                return VideoFrame.from_image(image)
+
+            return VideoFrame(width=640, height=480, format='rgb24')
 
         async def recv(self):
             pts, time_base = await self.next_timestamp()
@@ -99,9 +133,14 @@ if AIORTC_AVAILABLE:
 
             frame = self._cached_frame
             if frame is None:
-                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                video_frame = self._build_black_frame()
+            elif _CV2_DECODER_AVAILABLE and isinstance(frame, np.ndarray):
+                video_frame = VideoFrame.from_ndarray(frame, format='bgr24')
+            elif _PIL_DECODER_AVAILABLE and isinstance(frame, Image.Image):
+                video_frame = VideoFrame.from_image(frame)
+            else:
+                video_frame = self._build_black_frame()
 
-            video_frame = VideoFrame.from_ndarray(frame, format='bgr24')
             video_frame.pts = pts
             video_frame.time_base = time_base
             return video_frame

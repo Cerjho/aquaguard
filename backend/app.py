@@ -93,7 +93,11 @@ def create_app():
         resources={r"/api/*": {"origins": allowed_origins}},
         supports_credentials=True,
     )
-    socketio.init_app(app, cors_allowed_origins=allowed_origins)
+    socketio.init_app(
+        app,
+        cors_allowed_origins=allowed_origins,
+        manage_session=False,
+    )
 
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
@@ -117,6 +121,7 @@ def create_app():
     app.register_blueprint(webrtc_bp)
 
     @app.get('/api/health')
+    @limiter.exempt
     def health_check():
         """Public liveness probe for orchestrators and CI."""
         return {

@@ -1,3 +1,8 @@
+import pytest
+
+import routes.webrtc as webrtc_routes
+
+
 def _auth_headers(token):
     return {'Authorization': f'Bearer {token}'}
 
@@ -152,3 +157,30 @@ def test_webrtc_session_status_rejects_invalid_session_id(client, admin_token):
                            headers=_auth_headers(admin_token))
     assert path_resp.status_code == 400
     assert path_resp.get_json()['error'] == 'session_id must be a valid UUID'
+
+
+def test_webrtc_offer_survives_missing_opencv_decoder(client, admin_token, monkeypatch):
+    if not webrtc_routes.AIORTC_AVAILABLE:
+        pytest.skip(f'aiortc unavailable in test env: {webrtc_routes.AIORTC_IMPORT_ERROR}')
+
+    monkeypatch.setattr(webrtc_routes, '_CV2_DECODER_AVAILABLE', False)
+    monkeypatch.setattr(webrtc_routes, 'cv2', None)
+    monkeypatch.setattr(webrtc_routes, 'np', None)
+
+    resp = client.post(
+        '/api/v1/webrtc/offer',
+        headers=_auth_headers(admin_token),
+        json={
+            'zone_id': 'zone_cv2less',
+            'client_id': 'dashboard-cv2less',
+            'type': 'offer',
+            'sdp': 'v=0\r\no=- 11 12 IN IP4 127.0.0.1',
+        },
+    )
+
+    assert resp.status_code == 202
+    payload = resp.get_json()
+    assert payload['status'] in {'answer_created', 'fallback_active'}
+    if payload['status'] == 'fallback_active':
+        reason = ((payload.get('fallback') or {}).get('reason') or '').lower()
+        assert 'cv2' not in reason

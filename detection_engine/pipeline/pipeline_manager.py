@@ -81,6 +81,7 @@ class ZonePipeline:
         self._feeder_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._started = False
+        self._last_frame_sequence = -1
 
     def start(self) -> None:
         """Start all pipeline workers."""
@@ -145,6 +146,16 @@ class ZonePipeline:
                 if frame is None:
                     time.sleep(0.01)  # Brief sleep if no frame
                     continue
+
+                # Camera.read() can return the same latest frame between capture
+                # updates. Skip duplicate enqueues so drop_rate reflects actual
+                # backpressure, not feeder loop speed.
+                frame_sequence = metadata.get("frame_sequence")
+                if isinstance(frame_sequence, int):
+                    if frame_sequence == self._last_frame_sequence:
+                        time.sleep(0.001)
+                        continue
+                    self._last_frame_sequence = frame_sequence
 
                 timestamp = metadata.get("timestamp") or _utc_now_iso()
 

@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import torch
 from ultralytics import YOLO
+from ultralytics.utils import LOGGER as ULTRALYTICS_LOGGER
 
 from detection_engine.models_data.detection import Detection
 
@@ -17,6 +18,31 @@ CLASS_MAP = {
     1: "swimming",
     2: "person_out_of_water",
 }
+
+
+class _UltralyticsNoiseFilter(logging.Filter):
+    """Drop repetitive third-party warnings that do not affect outcomes."""
+
+    _NOISY_MESSAGE_FRAGMENTS = (
+        "NMS time limit",
+        "not enough matching points",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return not any(fragment in message for fragment in self._NOISY_MESSAGE_FRAGMENTS)
+
+
+def _install_ultralytics_noise_filter() -> None:
+    if any(
+        isinstance(active_filter, _UltralyticsNoiseFilter)
+        for active_filter in ULTRALYTICS_LOGGER.filters
+    ):
+        return
+    ULTRALYTICS_LOGGER.addFilter(_UltralyticsNoiseFilter())
+
+
+_install_ultralytics_noise_filter()
 
 
 class DrowningDetector:
@@ -61,6 +87,7 @@ class DrowningDetector:
                 persist=True,
                 conf=0.4,
                 device=run_device,
+                tracker="bytetrack.yaml",
                 verbose=False,
             )
         except RuntimeError as exc:
@@ -73,6 +100,7 @@ class DrowningDetector:
                         persist=True,
                         conf=0.4,
                         device="cpu",
+                        tracker="bytetrack.yaml",
                         verbose=False,
                     )
                 except (RuntimeError, ValueError, TypeError, AttributeError) as cpu_exc:

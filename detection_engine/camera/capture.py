@@ -41,14 +41,18 @@ os.environ['OPENCV_LOG_LEVEL'] = 'SILENT'
 
 # Configure FFmpeg capture options for RTSP robustness
 # rtsp_transport: tcp (reliable) vs udp (low latency but lossy)
-# stimeout: socket timeout in microseconds
-_FFMPEG_TIMEOUT_US = RTSP_CONNECT_TIMEOUT_SECONDS * 1_000_000
+# stimeout/rw_timeout: connect/read socket timeouts in microseconds
+_FFMPEG_CONNECT_TIMEOUT_US = RTSP_CONNECT_TIMEOUT_SECONDS * 1_000_000
+_FFMPEG_READ_TIMEOUT_US = RTSP_READ_TIMEOUT_SECONDS * 1_000_000
 os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = (
     f'rtsp_transport;{RTSP_TRANSPORT}|'
-    f'stimeout;{_FFMPEG_TIMEOUT_US}|'
+    f'stimeout;{_FFMPEG_CONNECT_TIMEOUT_US}|'
+    f'rw_timeout;{_FFMPEG_READ_TIMEOUT_US}|'
     f'buffer_size;{RTSP_BUFFER_SIZE * 1024 * 1024}|'
     f'max_delay;500000|'
-    f'reorder_queue_size;0'
+    f'reorder_queue_size;0|'
+    f'fflags;nobuffer|'
+    f'flags;low_delay'
 )
 
 # Suppress OpenCV warnings about codec errors
@@ -120,10 +124,15 @@ class CameraCapture:
         self.zone_id = zone_id
         self.rtsp_url = rtsp_url
         self.frame_rate = frame_rate
+        self._is_local_camera = isinstance(rtsp_url, int) or (
+            isinstance(rtsp_url, str) and rtsp_url.isdigit()
+        )
 
         self._cap: Optional[cv2.VideoCapture] = None
         self._cap_lock = threading.Lock()
         self._latest_frame: Optional[np.ndarray] = None
+        self._latest_frame_timestamp: Optional[str] = None
+        self._latest_frame_sequence = 0
         self._frame_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -179,13 +188,18 @@ class CameraCapture:
         with self._frame_lock:
             if self._latest_frame is None:
                 frame = None
+                frame_timestamp = None
+                frame_sequence = 0
             else:
                 frame = self._latest_frame.copy() if copy_frame else self._latest_frame
+                frame_timestamp = self._latest_frame_timestamp
+                frame_sequence = self._latest_frame_sequence
 
         health = self._health_tracker.health
         metadata = {
             "zone_id": self.zone_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": frame_timestamp or datetime.now(timezone.utc).isoformat(),
+            "frame_sequence": frame_sequence,
             "status": health.status,
             "fps_actual": health.fps_actual,
         }
@@ -256,9 +270,20 @@ class CameraCapture:
 
     # ── Private ───────────────────────────────────────────────────────────────
 
+    def _sleep_after_success_seconds(self) -> float:
+        """Return post-read sleep for successful captures.
+
+        For RTSP/HTTP streams, cap.read() is already paced by network/source.
+        Sleeping again reduces effective frame rate and makes live view sluggish.
+        """
+        if self._is_local_camera:
+            return 1.0 / max(self.frame_rate, 1)
+        return 0.0
+
     def _capture_loop(self) -> None:
         """Main capture loop — reads frames with stall detection and health tracking."""
         interval = 1.0 / max(self.frame_rate, 1)
+        success_sleep = self._sleep_after_success_seconds()
         skip_corrupted_frames = 0
 
         while not self._stop_event.is_set():
@@ -340,11 +365,14 @@ class CameraCapture:
             self._consecutive_failures = 0
             with self._frame_lock:
                 self._latest_frame = frame
+                self._latest_frame_timestamp = datetime.now(timezone.utc).isoformat()
+                self._latest_frame_sequence += 1
 
             # Periodic health logging
             self._log_health_if_needed()
 
-            time.sleep(interval)
+            if success_sleep > 0:
+                time.sleep(success_sleep)
 
     def _check_stall(self) -> bool:
         """Return True if stream appears stalled (no frames for threshold period)."""

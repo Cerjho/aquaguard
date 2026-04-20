@@ -141,11 +141,22 @@ services:
     build:
       context: ./detection_engine
     container_name: aquaguard-detection
+    init: true
+    entrypoint: []
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
       - AQUAGUARD_API_URL=http://backend:5000
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
+      - RTSP_TRANSPORT=${RTSP_TRANSPORT:-tcp}
+      - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-10}
+      - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-5}
+      - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-10}
+      - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE:-1}
+      - TF_CPP_MIN_LOG_LEVEL=3
+      - GLOG_minloglevel=3
+      - GLOG_logtostderr=0
+      - ABSL_LOG_LEVEL=3
     volumes:
       - ./detection_engine/models:/app/detection_engine/models:ro
       - ./config:/app/config:ro

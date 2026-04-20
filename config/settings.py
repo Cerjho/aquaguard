@@ -25,9 +25,17 @@ FACE_VISIBILITY_THRESHOLD = 0.4
 YOLO_DROWNING_CONF_BOOST = 0.6
 
 # ── MQTT ──────────────────────────────────────────────────────────────────────
-MQTT_BROKER = "localhost"
+MQTT_BROKER = os.environ.get(
+    'MQTT_BROKER_HOST',
+    os.environ.get('MQTT_BROKER', 'localhost'),
+)
 MQTT_BROKER_HOST = MQTT_BROKER
-MQTT_PORT = 1883
+MQTT_PORT = int(
+    os.environ.get(
+        'MQTT_BROKER_PORT',
+        os.environ.get('MQTT_PORT', '1883'),
+    )
+)
 MQTT_BROKER_PORT = MQTT_PORT
 MQTT_ALERT_TOPIC = "aquaguard/alert"
 MQTT_TOPIC_ALERT = MQTT_ALERT_TOPIC
@@ -36,6 +44,7 @@ MQTT_TOPIC_RESET = MQTT_RESET_TOPIC
 MQTT_TOPIC_DETECTION = "aquaguard/detection"
 MQTT_TOPIC_DEVICE_STATUS = "aquaguard/device/status"
 MQTT_TOPIC_CAMERA_HEALTH = "aquaguard/camera/health"
+MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS = [1, 2, 4]
 
 # ── Camera Reconnect ──────────────────────────────────────────────────────────
 RECONNECT_BACKOFF_SECONDS = [1, 2, 4, 8, 30]
@@ -149,6 +158,17 @@ def validate_runtime_settings():
         raise ValueError('RECONNECT_MAX_CONSECUTIVE_FAILURES must be >= 1')
     if not RECONNECT_BACKOFF_SECONDS or any(delay <= 0 for delay in RECONNECT_BACKOFF_SECONDS):
         raise ValueError('RECONNECT_BACKOFF_SECONDS must contain positive values')
+    if not str(MQTT_BROKER_HOST).strip():
+        raise ValueError('MQTT_BROKER_HOST must not be empty')
+    if MQTT_BROKER_PORT < 1 or MQTT_BROKER_PORT > 65535:
+        raise ValueError('MQTT_BROKER_PORT must be in range 1..65535')
+    if (
+        not MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS
+        or any(delay <= 0 for delay in MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS)
+    ):
+        raise ValueError(
+            'MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS must contain positive values'
+        )
     if RTSP_TRANSPORT not in ('tcp', 'udp'):
         raise ValueError('RTSP_TRANSPORT must be "tcp" or "udp"')
     if RTSP_CONNECT_TIMEOUT_SECONDS < 1:

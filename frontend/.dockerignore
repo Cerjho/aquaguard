@@ -1,0 +1,17 @@
+# Node and build artifacts.
+node_modules/
+build/
+
+# E2E outputs and caches.
+e2e/test-results/
+e2e/playwright-report/
+.pytest_cache/
+
+# Local metadata.
+.git/
+.vscode/
+.idea/
+npm-debug.log*
+
+# Keep local secrets out of image build context.
+.env

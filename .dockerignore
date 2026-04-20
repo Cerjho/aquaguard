@@ -1,0 +1,31 @@
+# VCS and editor metadata.
+.git/
+.github/
+.vscode/
+.idea/
+
+# Local environments and Python cache artifacts.
+aquaguard_env/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.egg-info/
+.pytest_cache/
+.coverage
+
+# Frontend local artifacts.
+frontend/node_modules/
+frontend/build/
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
+
+# Runtime/generated data.
+backend/instance/
+backend/snapshots/
+*.db
+*.sqlite3
+*.log
+
+# Large detection artifacts not needed for backend image builds.
+detection_engine/models/

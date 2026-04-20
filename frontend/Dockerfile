@@ -22,11 +22,12 @@ ENV REACT_APP_WEBRTC_FORCE_RELAY=${REACT_APP_WEBRTC_FORCE_RELAY}
 ENV REACT_APP_WEBRTC_ENABLE=${REACT_APP_WEBRTC_ENABLE}
 
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund --omit=optional
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
+FROM nginx:1.27-alpine
+RUN rm -rf /usr/share/nginx/html/*
 COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

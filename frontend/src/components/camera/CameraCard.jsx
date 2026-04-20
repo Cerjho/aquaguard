@@ -106,6 +106,13 @@ function CameraCard({
     shouldRenderStream,
     isActive,
   });
+  const transportLabel = transport === 'webrtc' ? 'WebRTC' : 'MJPEG';
+  const transportToneClass = transport === 'webrtc'
+    ? 'border-sky-200 text-sky-700'
+    : 'border-amber-200 text-amber-700';
+  const transportDetail = transport === 'webrtc'
+    ? 'low latency'
+    : 'fallback';
   const showWebRTC = shouldRenderStream && isActive && transport === 'webrtc' && Boolean(videoStream);
   const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl) && !showWebRTC;
   const zoneAlerts = useMemo(
@@ -262,6 +269,9 @@ function CameraCard({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
+            <span className={`inline-flex items-center gap-1 rounded-full border bg-white/80 px-2 py-1 text-[11px] font-medium shadow-sm backdrop-blur-md ${transportToneClass}`}>
+              {transportLabel}
+            </span>
             <button
               type="button"
               onClick={(event) => {
@@ -298,6 +308,10 @@ function CameraCard({
                 <div className="flex items-center justify-between py-1">
                   <span className="text-slate-500">Reconnect Count</span>
                   <span className="font-mono">{reconnectCount}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-slate-500">Transport</span>
+                  <span className="font-semibold">{transportLabel} ({transportDetail})</span>
                 </div>
               </div>
             )}

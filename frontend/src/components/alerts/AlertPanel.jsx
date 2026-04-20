@@ -38,6 +38,9 @@ function AlertPanel() {
     acknowledgeError,
   } = useAlertState();
   const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const oscillatorRef = useRef(null);
+  const gainNodeRef = useRef(null);
   const [isDismissed, setIsDismissed] = useState(false);
 
   const alertsToDisplay = useMemo(
@@ -46,9 +49,83 @@ function AlertPanel() {
   );
   const hasActiveAlerts = alertsToDisplay.length > 0;
 
+  const stopFallbackTone = useCallback(() => {
+    if (oscillatorRef.current) {
+      try {
+        oscillatorRef.current.stop();
+      } catch {
+        // Oscillator may already be stopped.
+      }
+      try {
+        oscillatorRef.current.disconnect();
+      } catch {
+        // Best-effort cleanup.
+      }
+      oscillatorRef.current = null;
+    }
+
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect();
+      } catch {
+        // Best-effort cleanup.
+      }
+      gainNodeRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      try {
+        const closePromise = audioContextRef.current.close?.();
+        if (closePromise && typeof closePromise.catch === 'function') {
+          closePromise.catch(() => {});
+        }
+      } catch {
+        // Best-effort cleanup.
+      }
+      audioContextRef.current = null;
+    }
+  }, []);
+
+  const startFallbackTone = useCallback(() => {
+    if (oscillatorRef.current) {
+      return;
+    }
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+
+    try {
+      const context = new AudioContextClass();
+      if (context.state === 'suspended' && typeof context.resume === 'function') {
+        context.resume().catch(() => {});
+      }
+
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+
+      oscillator.type = 'square';
+      oscillator.frequency.value = 880;
+      gainNode.gain.value = 0.035;
+
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      oscillator.start();
+
+      audioContextRef.current = context;
+      oscillatorRef.current = oscillator;
+      gainNodeRef.current = gainNode;
+    } catch (err) {
+      logger.warn('[AlertPanel] Could not start fallback alarm tone:', err.message);
+    }
+  }, []);
+
   useEffect(() => {
     if (hasActiveAlerts) {
       try {
+        stopFallbackTone();
+
         if (!audioRef.current) {
           const audio = new Audio('/alert.mp3');
           audio.loop = true;
@@ -60,10 +137,12 @@ function AlertPanel() {
         if (playPromise && typeof playPromise.catch === 'function') {
           playPromise.catch((err) => {
             logger.warn('[AlertPanel] Audio autoplay blocked:', err.message);
+            startFallbackTone();
           });
         }
       } catch (err) {
         logger.warn('[AlertPanel] Could not play alert audio:', err.message);
+        startFallbackTone();
       }
       return undefined;
     }
@@ -76,8 +155,9 @@ function AlertPanel() {
         audioRef.current.currentTime = 0;
       }
     }
+    stopFallbackTone();
     return undefined;
-  }, [hasActiveAlerts]);
+  }, [hasActiveAlerts, startFallbackTone, stopFallbackTone]);
 
   useEffect(() => () => {
     if (audioRef.current) {
@@ -86,7 +166,8 @@ function AlertPanel() {
       }
       audioRef.current = null;
     }
-  }, []);
+    stopFallbackTone();
+  }, [stopFallbackTone]);
 
   useEffect(() => {
     if (!hasActiveAlerts) {

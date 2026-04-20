@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from config.settings import RTSP_TRANSPORT
 from detection_engine.camera.capture import (
     CameraCapture,
     mask_rtsp_credentials,
@@ -254,6 +255,43 @@ class TestFrameValidation:
         is_valid, reason = cap._validate_frame(frame)
         assert is_valid is False
         assert reason == "green_corruption"
+
+
+class TestRtspTransportFallback:
+    """Tests for RTSP transport fallback strategy."""
+
+    @patch.object(CameraCapture, "_open_network_capture")
+    def test_rtsp_open_uses_alternate_transport_fallback(self, mock_open_network):
+        first_cap = MagicMock()
+        first_cap.isOpened.return_value = False
+
+        second_cap = MagicMock()
+        second_cap.isOpened.return_value = True
+
+        mock_open_network.side_effect = [first_cap, second_cap]
+
+        cap = CameraCapture("zone_test", "rtsp://192.168.1.100:554/stream", frame_rate=30)
+        opened_cap = cap._open_capture()
+
+        assert opened_cap is second_cap
+        assert mock_open_network.call_count == 2
+
+        expected_alternate = "udp" if RTSP_TRANSPORT == "tcp" else "tcp"
+        assert mock_open_network.call_args_list[0].args[0] == RTSP_TRANSPORT
+        assert mock_open_network.call_args_list[1].args[0] == expected_alternate
+
+    @patch.object(CameraCapture, "_open_network_capture")
+    def test_http_open_skips_rtsp_transport_fallback(self, mock_open_network):
+        opened_cap = MagicMock()
+        opened_cap.isOpened.return_value = True
+        mock_open_network.return_value = opened_cap
+
+        cap = CameraCapture("zone_test", "http://192.168.1.100:8080/video", frame_rate=30)
+        result = cap._open_capture()
+
+        assert result is opened_cap
+        assert mock_open_network.call_count == 1
+        assert mock_open_network.call_args_list[0].args[0] is None
 
 
 class TestStallDetection:

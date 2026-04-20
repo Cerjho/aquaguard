@@ -44,15 +44,25 @@ os.environ['OPENCV_LOG_LEVEL'] = 'SILENT'
 # stimeout/rw_timeout: connect/read socket timeouts in microseconds
 _FFMPEG_CONNECT_TIMEOUT_US = RTSP_CONNECT_TIMEOUT_SECONDS * 1_000_000
 _FFMPEG_READ_TIMEOUT_US = RTSP_READ_TIMEOUT_SECONDS * 1_000_000
-os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = (
-    f'rtsp_transport;{RTSP_TRANSPORT}|'
-    f'stimeout;{_FFMPEG_CONNECT_TIMEOUT_US}|'
-    f'rw_timeout;{_FFMPEG_READ_TIMEOUT_US}|'
-    f'buffer_size;{RTSP_BUFFER_SIZE * 1024 * 1024}|'
-    f'max_delay;500000|'
-    f'reorder_queue_size;0|'
-    f'fflags;nobuffer|'
-    f'flags;low_delay'
+
+
+def _build_ffmpeg_capture_options(rtsp_transport: Optional[str]) -> str:
+    """Build FFmpeg capture option string for OpenCV."""
+    options = []
+    if rtsp_transport:
+        options.append(f'rtsp_transport;{rtsp_transport}')
+    options.extend(
+        [
+            f'stimeout;{_FFMPEG_CONNECT_TIMEOUT_US}',
+            f'rw_timeout;{_FFMPEG_READ_TIMEOUT_US}',
+            f'buffer_size;{RTSP_BUFFER_SIZE * 1024 * 1024}',
+        ]
+    )
+    return '|'.join(options)
+
+
+os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = _build_ffmpeg_capture_options(
+    RTSP_TRANSPORT
 )
 
 # Suppress OpenCV warnings about codec errors
@@ -454,20 +464,72 @@ class CameraCapture:
                     # Non-Windows: use default backend
                     return cv2.VideoCapture(cam_idx)
 
-            # RTSP/HTTP stream with FFmpeg backend
+            # RTSP streams can be sensitive to transport negotiation. Try configured
+            # transport first, then the opposite transport, then auto transport.
+            if isinstance(self.rtsp_url, str) and self.rtsp_url.lower().startswith('rtsp://'):
+                return self._open_rtsp_with_transport_fallbacks()
+
+            return self._open_network_capture(None)
+
+    def _open_network_capture(self, rtsp_transport: Optional[str]) -> cv2.VideoCapture:
+        """Open network capture with FFmpeg and optional RTSP transport hint."""
+        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = _build_ffmpeg_capture_options(
+            rtsp_transport
+        )
+        open_timeout_ms = RTSP_CONNECT_TIMEOUT_SECONDS * 1000
+        read_timeout_ms = RTSP_READ_TIMEOUT_SECONDS * 1000
+
+        # Pass timeouts at construction time when supported to avoid hangs in
+        # the FFmpeg open path on non-responsive cameras.
+        try:
+            cap = cv2.VideoCapture(
+                self.rtsp_url,
+                cv2.CAP_FFMPEG,
+                [
+                    cv2.CAP_PROP_OPEN_TIMEOUT_MSEC,
+                    open_timeout_ms,
+                    cv2.CAP_PROP_READ_TIMEOUT_MSEC,
+                    read_timeout_ms,
+                ],
+            )
+        except TypeError:
             cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
 
-            # Configure capture properties
-            cap.set(cv2.CAP_PROP_BUFFERSIZE, RTSP_BUFFER_SIZE)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, RTSP_BUFFER_SIZE)
 
-            # Set read timeout (in milliseconds) if supported
-            try:
-                cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, RTSP_CONNECT_TIMEOUT_SECONDS * 1000)
-                cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, RTSP_READ_TIMEOUT_SECONDS * 1000)
-            except AttributeError:
-                pass
+        try:
+            cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, open_timeout_ms)
+            cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, read_timeout_ms)
+        except AttributeError:
+            pass
 
-            return cap
+        return cap
+
+    def _open_rtsp_with_transport_fallbacks(self) -> cv2.VideoCapture:
+        """Open RTSP stream with transport fallbacks for compatibility."""
+        transports = [RTSP_TRANSPORT]
+        alternate_transport = 'udp' if RTSP_TRANSPORT == 'tcp' else 'tcp'
+        transports.append(alternate_transport)
+        transports.append(None)
+
+        for transport in transports:
+            cap = self._open_network_capture(transport)
+            if cap.isOpened():
+                if transport != RTSP_TRANSPORT:
+                    logger.info(
+                        "[%s] RTSP opened using fallback transport: %s",
+                        self.zone_id,
+                        transport or 'auto',
+                    )
+                return cap
+
+            cap.release()
+
+        # Restore configured default options after fallback attempts.
+        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = _build_ffmpeg_capture_options(
+            RTSP_TRANSPORT
+        )
+        return self._open_network_capture(RTSP_TRANSPORT)
 
     def _release_capture(self) -> None:
         with self._cap_lock:

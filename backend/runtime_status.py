@@ -24,14 +24,15 @@ def _stale_threshold_seconds():
 
 def _snapshot_meta(zone_id):
     file_path = os.path.join(LIVE_DIR, f'{zone_id}_latest.jpg')
-    if not os.path.exists(file_path):
+    try:
+        mtime = os.path.getmtime(file_path)
+    except OSError:
         return {
             'status': 'offline',
             'snapshot_age_seconds': None,
             'last_snapshot_at': None,
         }
 
-    mtime = os.path.getmtime(file_path)
     now = datetime.now(timezone.utc).timestamp()
     age_seconds = max(now - mtime, 0.0)
     threshold = _stale_threshold_seconds()

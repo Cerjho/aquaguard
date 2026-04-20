@@ -56,8 +56,12 @@ def handle_connect(auth):
 
 
 @socketio.on('disconnect')
-def handle_disconnect():
-    logger.info('WebSocket disconnect: sid=%s', request.sid)
+def handle_disconnect(reason=None):
+    sid = getattr(request, 'sid', 'unknown')
+    if reason:
+        logger.info('WebSocket disconnect: sid=%s reason=%s', sid, reason)
+        return
+    logger.info('WebSocket disconnect: sid=%s', sid)
 
 
 @socketio.on_error_default

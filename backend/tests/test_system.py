@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import runtime_status as runtime_status_module
+
 
 def test_health_check_is_public(client):
     resp = client.get('/api/health')
@@ -105,3 +107,15 @@ def test_system_status_contains_subsystem_freshness_and_health(client, admin_tok
     esp32 = subsystems['esp32']
     assert 'freshness_seconds' in esp32
     assert 'last_heartbeat_at' in esp32
+
+
+def test_snapshot_meta_handles_missing_file_during_stat(monkeypatch):
+    def raise_not_found(_):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(runtime_status_module.os.path, 'getmtime', raise_not_found)
+
+    meta = runtime_status_module._snapshot_meta('zone_dev')
+    assert meta['status'] == 'offline'
+    assert meta['snapshot_age_seconds'] is None
+    assert meta['last_snapshot_at'] is None

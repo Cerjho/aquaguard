@@ -60,11 +60,13 @@ services:
       - --lt-cred-mech
       - --realm=${TURN_REALM:-aquaguard.local}
       - --user=${TURN_USERNAME:-aquaguard}:${TURN_PASSWORD:-aquaguardpass}
-      - --min-port=49152
-      - --max-port=49200
+      - --min-port=${TURN_RELAY_MIN_PORT:-49152}
+      - --max-port=${TURN_RELAY_MAX_PORT:-49200}
     ports:
       - "3478:3478"
       - "3478:3478/udp"
+      - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/udp"
+      - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/tcp"
     restart: unless-stopped
 
   backend:

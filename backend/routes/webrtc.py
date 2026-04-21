@@ -376,10 +376,19 @@ async def _wait_for_ice_gathering_complete(pc):
     await done.wait()
 
 
+def _normalize_candidate_sdp(candidate):
+    value = str(candidate or '').strip()
+    if not value:
+        raise ValueError('candidate is empty')
+    if value.startswith('candidate:'):
+        return value[len('candidate:'):]
+    return value
+
+
 async def _add_ice_candidate_async(pc, candidate, sdp_mid, sdp_mline_index):
-    parsed = candidate_from_sdp(candidate)
+    parsed = candidate_from_sdp(_normalize_candidate_sdp(candidate))
     parsed.sdpMid = sdp_mid
-    parsed.sdpMLineIndex = sdp_mline_index
+    parsed.sdpMLineIndex = int(sdp_mline_index) if sdp_mline_index is not None else None
     await pc.addIceCandidate(parsed)
 
 
@@ -566,7 +575,12 @@ def add_ice_candidate():
                 )
             )
         except Exception as exc:
-            LOGGER.warning('WebRTC ICE candidate rejected for session %s: %s', session_id, exc)
+            LOGGER.warning(
+                'WebRTC ICE candidate rejected for session %s: %s: %r',
+                session_id,
+                type(exc).__name__,
+                exc,
+            )
             with _SESSION_LOCK:
                 existing = _SESSIONS.get(session_id)
                 if existing:

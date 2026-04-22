@@ -196,6 +196,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
 
         pc.onicecandidate = async (event) => {
           if (!event.candidate || !sessionIdRef.current) return;
+          if (!String(event.candidate.candidate || '').trim()) return;
           try {
             await api.post('/api/v1/webrtc/ice-candidate', {
               session_id: sessionIdRef.current,

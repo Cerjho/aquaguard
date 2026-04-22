@@ -29,6 +29,7 @@ jest.mock('../../utils/constants', () => ({
 
 class FakeRTCPeerConnection {
   constructor() {
+    FakeRTCPeerConnection.lastInstance = this;
     this.localDescription = null;
     this.onicecandidate = null;
     this.ontrack = null;
@@ -104,6 +105,7 @@ describe('useWebRTCStream', () => {
 
   afterEach(() => {
     global.RTCPeerConnection = originalRtc;
+    FakeRTCPeerConnection.lastInstance = null;
   });
 
   test('does not renegotiate when stream token rotates', async () => {
@@ -125,5 +127,30 @@ describe('useWebRTCStream', () => {
 
     const offerCallsAfter = api.post.mock.calls.filter((call) => call[0] === '/api/v1/webrtc/offer').length;
     expect(offerCallsAfter).toBe(1);
+  });
+
+  test('does not send empty ICE candidates to backend', async () => {
+    render(<HookHarness streamToken="token-one" />);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v1/webrtc/offer',
+        expect.objectContaining({ zone_id: 'zone_dev', type: 'offer' })
+      );
+    });
+
+    const pc = FakeRTCPeerConnection.lastInstance;
+    expect(pc).toBeTruthy();
+
+    await pc.onicecandidate({
+      candidate: {
+        candidate: '',
+        sdpMid: '0',
+        sdpMLineIndex: 0,
+      },
+    });
+
+    const iceCandidatePosts = api.post.mock.calls.filter((call) => call[0] === '/api/v1/webrtc/ice-candidate');
+    expect(iceCandidatePosts).toHaveLength(0);
   });
 });

@@ -385,11 +385,23 @@ def _normalize_candidate_sdp(candidate):
     return value
 
 
+def _is_empty_candidate(candidate):
+    value = str(candidate or '').strip()
+    if not value:
+        return True
+    if value.startswith('candidate:'):
+        return len(value[len('candidate:'):].strip()) == 0
+    return False
+
+
 async def _add_ice_candidate_async(pc, candidate, sdp_mid, sdp_mline_index):
+    if _is_empty_candidate(candidate):
+        return False
     parsed = candidate_from_sdp(_normalize_candidate_sdp(candidate))
     parsed.sdpMid = sdp_mid
     parsed.sdpMLineIndex = int(sdp_mline_index) if sdp_mline_index is not None else None
     await pc.addIceCandidate(parsed)
+    return True
 
 
 def _close_peer_connection(session):
@@ -523,6 +535,7 @@ def add_ice_candidate():
         return jsonify({'error': session_id_error}), 400
     if candidate is None:
         return jsonify({'error': 'candidate is required'}), 400
+    skip_candidate = _is_empty_candidate(candidate)
 
     now = _utc_now()
     ttl = timedelta(seconds=_session_ttl_seconds())
@@ -552,19 +565,20 @@ def add_ice_candidate():
             }
             _SESSIONS[session_id] = session
 
-        session['ice_candidates'].append({
-            'candidate': candidate,
-            'sdpMid': data.get('sdpMid'),
-            'sdpMLineIndex': data.get('sdpMLineIndex'),
-            'received_at': now.isoformat(),
-        })
+        if not skip_candidate:
+            session['ice_candidates'].append({
+                'candidate': candidate,
+                'sdpMid': data.get('sdpMid'),
+                'sdpMLineIndex': data.get('sdpMLineIndex'),
+                'received_at': now.isoformat(),
+            })
         session['status'] = 'collecting_candidates'
         session['updated_at'] = now
         session['expires_at'] = now + ttl
         peer_connection = session.get('peer_connection')
         candidate_count = len(session['ice_candidates'])
 
-    if peer_connection and AIORTC_AVAILABLE:
+    if (not skip_candidate) and peer_connection and AIORTC_AVAILABLE:
         try:
             _run_in_webrtc_loop(
                 _add_ice_candidate_async(
@@ -600,6 +614,7 @@ def add_ice_candidate():
         'accepted': True,
         'auth_type': auth['auth_type'],
         'candidate_count': candidate_count,
+        'candidate_ignored': skip_candidate,
         'next': {
             'session_status_url': f'/api/v1/webrtc/session-status/{session_id}',
         },

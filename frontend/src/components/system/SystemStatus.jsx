@@ -128,12 +128,16 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
   const detectionStaleThreshold = subsystems?.detection_engine?.stale_threshold_seconds;
   const espFreshness = subsystems?.esp32?.freshness_seconds;
   const espStaleThreshold = subsystems?.esp32?.stale_threshold_seconds ?? ESP32_ONLINE_THRESHOLD_SECONDS;
+  const espExplicitlyOffline = esp?.status === 'offline';
   const isDetectionStale = (
     typeof detectionFreshness === 'number'
     && typeof detectionStaleThreshold === 'number'
     && detectionFreshness > detectionStaleThreshold
   );
   const isEspStale = (
+    !espExplicitlyOffline
+    && esp?.status === 'online'
+    &&
     typeof espFreshness === 'number'
     && typeof espStaleThreshold === 'number'
     && espFreshness > espStaleThreshold

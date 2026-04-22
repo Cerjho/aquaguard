@@ -91,4 +91,29 @@ describe('SystemStatus', () => {
 
     expect(screen.getByText(/ago|just now/i)).toBeInTheDocument();
   });
+
+  test('shows Offline (not Stale) when backend marks ESP32 offline', () => {
+    useSystemState.mockReturnValue({
+      apiStatus: { connected: true },
+      cameraStatuses: {},
+      cameraHealthMap: {},
+      systemStatus: {
+        esp32: {
+          status: 'offline',
+          last_heartbeat_at: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+        },
+        subsystems: {
+          esp32: {
+            freshness_seconds: 240,
+            stale_threshold_seconds: 30,
+          },
+        },
+      },
+    });
+
+    render(<SystemStatus showCameraIndicators showCameraStatusList={false} />);
+
+    expect(screen.getByText('Offline')).toBeInTheDocument();
+    expect(screen.queryByText('Stale')).not.toBeInTheDocument();
+  });
 });

@@ -159,6 +159,43 @@ def test_webrtc_session_status_rejects_invalid_session_id(client, admin_token):
     assert path_resp.get_json()['error'] == 'session_id must be a valid UUID'
 
 
+def test_webrtc_empty_ice_candidate_is_ignored(client, admin_token):
+    offer = client.post('/api/v1/webrtc/offer',
+                        headers=_auth_headers(admin_token),
+                        json={
+                            'zone_id': 'zone_empty_candidate',
+                            'client_id': 'dashboard-empty-candidate',
+                            'type': 'offer',
+                            'sdp': 'v=0\r\no=- 13 14 IN IP4 127.0.0.1',
+                        })
+    session_id = offer.get_json()['session_id']
+
+    candidate = client.post(
+        '/api/v1/webrtc/ice-candidate',
+        headers=_auth_headers(admin_token),
+        json={
+            'session_id': session_id,
+            'candidate': '',
+            'sdpMid': '0',
+            'sdpMLineIndex': 0,
+        },
+    )
+    assert candidate.status_code == 202
+    candidate_payload = candidate.get_json()
+    assert candidate_payload['accepted'] is True
+    assert candidate_payload['candidate_ignored'] is True
+    assert candidate_payload['candidate_count'] == 0
+
+    status = client.get(
+        f'/api/v1/webrtc/session-status/{session_id}',
+        headers=_auth_headers(admin_token),
+    )
+    assert status.status_code == 200
+    status_payload = status.get_json()
+    assert status_payload['webrtc']['candidate_count'] == 0
+    assert status_payload.get('fallback', {}).get('reason') != 'ice_candidate_rejected'
+
+
 def test_webrtc_offer_survives_missing_opencv_decoder(client, admin_token, monkeypatch):
     if not webrtc_routes.AIORTC_AVAILABLE:
         pytest.skip(f'aiortc unavailable in test env: {webrtc_routes.AIORTC_IMPORT_ERROR}')

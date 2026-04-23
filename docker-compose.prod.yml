@@ -1,0 +1,12 @@
+services:
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aquaguard-backend:${APP_VERSION:-latest}
+    build: null # Override the build context to force image pull
+
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aquaguard-frontend:${APP_VERSION:-latest}
+    build: null
+
+  detection_engine:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aquaguard-detection:${APP_VERSION:-latest}
+    build: null

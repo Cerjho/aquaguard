@@ -1,0 +1,124 @@
+name: AquaGuard CD
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on release tags like v1.0.0
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}-backend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
+  DETECTION_IMAGE_NAME: ${{ github.repository }}-detection
+
+jobs:
+  build-and-publish:
+    name: Build and Publish Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Extract metadata (tags, labels) for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Extract metadata (tags, labels) for Detection Engine
+        id: meta-detection
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.DETECTION_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+      - name: Build and push Detection Engine image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./detection_engine
+          push: true
+          tags: ${{ steps.meta-detection.outputs.tags }}
+          labels: ${{ steps.meta-detection.outputs.labels }}
+          cache-from: type=gha,scope=detection
+          cache-to: type=gha,scope=detection,mode=max
+
+  deploy-production:
+    name: Deploy to Production
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            # Navigate to deployment directory (adjust as necessary on your server)
+            cd /opt/aquaguard
+            
+            # Export the exact tag being deployed
+            export APP_VERSION=${{ github.ref_name }}
+            
+            # Login to GHCR (Server needs to be pre-configured, or pass token securely)
+            # Alternatively, if images are public, this step can be skipped.
+            
+            # Pull the latest images
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            
+            # Restart services
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            
+            # Clean up old images
+            docker image prune -af

@@ -60,6 +60,8 @@ services:
       - --lt-cred-mech
       - --realm=${TURN_REALM:-aquaguard.local}
       - --user=${TURN_USERNAME:-aquaguard}:${TURN_PASSWORD:-aquaguardpass}
+      - --external-ip=127.0.0.1
+      - --listening-ip=0.0.0.0
       - --min-port=${TURN_RELAY_MIN_PORT:-49152}
       - --max-port=${TURN_RELAY_MAX_PORT:-49200}
     ports:

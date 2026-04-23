@@ -548,6 +548,21 @@ Then create a GitHub Release:
 - Title: `AquaGuard v1.0.0`
 - Body: Summary of all implemented features, team credits, known limitations
 
+> [!NOTE]
+> **Continuous Deployment (CD) Pipeline**
+> Pushing a tag that matches `v*` (like `v1.0.0`) automatically triggers the Continuous Deployment pipeline (`.github/workflows/cd.yml`).
+> 
+> The CD pipeline will:
+> 1. Build Docker images for Backend, Frontend, and Detection Engine.
+> 2. Publish these images to the GitHub Container Registry (GHCR).
+> 3. Connect to the production server via SSH and deploy the new images.
+> 
+> **Required GitHub Secrets:**
+> For the CD pipeline to succeed, the following secrets must be set in the repository:
+> - `PROD_SSH_HOST`: The hostname or IP address of the production server.
+> - `PROD_SSH_USER`: The SSH username for the production server.
+> - `PROD_SSH_KEY`: The private SSH key for the production server.
+
 ______________________________________________________________________
 
 ## Daily Workflow Summary for Every Agent

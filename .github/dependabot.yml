@@ -1,0 +1,32 @@
+# =============================================================================
+# Dependabot — Automated dependency update PRs
+# =============================================================================
+# Monitors pinned GitHub Actions SHAs and opens grouped PRs weekly
+# so SHA pins stay current without manual tracking.
+# =============================================================================
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Asia/Manila
+    # Group all action updates into a single PR to reduce noise.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # Commit message format matches project Conventional Commits rules.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
+    reviewers:
+      - "Cerjho"
+    open-pull-requests-limit: 5

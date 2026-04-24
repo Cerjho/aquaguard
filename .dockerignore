@@ -1,10 +1,15 @@
-# VCS and editor metadata.
+# ===========================================================
+# Root .dockerignore — used by backend (context: repo root)
+# ===========================================================
+
+# VCS, editor, and CI metadata.
 .git/
 .github/
 .vscode/
 .idea/
+.playwright-mcp/
 
-# Local environments and Python cache artifacts.
+# Local environments and Python artifacts.
 aquaguard_env/
 **/__pycache__/
 **/*.pyc
@@ -13,19 +18,42 @@ aquaguard_env/
 **/*.egg-info/
 .pytest_cache/
 .coverage
+**/.pytest_cache/
 
-# Frontend local artifacts.
+# Frontend artifacts (not needed for backend image).
 frontend/node_modules/
 frontend/build/
-frontend/e2e/test-results/
-frontend/e2e/playwright-report/
+frontend/e2e/
 
-# Runtime/generated data.
+# Runtime/generated data — must never be baked into an image.
 backend/instance/
 backend/snapshots/
 *.db
 *.sqlite3
 *.log
 
-# Large detection artifacts not needed for backend image builds.
+# Large detection model weights — mounted at runtime, not baked in.
 detection_engine/models/
+
+# Secrets — NEVER ship .env files into a Docker image.
+.env
+.env.*
+backend/.env
+backend/.env.*
+
+# Documentation, scripts, and agent orchestration — not runtime code.
+docs/
+scripts/
+agents/
+*.md
+LICENSE
+
+# Compose and infra files — not needed inside containers.
+docker-compose*.yml
+infra/
+mqtt/
+
+# Misc generated files.
+*.log
+.DS_Store
+Thumbs.db

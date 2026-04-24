@@ -1,17 +1,32 @@
-# Node and build artifacts.
+# ===========================================================
+# Frontend .dockerignore — context: frontend/
+# ===========================================================
+
+# Node and build artifacts — installed fresh during docker build.
 node_modules/
 build/
 
-# E2E outputs and caches.
+# E2E test outputs, caches, and reports.
 e2e/test-results/
 e2e/playwright-report/
-.pytest_cache/
+e2e/reports/
 
-# Local metadata.
+# Local metadata and editor files.
 .git/
 .vscode/
 .idea/
-npm-debug.log*
+.pytest_cache/
 
-# Keep local secrets out of image build context.
+# Secrets — must NEVER enter the build context.
 .env
+.env.*
+
+# Logs and debug output.
+npm-debug.log*
+*.log
+
+# Documentation and non-runtime files.
+*.md
+Dockerfile
+.dockerignore
+coverage/

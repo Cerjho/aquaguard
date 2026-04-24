@@ -1,8 +1,12 @@
-# Exclude large model artifacts from build context.
+# ===========================================================
+# Detection Engine .dockerignore — context: detection_engine/
+# ===========================================================
+
+# Large model weights — mounted as a volume at runtime, never baked in.
 models/*.pt
 models/*.onnx
 
-# Python cache/build artifacts.
+# Python cache and build artifacts.
 __pycache__/
 *.pyc
 *.pyo
@@ -17,7 +21,18 @@ venv/
 .vscode/
 .idea/
 
-# Tests/reports are not needed in the runtime image build context.
+# Tests and reports — not needed in production image.
 tests/
 .pytest_cache/
+
+# Secrets — must NEVER enter the build context.
+.env
+.env.*
+
+# Logs, docs, and non-runtime files.
 *.log
+*.md
+Dockerfile
+.dockerignore
+setup.py
+benchmark.py

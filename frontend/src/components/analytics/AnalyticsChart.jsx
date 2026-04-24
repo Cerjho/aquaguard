@@ -26,7 +26,7 @@ import api from '../../hooks/useApi';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
 import PremiumLoader from '../layout/PremiumLoader.jsx';
 
-const ZONE_LINE_COLORS = ['#a3cef1', '#7fb2db', '#94a3b8', '#cbd5e1'];
+const ZONE_LINE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1'];
 
 function AnalyticsChart() {
   const prefersReducedMotion = useReducedMotion();
@@ -37,8 +37,7 @@ function AnalyticsChart() {
   const [lineRangeDays, setLineRangeDays] = useState('7');
   const [frequencyRangeDays, setFrequencyRangeDays] = useState('7');
   const [zoneScope, setZoneScope] = useState('all');
-  const [lineViewMode, setLineViewMode] = useState('all');
-  const [lineZoneFilter, setLineZoneFilter] = useState('');
+  const [isComparativeView, setIsComparativeView] = useState(false);
   const [activeZoneIndex, setActiveZoneIndex] = useState(null);
   const [loading, setLoading] = useState(!analyticsSnapshot);
   const [error, setError] = useState(null);
@@ -160,12 +159,8 @@ function AnalyticsChart() {
   }, []);
 
   const lineHourlyData = useMemo(
-    () => buildHourlyFromEvents(
-      eventsData,
-      lineRangeDays,
-      lineViewMode === 'zone' ? lineZoneFilter : ''
-    ),
-    [eventsData, lineRangeDays, lineViewMode, lineZoneFilter, buildHourlyFromEvents]
+    () => buildHourlyFromEvents(eventsData, lineRangeDays, ''),
+    [eventsData, lineRangeDays, buildHourlyFromEvents]
   );
 
   const frequencyHourlyData = useMemo(
@@ -205,10 +200,10 @@ function AnalyticsChart() {
   }, [lineHasEventSignal, fallbackLineTimeData, lineHourlyData]);
 
   const shouldRenderMultiZoneLines = useMemo(() => (
-    lineViewMode === 'zone'
+    isComparativeView
     && resolvedLineChart.xKey === 'hourLabel'
     && lineMultiZone.series.length > 0
-  ), [lineViewMode, resolvedLineChart.xKey, lineMultiZone]);
+  ), [isComparativeView, resolvedLineChart.xKey, lineMultiZone]);
 
   const resolvedFrequencyChart = useMemo(() => {
     if (frequencyHasEventSignal || fallbackLineTimeData.length === 0) {
@@ -233,14 +228,6 @@ function AnalyticsChart() {
     () => zoneData.map((zone) => ({ value: zone.zoneId || zone.zone, label: zone.zone })),
     [zoneData]
   );
-
-  useEffect(() => {
-    if (lineViewMode !== 'zone') return;
-    const zoneExists = availableZoneOptions.some((zone) => zone.value === lineZoneFilter);
-    if (!zoneExists) {
-      setLineZoneFilter(availableZoneOptions[0]?.value || '');
-    }
-  }, [lineViewMode, lineZoneFilter, availableZoneOptions]);
 
   const normalizeConfidence = useCallback((raw) => {
     if (raw === null || raw === undefined || raw === '') return null;
@@ -412,21 +399,21 @@ function AnalyticsChart() {
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-900">
-              {lineViewMode === 'zone' ? 'Comparative Temporal Analysis' : 'Incidents by Time of Day'}
+              {isComparativeView ? 'Comparative Temporal Analysis' : 'Incidents by Time of Day'}
             </h3>
             <div className="flex items-center gap-2">
               <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-0.5">
                 <button
                   type="button"
-                  onClick={() => setLineViewMode('all')}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${lineViewMode === 'all' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setIsComparativeView(false)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${!isComparativeView ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   All
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLineViewMode('zone')}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${lineViewMode === 'zone' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setIsComparativeView(true)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${isComparativeView ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                   By Zone
                 </button>
@@ -470,7 +457,7 @@ function AnalyticsChart() {
                     lineMultiZone.series.map((series) => (
                       <Line
                         key={series.dataKey}
-                        type="monotone"
+                        type="linear"
                         dataKey={series.dataKey}
                         name={series.zoneLabel}
                         stroke={series.color}
@@ -482,7 +469,7 @@ function AnalyticsChart() {
                     ))
                   ) : (
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="incidents"
                       stroke={ZONE_LINE_COLORS[0]}
                       strokeWidth={3}

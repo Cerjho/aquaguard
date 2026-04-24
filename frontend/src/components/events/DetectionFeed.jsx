@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useAlertState, useSocketState } from '../../context/AlertContext.jsx';
@@ -23,6 +24,7 @@ const STALE_AFTER_MS = 15000;
 const MAX_BACKOFF_MS = 60000;
 
 function DetectionFeed({ headerTabs }) {
+  const navigate = useNavigate();
   const { detectionEvents } = useAlertState();
   const { socketConnected } = useSocketState();
   const [polledEvents, setPolledEvents] = useState([]);
@@ -56,7 +58,11 @@ function DetectionFeed({ headerTabs }) {
   }, []);
 
   useEffect(() => {
-    if (socketConnected) return undefined;
+    if (socketConnected) {
+      // Fetch once to ensure we have baseline history, then rely on socket
+      fetchLatest();
+      return undefined;
+    }
 
     let cancelled = false;
     const schedule = (delay) => {
@@ -92,7 +98,10 @@ function DetectionFeed({ headerTabs }) {
   }, [fetchLatest, socketConnected]);
 
   const hasRealtimeEvents = detectionEvents.length > 0;
-  const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;
+  const isDashboard = !headerTabs;
+  const displayLimit = isDashboard ? 5 : MAX_DISPLAY;
+  const allEvents = hasRealtimeEvents ? detectionEvents : polledEvents;
+  const events = allEvents.slice(0, displayLimit);
   const isStale = useMemo(() => {
     if (!lastPollAt) return false;
     return nowTick - lastPollAt > STALE_AFTER_MS;
@@ -117,7 +126,7 @@ function DetectionFeed({ headerTabs }) {
         <p className="px-4 py-2 text-xs text-rose-700 bg-rose-100 border-b border-rose-200">{error}</p>
       )}
 
-      <ul className="divide-y divide-slate-100/80 max-h-80 overflow-y-auto">
+      <ul className={`divide-y divide-slate-100/80 ${isDashboard ? '' : 'max-h-80 overflow-y-auto'}`}>
         {events.length === 0 && !error ? (
           <li className="px-4 py-8 text-center">
             <div className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#a3cef1]/45 bg-gradient-to-b from-[#a3cef1]/25 via-white to-[#a3cef1]/10 shadow-sm">
@@ -172,6 +181,16 @@ function DetectionFeed({ headerTabs }) {
           </AnimatePresence>
         )}
       </ul>
+      {isDashboard && allEvents.length > 5 && (
+        <div className="border-t border-slate-100/80 p-2.5 bg-slate-50/30">
+          <button 
+            onClick={() => navigate('/incidents', { state: { activeTab: 'events' } })}
+            className="w-full py-2 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 rounded-xl transition-colors"
+          >
+            See all detections
+          </button>
+        </div>
+      )}
     </div>
   );
 }

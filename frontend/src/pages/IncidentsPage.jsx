@@ -2,8 +2,9 @@
  * AquaGuard — Incidents Page.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import AlertHistory from '../components/alerts/AlertHistory.jsx';
 import IncidentHistory from '../components/events/IncidentHistory.jsx';
 
@@ -25,8 +26,15 @@ const TABS = [
 ];
 
 function IncidentsPage() {
-  const [activeTab, setActiveTab] = useState('alerts');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'alerts');
   const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   const headerTabs = (
     <div className="flex gap-8 h-full" role="tablist" aria-label="Incident views">
@@ -38,8 +46,8 @@ function IncidentsPage() {
           role="tab"
           aria-selected={activeTab === tab.id}
           className={`relative py-4 text-sm font-medium transition-colors h-full flex items-center ${activeTab === tab.id
-              ? 'text-slate-900'
-              : 'text-slate-500 hover:text-slate-800'
+            ? 'text-slate-900'
+            : 'text-slate-500 hover:text-slate-800'
             }`}
         >
           <span className="flex items-center gap-2">

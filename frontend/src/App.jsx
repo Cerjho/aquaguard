@@ -24,6 +24,7 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import IncidentsPage from './pages/IncidentsPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import SystemPage from './pages/SystemPage.jsx';
+import ChangePasswordPage from './pages/ChangePasswordPage.jsx';
 
 import './App.css';
 
@@ -78,6 +79,24 @@ function PrivateLayout() {
   );
 }
 
+function StandalonePrivateLayout() {
+  const { isAuthenticated, initializingSession } = useAuth();
+
+  if (initializingSession) {
+    return <FullScreenLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <AnimatedOutlet />
+    </div>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -89,6 +108,9 @@ function App() {
             <Route path="/incidents" element={<IncidentsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/system" element={<SystemPage />} />
+          </Route>
+          <Route element={<StandalonePrivateLayout />}>
+            <Route path="/settings/password" element={<ChangePasswordPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

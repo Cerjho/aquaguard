@@ -24,6 +24,7 @@ import {
 } from 'recharts';
 import api from '../../hooks/useApi';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
+import PremiumLoader from '../layout/PremiumLoader.jsx';
 
 const ZONE_LINE_COLORS = ['#a3cef1', '#7fb2db', '#94a3b8', '#cbd5e1'];
 
@@ -378,37 +379,7 @@ function AnalyticsChart() {
   }, [fetchSummary]);
 
   if (loading) {
-    return (
-      <div className="space-y-5" role="status" aria-live="polite" aria-label="Loading analytics">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:auto-rows-[245px]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
-            <div className="skeleton h-4 w-40 mb-3" />
-            <div className="skeleton h-[195px]" />
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="skeleton h-4 w-32 mb-3" />
-            <div className="skeleton h-[195px]" />
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
-            <div className="skeleton h-4 w-40 mb-3" />
-            <div className="skeleton h-[195px]" />
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="space-y-2.5">
-              {Array.from({ length: 4 }).map((_, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="skeleton h-6 w-6 rounded-full" />
-                    <div className="skeleton h-3 w-20" />
-                  </div>
-                  <div className="skeleton h-4 w-12" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PremiumLoader />;
   }
 
   if (error) {

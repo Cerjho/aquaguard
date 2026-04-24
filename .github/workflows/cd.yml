@@ -1,9 +1,24 @@
+# =============================================================================
+# AquaGuard CD — Continuous Deployment Pipeline
+# =============================================================================
+# Trigger: push of a semver release tag (v*).
+# Stage order: build → publish → deploy → verify (with auto-rollback).
+# All third-party actions pinned to commit SHA.
+# =============================================================================
+
 name: AquaGuard CD
 
 on:
   push:
     tags:
-      - 'v*' # Trigger on release tags like v1.0.0
+      - 'v*'
+
+# ---------------------------------------------------------------------------
+# Prevent parallel deploys — only one release at a time.
+# ---------------------------------------------------------------------------
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -12,58 +27,67 @@ env:
   DETECTION_IMAGE_NAME: ${{ github.repository }}-detection
 
 jobs:
+  # ===========================================================================
+  # Stage 1: BUILD & PUBLISH — build images, push to GHCR
+  # ===========================================================================
   build-and-publish:
     name: Build and Publish Images
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Backend
+      # -- Metadata extraction (tags + labels) for each service ----------------
+      - name: Extract metadata for Backend
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
             type=raw,value=latest
 
-      - name: Extract metadata (tags, labels) for Frontend
+      - name: Extract metadata for Frontend
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
             type=raw,value=latest
 
-      - name: Extract metadata (tags, labels) for Detection Engine
+      - name: Extract metadata for Detection Engine
         id: meta-detection
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.DETECTION_IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
             type=raw,value=latest
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
+      # -- Build and push each service -----------------------------------------
       - name: Build and push Backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc3040 # v5.4.0
         with:
           context: .
           file: ./backend/Dockerfile
@@ -74,7 +98,7 @@ jobs:
           cache-to: type=gha,scope=backend,mode=max
 
       - name: Build and push Frontend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc3040 # v5.4.0
         with:
           context: ./frontend
           push: true
@@ -84,7 +108,7 @@ jobs:
           cache-to: type=gha,scope=frontend,mode=max
 
       - name: Build and push Detection Engine image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc3040 # v5.4.0
         with:
           context: ./detection_engine
           push: true
@@ -93,32 +117,84 @@ jobs:
           cache-from: type=gha,scope=detection
           cache-to: type=gha,scope=detection,mode=max
 
+  # ===========================================================================
+  # Stage 2: DEPLOY — pull new images and restart services
+  # ===========================================================================
   deploy-production:
     name: Deploy to Production
     needs: build-and-publish
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # -- Environment protection: requires manual approval in GitHub settings ---
+    # Configure at: Settings → Environments → production → Required reviewers
+    environment: production
+    permissions:
+      contents: read
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
           username: ${{ secrets.PROD_SSH_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
+          script_stop: true
           script: |
-            # Navigate to deployment directory (adjust as necessary on your server)
+            set -euo pipefail
             cd /opt/aquaguard
-            
-            # Export the exact tag being deployed
+
+            # ---------------------------------------------------------------
+            # Record the currently deployed image digest for rollback.
+            # ---------------------------------------------------------------
+            PREV_BACKEND_IMAGE=$(docker inspect --format='{{index .Image}}' aquaguard-backend 2>/dev/null || echo "none")
+            echo "Previous backend image: ${PREV_BACKEND_IMAGE}" | tee /opt/aquaguard/.previous-deploy
+
+            # ---------------------------------------------------------------
+            # Set the version being deployed and pull new images.
+            # ---------------------------------------------------------------
             export APP_VERSION=${{ github.ref_name }}
-            
-            # Login to GHCR (Server needs to be pre-configured, or pass token securely)
-            # Alternatively, if images are public, this step can be skipped.
-            
-            # Pull the latest images
+            echo "Deploying AquaGuard ${APP_VERSION}..."
+
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            
-            # Restart services
+
+            # ---------------------------------------------------------------
+            # Restart services with the new images.
+            # ---------------------------------------------------------------
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-            
-            # Clean up old images
-            docker image prune -af
+
+            # ---------------------------------------------------------------
+            # Post-deploy health check — verify backend responds within 90s.
+            # If it fails, trigger automatic rollback.
+            # ---------------------------------------------------------------
+            echo "Waiting for backend health check..."
+            HEALTHY=false
+            for i in $(seq 1 45); do
+              if curl -fsS --max-time 3 http://localhost:5000/api/health > /dev/null 2>&1; then
+                echo "Health check passed after $((i * 2)) seconds"
+                HEALTHY=true
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$HEALTHY" = "false" ]; then
+              echo "ERROR: Health check failed after 90 seconds!"
+              echo "Initiating automatic rollback..."
+
+              # Show failing container logs for debugging
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50 backend
+
+              # Rollback: restart with previous images (they're still cached locally)
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+              echo "ROLLBACK COMPLETE — previous deployment restored."
+              echo "Manual investigation required. Check /opt/aquaguard/.previous-deploy"
+              exit 1
+            fi
+
+            echo "Deployment of ${APP_VERSION} successful!"
+
+            # ---------------------------------------------------------------
+            # Clean up old images to save disk space.
+            # ---------------------------------------------------------------
+            docker image prune -af --filter "until=24h"

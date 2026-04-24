@@ -225,6 +225,8 @@ if ($generatedGuardSeed) {
 }
 
 $env:FLASK_APP = "wsgi.py"
+$env:FLASK_ENV = "development"
+$env:APP_ENV = "development"
 Push-Location "$ROOT\backend"
 try {
     $ErrorActionPreference = 'Stop'

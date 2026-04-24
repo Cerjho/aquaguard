@@ -145,6 +145,12 @@ jobs:
             **Approve** by commenting: `approved`
             **Deny** by commenting: `denied`
 
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v3.1.2 / v4.1.2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+          args: --advertise-tags=tag:ci
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         with:

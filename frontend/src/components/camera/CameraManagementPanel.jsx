@@ -341,7 +341,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
   }, [menuCamera, openDeleteConfirmation, openEditForm, toggleActive]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-md">
+    <section className="bg-white rounded-3xl shadow-sm border border-[#e7ecef] p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold tracking-tight text-slate-900">Camera Registry</h3>
@@ -384,147 +384,61 @@ function CameraManagementPanel({ onCamerasChanged }) {
           </button>
         </div>
       ) : (
-        <div className="relative mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto overflow-y-visible rounded-2xl">
-            <table className="min-w-full text-sm">
-            <caption className="sr-only">Registered cameras including inactive entries</caption>
-            <thead>
-              <tr className="text-left text-slate-500 border-b border-slate-200 bg-slate-50">
-                <th scope="col" className="px-4 py-3">Zone</th>
-                <th scope="col" className="px-4 py-3">Name</th>
-                <th scope="col" className="px-4 py-3">Status</th>
-                <th scope="col" className="px-4 py-3 w-[164px]">Actions</th>
-              </tr>
-            </thead>
-              <tbody>
-              {cameras.map((camera) => {
-                const isMenuOpen = menuOpenZoneId === camera.zone_id;
-                const isSelected = selectedZoneId === camera.zone_id;
-
-                return (
-                  <tr
-                    key={camera.zone_id}
-                    className={`group border-b border-slate-100 transition-colors ${
-                      isSelected
-                        ? 'bg-[#a3cef1]/25 ring-1 ring-inset ring-[#8cbfe8]'
-                        : isMenuOpen
-                          ? 'bg-slate-50'
-                          : 'hover:bg-slate-50/80 focus-within:bg-slate-50/80'
-                    }`}
+        <div className="mt-4">
+          <div className="flex px-4 pb-4 text-[11px] uppercase tracking-wider font-semibold text-slate-400">
+            <div className="w-1/4">Zone</div>
+            <div className="w-1/2">Name</div>
+            <div className="w-1/4">Status</div>
+          </div>
+          <div className="border-b border-[#e7ecef] mb-2" />
+          
+          <div className="space-y-1">
+            {cameras.map((camera) => (
+              <div
+                key={camera.zone_id}
+                onClick={() => openCameraDetails(camera.zone_id)}
+                className="flex items-center px-4 py-4 hover:bg-[#e7ecef]/20 hover:-translate-y-1 hover:shadow-md transition-all duration-300 cursor-pointer rounded-xl mx-2 my-1"
+                data-testid={`camera-row-${camera.zone_id}`}
+              >
+                <div className="w-1/4">
+                  <span className="bg-slate-50 text-slate-600 rounded-full px-3 py-1 text-xs font-medium border border-slate-100">
+                    {camera.zone_id}
+                  </span>
+                </div>
+                <div className="w-1/2 font-semibold text-slate-900">
+                  {camera.zone_name}
+                </div>
+                <div className="w-1/4 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${
+                        camera.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                      }`}
+                    ></span>
+                    <span className="text-sm font-medium text-slate-600">
+                      {camera.is_active ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    data-camera-menu-trigger
+                    data-camera-action
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openContextMenu(event, camera.zone_id);
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e7ecef] bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-200 hover:text-slate-700"
+                    aria-label={`Open actions menu for ${camera.zone_name || camera.zone_id}`}
                   >
-                    <td className="p-0 align-middle">
-                      <button
-                        type="button"
-                        data-testid={`camera-row-${camera.zone_id}`}
-                        onClick={() => openCameraDetails(camera.zone_id)}
-                        className="block h-full w-full rounded-none px-4 py-3 text-left font-mono text-xs text-slate-600 transition-colors hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
-                        aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
-                      >
-                        {camera.zone_id}
-                      </button>
-                    </td>
-                    <td className="p-0 align-middle">
-                      <button
-                        type="button"
-                        onClick={() => openCameraDetails(camera.zone_id)}
-                        className="block h-full w-full rounded-none px-4 py-3 text-left transition-colors hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
-                        aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
-                      >
-                        <span className="block font-medium text-slate-700">{camera.zone_name}</span>
-                        <span className="block truncate max-w-[280px] text-xs text-slate-500">{camera.rtsp_url}</span>
-                      </button>
-                    </td>
-                    <td className="p-0 align-middle">
-                      <button
-                        type="button"
-                        onClick={() => openCameraDetails(camera.zone_id)}
-                        className="block h-full w-full rounded-none px-4 py-3 text-left transition-colors hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
-                        aria-label={`Open details for ${camera.zone_name || camera.zone_id}`}
-                      >
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                            camera.is_active
-                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-700 border border-slate-200'
-                          }`}
-                        >
-                          {camera.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="relative px-4 py-3">
-                      <div className="relative z-20 flex justify-end">
-                        <div
-                          className={`inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/95 p-1 shadow-sm transition-all duration-200 ${
-                            isMenuOpen || isSelected
-                              ? 'opacity-100 translate-y-0 pointer-events-auto'
-                              : 'opacity-100 translate-y-0 sm:opacity-0 sm:translate-y-1 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:translate-y-0 sm:group-hover:pointer-events-auto sm:group-focus-within:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:pointer-events-auto'
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            data-camera-action
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openEditForm(camera);
-                            }}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                            aria-label={`Quick edit camera ${camera.zone_name || camera.zone_id}`}
-                            title="Edit"
-                          >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.1 2.1 0 112.97 2.97L8.25 18.04 4 20l1.96-4.25L16.862 3.487z" />
-                            </svg>
-                            <span className="sr-only">Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            data-camera-action
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleActive(camera);
-                            }}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                            aria-label={`Quick toggle camera status for ${camera.zone_name || camera.zone_id}`}
-                            title={camera.is_active ? 'Deactivate' : 'Activate'}
-                          >
-                            {camera.is_active ? (
-                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <rect x="6.5" y="5" width="4" height="14" rx="1" />
-                                <rect x="13.5" y="5" width="4" height="14" rx="1" />
-                              </svg>
-                            ) : (
-                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M8 6.5v11a1 1 0 001.53.85l8.5-5.5a1 1 0 000-1.7l-8.5-5.5A1 1 0 008 6.5z" />
-                              </svg>
-                            )}
-                            <span className="sr-only">Toggle status</span>
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          data-camera-menu-trigger
-                          data-camera-action
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openContextMenu(event, camera.zone_id);
-                          }}
-                          className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                          aria-label={`Open actions menu for ${camera.zone_name || camera.zone_id}`}
-                        >
-                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <circle cx="12" cy="5" r="1.8" />
-                            <circle cx="12" cy="12" r="1.8" />
-                            <circle cx="12" cy="19" r="1.8" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              </tbody>
-            </table>
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <circle cx="12" cy="5" r="1.8" />
+                      <circle cx="12" cy="12" r="1.8" />
+                      <circle cx="12" cy="19" r="1.8" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -540,12 +454,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
             onClick={() => openEditForm(menuCamera)}
             className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
           >
-            <span className="inline-flex items-center gap-2">
-              <svg className="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.1 2.1 0 112.97 2.97L8.25 18.04 4 20l1.96-4.25L16.862 3.487z" />
-              </svg>
-              <span>Edit</span>
-            </span>
+            <span>Edit</span>
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Ctrl+Alt+E
             </span>
@@ -556,19 +465,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
             className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
             aria-label={`${menuCamera.is_active ? 'Deactivate' : 'Activate'} camera ${menuCamera.zone_name || menuCamera.zone_id}`}
           >
-            <span className="inline-flex items-center gap-2">
-              {menuCamera.is_active ? (
-                <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <rect x="6.5" y="5" width="4" height="14" rx="1" />
-                  <rect x="13.5" y="5" width="4" height="14" rx="1" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M8 6.5v11a1 1 0 001.53.85l8.5-5.5a1 1 0 000-1.7l-8.5-5.5A1 1 0 008 6.5z" />
-                </svg>
-              )}
-              <span>{menuCamera.is_active ? 'Deactivate' : 'Activate'}</span>
-            </span>
+            <span>{menuCamera.is_active ? 'Deactivate' : 'Activate'}</span>
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Ctrl+Alt+T
             </span>
@@ -579,12 +476,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
             onClick={() => openDeleteConfirmation(menuCamera)}
             className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-rose-500 hover:bg-rose-50"
           >
-            <span className="inline-flex items-center gap-2">
-              <svg className="h-4 w-4 text-rose-500" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12a1 1 0 001 .9h6a1 1 0 001-.9l1-12" />
-              </svg>
-              <span>Delete</span>
-            </span>
+            <span>Delete</span>
             <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-500">
               Del
             </span>
@@ -593,94 +485,88 @@ function CameraManagementPanel({ onCamerasChanged }) {
       )}
 
       {selectedCamera && (
-        <>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-md p-4 animate-in fade-in duration-300"
+          onClick={() => setSelectedZoneId(null)}
+          aria-hidden="true"
+        >
           <div
-            className="fixed inset-0 z-30 bg-slate-900/25 backdrop-blur-[1px]"
-            onClick={() => setSelectedZoneId(null)}
-            aria-hidden="true"
-          />
-          <aside
-            className="fixed top-0 right-0 z-[35] h-full w-full max-w-xl overflow-y-auto border-l border-[#e7ecef] bg-white p-6 shadow-md"
-            aria-label="Camera detail drawer"
+            className="max-w-2xl w-full bg-white rounded-[2rem] shadow-2xl p-8 animate-in fade-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Camera detail modal"
             data-testid="camera-detail-drawer"
           >
-            <div className="mb-6 flex items-start justify-between">
+            <div className="flex items-start justify-between mb-8">
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Camera Details</p>
-                <h4 className="mt-1 text-xl font-semibold text-slate-900">
+                <h4 className="text-2xl font-bold text-slate-900">
                   {selectedCamera.zone_name || selectedCamera.zone_id || 'Unknown Camera'}
                 </h4>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  Zone: {selectedCamera.zone_id}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedZoneId(null)}
-                className="rounded-full border border-slate-200 p-2 text-slate-500 transition-all hover:bg-slate-50"
+                className="hover:bg-[#e7ecef] rounded-full p-2 transition-colors text-slate-500"
                 aria-label="Close camera details"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M6 18L18 6M6 6l12 12" />
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                <p className="mb-1 text-xs text-slate-500">Zone ID</p>
-                <p className="text-sm font-medium text-slate-900">{selectedCamera.zone_id || '—'}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#e7ecef]/30 rounded-2xl p-4">
+                <p className="mb-1 text-xs text-slate-500 font-semibold uppercase tracking-wider">IP Address / Source</p>
+                <p className="text-sm font-medium text-slate-900 break-all">{selectedCamera.rtsp_url || '—'}</p>
               </div>
-              <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                <p className="mb-1 text-xs text-slate-500">Stream Source</p>
-                <p className="break-all text-sm font-medium text-slate-900">{selectedCamera.rtsp_url || '—'}</p>
+              <div className="bg-[#e7ecef]/30 rounded-2xl p-4">
+                <p className="mb-1 text-xs text-slate-500 font-semibold uppercase tracking-wider">Location / MAC</p>
+                <p className="text-sm font-medium text-slate-900 truncate">{selectedCamera.location_description || '—'}</p>
               </div>
-              <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                <p className="mb-1 text-xs text-slate-500">Location</p>
-                <p className="text-sm font-medium text-slate-900">
-                  {selectedCamera.location_description || 'No location description'}
-                </p>
+              <div className="bg-[#e7ecef]/30 rounded-2xl p-4">
+                <p className="mb-1 text-xs text-slate-500 font-semibold uppercase tracking-wider">Resolution</p>
+                <p className="text-sm font-medium text-slate-900">{selectedCamera.resolution || '—'}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                  <p className="mb-1 text-xs text-slate-500">Frame Rate</p>
-                  <p className="text-sm font-semibold text-slate-900">{selectedCamera.frame_rate || '—'}</p>
-                </div>
-                <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                  <p className="mb-1 text-xs text-slate-500">Resolution</p>
-                  <p className="text-sm font-semibold text-slate-900">{selectedCamera.resolution || '—'}</p>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                <p className="mb-1 text-xs text-slate-500">Status</p>
-                <p className="text-sm font-semibold text-slate-900">
-                  {selectedCamera.is_active ? 'Active' : 'Inactive'}
-                </p>
+              <div className="bg-[#e7ecef]/30 rounded-2xl p-4">
+                <p className="mb-1 text-xs text-slate-500 font-semibold uppercase tracking-wider">FPS</p>
+                <p className="text-sm font-medium text-slate-900">{selectedCamera.frame_rate || '—'}</p>
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="mt-8 flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={() => openEditForm(selectedCamera)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                onClick={() => {
+                  setSelectedZoneId(null);
+                  openEditForm(selectedCamera);
+                }}
+                className="rounded-2xl bg-white border border-[#e7ecef] px-6 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
-                Edit Camera
+                Edit
               </button>
               <button
                 type="button"
                 onClick={() => toggleActive(selectedCamera)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                className="rounded-2xl bg-white border border-[#e7ecef] px-6 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
-                {selectedCamera.is_active ? 'Deactivate Camera' : 'Activate Camera'}
+                {selectedCamera.is_active ? 'Deactivate' : 'Activate'}
               </button>
               <button
                 type="button"
-                onClick={() => openDeleteConfirmation(selectedCamera)}
-                className="rounded-2xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rose-600 sm:col-span-2"
+                onClick={() => {
+                  setSelectedZoneId(null);
+                  openDeleteConfirmation(selectedCamera);
+                }}
+                className="rounded-2xl bg-rose-50 px-6 py-2.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100"
               >
-                Remove Camera
+                Delete
               </button>
             </div>
-          </aside>
-        </>
+          </div>
+        </div>
       )}
 
       {formOpen && (

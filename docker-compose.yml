@@ -146,7 +146,6 @@ services:
       context: ./detection_engine
     container_name: aquaguard-detection
     init: true
-    entrypoint: []
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883

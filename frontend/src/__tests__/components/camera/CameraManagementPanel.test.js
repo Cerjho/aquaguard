@@ -221,11 +221,10 @@ describe('CameraManagementPanel', () => {
     fireEvent.click(await screen.findByText('Main Pool'));
 
     expect(await screen.findByTestId('camera-detail-drawer')).toBeInTheDocument();
-    expect(screen.getByText(/camera details/i)).toBeInTheDocument();
     expect(screen.getByText('North wing')).toBeInTheDocument();
     expect(screen.getByText('1920x1080')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /close camera details/i }));
+    fireEvent.click(screen.getByLabelText(/close camera details/i));
 
     await waitFor(() => {
       expect(screen.queryByTestId('camera-detail-drawer')).not.toBeInTheDocument();

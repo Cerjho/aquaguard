@@ -16,6 +16,10 @@ jest.mock('../../../context/AlertContext.jsx', () => ({
   useFilterState: jest.fn(),
 }));
 
+jest.mock('../../../context/DataCacheContext.jsx', () => ({
+  useDataCache: jest.fn(),
+}));
+
 describe('AlertHistory shared triage filters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -30,11 +34,23 @@ describe('AlertHistory shared triage filters', () => {
       setTriageFilters: jest.fn(),
       resetTriageFilters: jest.fn(),
     });
+    
+    const { useDataCache } = require('../../../context/DataCacheContext.jsx');
+    useDataCache.mockReturnValue({
+      alertHistorySnapshot: null,
+      setAlertHistorySnapshot: jest.fn()
+    });
   });
 
   test('applies shared filter params to alerts query', async () => {
-    api.get.mockResolvedValue({
-      data: mockIncidentHistoryAlerts,
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/alerts') {
+        return Promise.resolve({ data: mockIncidentHistoryAlerts });
+      }
+      if (url === '/api/v1/cameras') {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: {} });
     });
 
     render(<AlertHistory />);
@@ -56,16 +72,22 @@ describe('AlertHistory shared triage filters', () => {
   });
 
   test('keeps filters collapsed by default and reveals on Add Filter', async () => {
-    api.get.mockResolvedValue({
-      data: mockIncidentHistoryAlerts,
+    api.get.mockImplementation((url) => {
+      if (url === '/api/v1/alerts') {
+        return Promise.resolve({ data: mockIncidentHistoryAlerts });
+      }
+      if (url === '/api/v1/cameras') {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: {} });
     });
 
     render(<AlertHistory />);
 
-    expect(await screen.findByRole('button', { name: /add filter/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^filter/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/filter alerts by zone id/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /add filter/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^filter/i }));
 
     expect(await screen.findByLabelText(/filter alerts by zone id/i)).toBeInTheDocument();
   });

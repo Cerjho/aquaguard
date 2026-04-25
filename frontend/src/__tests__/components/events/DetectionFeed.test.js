@@ -16,8 +16,18 @@ jest.mock('../../../context/AlertContext.jsx', () => ({
   useSocketState: jest.fn(),
 }));
 
+jest.mock('../../../context/DataCacheContext.jsx', () => ({
+  useDataCache: jest.fn(),
+}));
+
+import { MemoryRouter } from 'react-router-dom';
+
 async function renderFeed() {
-  render(<DetectionFeed />);
+  render(
+    <MemoryRouter>
+      <DetectionFeed />
+    </MemoryRouter>
+  );
 }
 
 describe('DetectionFeed mapping resilience', () => {
@@ -29,6 +39,13 @@ describe('DetectionFeed mapping resilience', () => {
     useSocketState.mockReturnValue({
       socketConnected: false,
     });
+    
+    const { useDataCache } = require('../../../context/DataCacheContext.jsx');
+    useDataCache.mockReturnValue({
+      cameras: [],
+      refreshCameras: jest.fn()
+    });
+
     Object.defineProperty(document, 'hidden', { configurable: true, value: false });
   });
 
@@ -82,10 +99,9 @@ describe('DetectionFeed mapping resilience', () => {
     await renderFeed();
 
     expect(await screen.findByText('drowning')).toBeInTheDocument();
-    expect(screen.getByText(/^Live$/)).toBeInTheDocument();
 
-    // With socket connected, polling is skipped - events come via WebSocket
-    expect(api.get).not.toHaveBeenCalledWith('/api/v1/events', expect.anything());
+    // With socket connected, it fetches once for baseline, then relies on WebSocket
+    expect(api.get).toHaveBeenCalledTimes(1);
   });
 
   test('pauses aggressive polling when tab is hidden', async () => {

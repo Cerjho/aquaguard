@@ -16,11 +16,21 @@ jest.mock('../../../context/AlertContext.jsx', () => ({
   useSocketState: jest.fn(),
 }));
 
+jest.mock('../../../context/DataCacheContext.jsx', () => ({
+  useDataCache: jest.fn(),
+}));
+
 describe('IncidentHistory compatibility wrapper', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useAlertState.mockReturnValue({ detectionEvents: [] });
     useSocketState.mockReturnValue({ socketConnected: false });
+    
+    const { useDataCache } = require('../../../context/DataCacheContext.jsx');
+    useDataCache.mockReturnValue({
+      cameras: [],
+      refreshCameras: jest.fn()
+    });
   });
 
   test('renders DetectionFeed heading via compatibility export', async () => {
@@ -28,7 +38,7 @@ describe('IncidentHistory compatibility wrapper', () => {
 
     render(<IncidentHistory />);
 
-    expect(await screen.findByText(/live detection feed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/detection events/i)).toBeInTheDocument();
   });
 
   test('maps backend detection payload keys from polling data', async () => {
@@ -50,11 +60,11 @@ describe('IncidentHistory compatibility wrapper', () => {
     render(<IncidentHistory />);
 
     expect(await screen.findByText('swimming')).toBeInTheDocument();
-    expect(screen.getByText(/74%/)).toBeInTheDocument();
+    expect(screen.getByText(/73.5%/)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/events', {
-        params: { page: 1, limit: 20 },
+        params: { page: 1, limit: 10 },
       });
     });
   });

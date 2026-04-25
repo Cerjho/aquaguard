@@ -269,9 +269,6 @@ function CameraCard({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
-            <span className={`inline-flex items-center gap-1 rounded-full border bg-white/80 px-2 py-1 text-[11px] font-medium shadow-sm backdrop-blur-md ${transportToneClass}`}>
-              {transportLabel}
-            </span>
             <button
               type="button"
               onClick={(event) => {

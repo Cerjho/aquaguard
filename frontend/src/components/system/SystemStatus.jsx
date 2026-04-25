@@ -169,9 +169,6 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
       <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="mb-5 flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold tracking-tight text-slate-800">System Diagnostics</h3>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-            SYSTEM SECURE
-          </span>
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">

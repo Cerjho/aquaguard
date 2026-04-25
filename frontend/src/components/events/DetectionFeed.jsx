@@ -31,6 +31,7 @@ function DetectionFeed({ headerTabs }) {
   const [error, setError] = useState(null);
   const [lastPollAt, setLastPollAt] = useState(null);
   const [nowTick, setNowTick] = useState(Date.now());
+  const [isLoading, setIsLoading] = useState(true);
   const intervalRef = useRef(null);
   const failureCountRef = useRef(0);
 
@@ -49,10 +50,12 @@ function DetectionFeed({ headerTabs }) {
       setLastPollAt(Date.now());
       setError(null);
       failureCountRef.current = 0;
+      setIsLoading(false);
       return true;
     } catch (err) {
       setError('Could not fetch detection events.');
       failureCountRef.current += 1;
+      setIsLoading(false);
       return false;
     }
   }, []);
@@ -127,7 +130,16 @@ function DetectionFeed({ headerTabs }) {
       )}
 
       <ul className={`divide-y divide-slate-100/80 ${isDashboard ? '' : 'max-h-80 overflow-y-auto'}`}>
-        {events.length === 0 && !error ? (
+        {isLoading ? (
+          <li className="px-4 py-8 text-center flex flex-col items-center">
+            <div className="flex items-center gap-1.5 mb-3 h-14">
+              <motion.div className="w-2.5 h-2.5 rounded-full bg-slate-400" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} />
+              <motion.div className="w-2.5 h-2.5 rounded-full bg-slate-400" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} />
+              <motion.div className="w-2.5 h-2.5 rounded-full bg-slate-400" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} />
+            </div>
+            <p className="text-slate-500 text-sm font-medium">Please wait...</p>
+          </li>
+        ) : events.length === 0 && !error ? (
           <li className="px-4 py-8 text-center">
             <div className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#a3cef1]/45 bg-gradient-to-b from-[#a3cef1]/25 via-white to-[#a3cef1]/10 shadow-sm">
               <span className="absolute inset-0 rounded-2xl border border-white/60" />

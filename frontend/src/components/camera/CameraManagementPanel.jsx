@@ -405,7 +405,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
                     {camera.zone_id}
                   </span>
                 </div>
-                <div className="w-1/2 font-semibold text-slate-900">
+                <div className="w-1/2 font-semibold text-slate-700">
                   {camera.zone_name}
                 </div>
                 <div className="w-1/4 flex justify-between items-center">

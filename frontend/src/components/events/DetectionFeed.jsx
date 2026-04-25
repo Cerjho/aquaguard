@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useAlertState, useSocketState } from '../../context/AlertContext.jsx';
@@ -22,7 +23,8 @@ const MAX_DISPLAY = 20;
 const STALE_AFTER_MS = 15000;
 const MAX_BACKOFF_MS = 60000;
 
-function DetectionFeed() {
+function DetectionFeed({ headerTabs }) {
+  const navigate = useNavigate();
   const { detectionEvents } = useAlertState();
   const { socketConnected } = useSocketState();
   const [polledEvents, setPolledEvents] = useState([]);
@@ -56,7 +58,11 @@ function DetectionFeed() {
   }, []);
 
   useEffect(() => {
-    if (socketConnected) return undefined;
+    if (socketConnected) {
+      // Fetch once to ensure we have baseline history, then rely on socket
+      fetchLatest();
+      return undefined;
+    }
 
     let cancelled = false;
     const schedule = (delay) => {
@@ -92,53 +98,42 @@ function DetectionFeed() {
   }, [fetchLatest, socketConnected]);
 
   const hasRealtimeEvents = detectionEvents.length > 0;
-  const events = hasRealtimeEvents ? detectionEvents.slice(0, MAX_DISPLAY) : polledEvents;
+  const isDashboard = !headerTabs;
+  const displayLimit = isDashboard ? 5 : MAX_DISPLAY;
+  const allEvents = hasRealtimeEvents ? detectionEvents : polledEvents;
+  const events = allEvents.slice(0, displayLimit);
   const isStale = useMemo(() => {
     if (!lastPollAt) return false;
     return nowTick - lastPollAt > STALE_AFTER_MS;
   }, [lastPollAt, nowTick]);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_16px_32px_rgba(15,23,42,0.06)] backdrop-blur-md">
-      <div className="px-4 py-3.5 border-b border-slate-200/70 flex items-center justify-between bg-white/80">
-        <div className="flex items-center gap-2.5">
-          <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#a3cef1]/40 bg-[#a3cef1]/15 text-[#7fb2db] shadow-sm">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_16px_32px_rgba(15,23,42,0.06)] backdrop-blur-md flex flex-col">
+      <div className="px-6 border-b border-slate-200/70 flex items-center justify-between bg-white/80">
+        {headerTabs ? headerTabs : (
+          <div className="flex items-center gap-2.5 py-3.5">
+            <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#a3cef1]/40 bg-[#a3cef1]/15 text-[#7fb2db] shadow-sm">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12h4.5L9 5l6 14 1.5-7H21" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-800">Live Detection Feed</h3>
           </div>
-          <h3 className="text-sm font-semibold text-slate-800">Live Detection Feed</h3>
-        </div>
-        <span
-          className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${
-            socketConnected && !isStale 
-              ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
-              : 'text-rose-700 bg-rose-50 border-rose-200'
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              socketConnected && !isStale
-                ? 'bg-emerald-400 animate-pulse'
-                : 'bg-rose-400'
-            }`}
-          />
-          {socketConnected ? (isStale ? 'Stale' : 'Live') : 'Polling'}
-        </span>
+        )}
       </div>
 
       {error && (
         <p className="px-4 py-2 text-xs text-rose-700 bg-rose-100 border-b border-rose-200">{error}</p>
       )}
 
-      <ul className="divide-y divide-slate-100/80 max-h-80 overflow-y-auto">
+      <ul className={`divide-y divide-slate-100/80 ${isDashboard ? '' : 'max-h-80 overflow-y-auto'}`}>
         {events.length === 0 && !error ? (
           <li className="px-4 py-8 text-center">
             <div className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#a3cef1]/45 bg-gradient-to-b from-[#a3cef1]/25 via-white to-[#a3cef1]/10 shadow-sm">
               <span className="absolute inset-0 rounded-2xl border border-white/60" />
               <span className="absolute -inset-1 rounded-2xl border border-[#a3cef1]/25 animate-pulse" />
               <svg className="relative z-10 h-7 w-7 text-[#7fb2db]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M3 12h4.5L9 5l6 14 1.5-7H21" />
               </svg>
             </div>
             <p className="text-slate-500 text-sm font-medium">No detection events yet</p>
@@ -186,6 +181,16 @@ function DetectionFeed() {
           </AnimatePresence>
         )}
       </ul>
+      {isDashboard && allEvents.length > 5 && (
+        <div className="border-t border-slate-100/80 p-2.5 bg-slate-50/30">
+          <button 
+            onClick={() => navigate('/incidents', { state: { activeTab: 'events' } })}
+            className="w-full py-2 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 rounded-xl transition-colors"
+          >
+            See all detections
+          </button>
+        </div>
+      )}
     </div>
   );
 }

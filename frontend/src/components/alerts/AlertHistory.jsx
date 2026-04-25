@@ -11,6 +11,7 @@ import api from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useFilterState } from '../../context/AlertContext.jsx';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
+import PremiumLoader from '../layout/PremiumLoader.jsx';
 
 const PAGE_SIZE = 10;
 const ALERT_STATUS_VALUES = new Set(['unacknowledged', 'acknowledged']);
@@ -199,7 +200,7 @@ function CalendarInput({
   );
 }
 
-function AlertHistory() {
+function AlertHistory({ headerTabs }) {
   const prefersReducedMotion = useReducedMotion();
   const { triageFilters, setTriageFilters, resetTriageFilters } = useFilterState();
   const { alertHistorySnapshot, setAlertHistorySnapshot } = useDataCache();
@@ -360,24 +361,7 @@ function AlertHistory() {
   );
 
   if (loading) {
-    return (
-      <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading alert history">
-        <div className="glass-subtle rounded-2xl border border-slate-200 p-3">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-            {Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="skeleton h-10" />
-            ))}
-          </div>
-        </div>
-        <div className="glass-subtle rounded-2xl border border-slate-200 p-4">
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="skeleton h-12" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <PremiumLoader />;
   }
 
   if (error) {
@@ -400,24 +384,33 @@ function AlertHistory() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
       aria-label="Alert history table"
-      className="relative space-y-4"
+      className="relative rounded-3xl border border-[#e7ecef] bg-white shadow-sm flex flex-col"
     >
-      <div className="relative flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div>
-          <p className="text-sm font-medium text-slate-900">Incident History</p>
-          <p className="text-xs text-slate-500">Master view of historical alert events</p>
+      <div className="relative flex items-center justify-between px-6 border-b border-[#e7ecef] bg-white rounded-t-3xl">
+        {headerTabs ? headerTabs : (
+          <div className="py-4">
+            <p className="text-sm font-medium text-slate-900">Incident History</p>
+            <p className="text-xs text-slate-500">Master view of historical alert events</p>
+          </div>
+        )}
+        
+        <div className="py-3">
+          <button
+            onClick={() => setIsFilterOpen((prev) => !prev)}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+              isFilterOpen 
+                ? 'bg-slate-100 text-slate-900 shadow-inner' 
+                : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-[#e7ecef] shadow-sm'
+            }`}
+            aria-expanded={isFilterOpen}
+            aria-controls="incident-filter-panel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Filter
+          </button>
         </div>
-        <button
-          onClick={() => setIsFilterOpen((prev) => !prev)}
-          className="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full px-4 py-2 transition-all"
-          aria-expanded={isFilterOpen}
-          aria-controls="incident-filter-panel"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 5.25h18m-15 6h12m-9 6h6" />
-          </svg>
-          Add Filter
-        </button>
 
         <AnimatePresence>
           {isFilterOpen && (
@@ -427,7 +420,7 @@ function AlertHistory() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: prefersReducedMotion ? 0.01 : 0.18 }}
-              className="bg-white/90 backdrop-blur-md shadow-lg rounded-2xl p-4 mt-2 absolute z-10 right-0 top-full w-full max-w-4xl border border-slate-200"
+              className="absolute z-20 right-6 top-[100%] mt-2 w-[calc(100%-3rem)] max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl p-5 border border-[#e7ecef]"
             >
               <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                 <input
@@ -509,13 +502,12 @@ function AlertHistory() {
       </div>
 
       {refreshing && (
-        <p className="mt-2 text-xs text-slate-400">Refreshing alerts…</p>
+        <div className="px-6 py-2 border-b border-[#e7ecef] bg-slate-50 text-xs text-slate-500">
+          Refreshing alerts…
+        </div>
       )}
 
-      <div
-        className="rounded-2xl border border-[#e7ecef] bg-[#ffffff] shadow-sm overflow-hidden"
-        data-testid="incident-master-list"
-      >
+      <div className="flex-1 overflow-hidden" data-testid="incident-master-list">
         {alerts.length === 0 ? (
           <div className="text-center py-10 text-slate-500">No alerts found.</div>
         ) : (
@@ -551,7 +543,7 @@ function AlertHistory() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+        <div className="px-6 py-4 border-t border-[#e7ecef] bg-slate-50 flex items-center justify-between text-sm text-slate-600 rounded-b-3xl">
           <span>
             Page {page} of {totalPages} &nbsp;({total} total)
           </span>

@@ -224,11 +224,6 @@ function AnalyticsChart() {
     [filteredZoneData]
   );
 
-  const availableZoneOptions = useMemo(
-    () => zoneData.map((zone) => ({ value: zone.zoneId || zone.zone, label: zone.zone })),
-    [zoneData]
-  );
-
   const normalizeConfidence = useCallback((raw) => {
     if (raw === null || raw === undefined || raw === '') return null;
     const value = Number(raw);

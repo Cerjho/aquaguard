@@ -31,6 +31,7 @@ function LoginPage() {
   const mediaPanelRef = useRef(null);
   const mediaVideoRef = useRef(null);
   const bubblesRef = useRef(null);
+  const customLoaderRef = useRef(null);
   const welcomeText = 'WELCOME BACK';
   const welcomeLetters = welcomeText.split('');
   const hoverPalette = ['#a3cef1', '#bfdbfe', '#93c5fd', '#60a5fa'];
@@ -50,6 +51,21 @@ function LoginPage() {
       setAuthSuccess(false);
     }
   }, [authError]);
+
+  useEffect(() => {
+    let loaderTween;
+    if (isSubmitting && customLoaderRef.current) {
+      loaderTween = gsap.to(customLoaderRef.current, {
+        rotation: 360,
+        duration: 1,
+        ease: 'none',
+        repeat: -1
+      });
+    }
+    return () => {
+      if (loaderTween) loaderTween.kill();
+    };
+  }, [isSubmitting]);
 
   useEffect(() => {
     letterRefs.current.forEach((el) => {
@@ -293,25 +309,24 @@ function LoginPage() {
   };
 
   const handleLoginButtonLeave = () => {
-    if (!loginButtonRef.current) return;
+    if (!loginButtonRef.current || isSubmitting) return;
     gsap.to(loginButtonRef.current, {
       y: 0,
       scale: 1,
       boxShadow: '0 12px 24px rgba(120, 164, 199, 0.34)',
-      duration: 0.32,
-      ease: 'power3.out',
-      overwrite: 'auto',
+      duration: 0.4,
+      ease: 'power2.out',
     });
   };
 
   const handleLoginButtonPress = () => {
     if (prefersReducedMotion || isSubmitting || !loginButtonRef.current) return;
     gsap.to(loginButtonRef.current, {
-      y: 1.5,
       scale: 0.96,
-      duration: 0.16,
+      y: 1,
+      boxShadow: '0 4px 12px rgba(120, 164, 199, 0.2)',
+      duration: 0.15,
       ease: 'power2.out',
-      overwrite: 'auto',
     });
   };
 
@@ -327,7 +342,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(145deg,#f8fbff_0%,#eef3f7_58%,#e7ecef_100%)] p-5 sm:p-8">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-sky-50 via-blue-50 to-sky-100 p-5 sm:p-8">
       <div className="relative z-20 flex min-h-[calc(100vh-2.5rem)] items-center justify-center">
         <motion.div
           className="relative w-full max-w-7xl rounded-[2rem] bg-white p-3 shadow-2xl sm:p-4"
@@ -360,6 +375,11 @@ function LoginPage() {
                 controlsList="nofullscreen nodownload noremoteplayback"
                 className="pointer-events-none absolute inset-0 h-full w-full scale-[1.08] object-cover object-center"
               />
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+              <div className="absolute bottom-10 left-10 z-20 text-white font-sans font-black tracking-widest text-3xl sm:text-4xl uppercase pointer-events-none leading-tight">
+                RIPPLE.<br />
+                <span className="text-[#a3cef1]"></span>SIGNAL. RESCUE.
+              </div>
             </section>
 
             <section ref={formPanelRef} className="flex flex-col justify-center rounded-[1.5rem] bg-white px-8 py-10 lg:px-16">
@@ -390,7 +410,7 @@ function LoginPage() {
                   ))}
                 </h1>
                 <p data-intro-item className="mt-2 text-sm text-slate-500">
-                  Enter your email and password to access your account.
+                  Enter your username and password to access your account.
                 </p>
               </div>
 
@@ -406,97 +426,79 @@ function LoginPage() {
               )}
 
               <form data-intro-item onSubmit={handleSubmit} noValidate className="space-y-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="username" className="text-sm font-medium text-slate-700">
-                    Email
+                <div className="group relative">
+                  <input
+                    id="username"
+                    type="text"
+                    autoComplete="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="Username"
+                    className="peer w-full rounded-2xl border border-transparent bg-[#e7ecef]/50 pl-5 pr-5 pb-2 pt-6 text-slate-900 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] outline-none transition-all duration-300 placeholder-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:shadow-sm"
+                  />
+                  <label
+                    htmlFor="username"
+                    className="absolute left-5 top-4 z-10 origin-[0] -translate-y-2.5 scale-75 transform text-sm text-slate-500 transition-all duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2.5 peer-focus:scale-75 cursor-text"
+                  >
+                    Username
                   </label>
-                  <div className="group relative">
-                    <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400 transition-colors duration-300 group-focus-within:text-slate-500">
-                      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                        <path d="M4 6h16v12H4z" />
-                        <path d="M4 8l8 6 8-6" />
-                      </svg>
-                    </span>
-                    <input
-                      id="username"
-                      type="text"
-                      autoComplete="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      disabled={isSubmitting}
-                      placeholder="Enter your email"
-                      className="w-full rounded-2xl border border-transparent bg-[#e7ecef]/50 px-5 py-4 pl-11 text-slate-900 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] outline-none transition-all duration-300 placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:shadow-sm"
-                    />
-                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-medium text-slate-700">
+                <div className="group relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="Password"
+                    className="peer w-full rounded-2xl border border-transparent bg-[#e7ecef]/50 pl-5 pr-12 pb-2 pt-6 text-slate-900 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] outline-none transition-all duration-300 placeholder-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:shadow-sm"
+                  />
+                  <label
+                    htmlFor="password"
+                    className="absolute left-5 top-4 z-10 origin-[0] -translate-y-2.5 scale-75 transform text-sm text-slate-500 transition-all duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2.5 peer-focus:scale-75 cursor-text"
+                  >
                     Password
                   </label>
-                  <div className="group relative">
-                    <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400 transition-colors duration-300 group-focus-within:text-slate-500">
-                      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                        <rect x="5" y="11" width="14" height="9" rx="2" />
-                        <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isSubmitting}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 rounded-xl p-1 text-slate-500 transition-colors hover:text-slate-700"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                       </svg>
-                    </span>
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={isSubmitting}
-                      placeholder="Enter your password"
-                      className="w-full rounded-2xl border border-transparent bg-[#e7ecef]/50 px-5 py-4 pl-11 pr-12 text-slate-900 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] outline-none transition-all duration-300 placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isSubmitting}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-1 text-slate-500 transition-colors hover:text-slate-700"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                          />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+                    ) : (
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 text-sm">
-                  <label htmlFor="rememberMe" className="inline-flex cursor-pointer select-none items-center gap-2 text-slate-600">
-                    <input
-                      id="rememberMe"
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      disabled={isSubmitting}
-                      className="h-4 w-4 rounded border-slate-300 bg-white text-[#a3cef1] focus:ring-[#a3cef1]"
-                    />
-                    Remember me
+                <div className="flex items-center pt-2 text-sm">
+                  <label htmlFor="rememberMe" className="inline-flex cursor-pointer select-none items-center gap-3 text-slate-600 transition-colors hover:text-slate-800">
+                    <div className="relative flex items-center">
+                      <input
+                        id="rememberMe"
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        disabled={isSubmitting}
+                        className="peer h-5 w-5 appearance-none rounded-md border-2 border-slate-300 bg-white transition-all checked:border-[#a3cef1] checked:bg-[#a3cef1] focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:ring-offset-1"
+                      />
+                      <svg className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 8 6 11 13 4" />
+                      </svg>
+                    </div>
+                    <span className="font-medium">Remember me</span>
                   </label>
-                  <button type="button" className="font-medium text-slate-500 hover:text-slate-700">
-                    Forgot Password
-                  </button>
                 </div>
 
                 <div className="flex justify-center pt-2">
@@ -511,36 +513,49 @@ function LoginPage() {
                     onMouseUp={handleLoginButtonRelease}
                     initial={false}
                     animate={{
-                      width: isSubmitting ? 56 : '100%',
-                      borderRadius: isSubmitting ? 9999 : 24,
+                      width: isSubmitting ? "3.5rem" : "100%",
+                      borderRadius: isSubmitting ? "50%" : "1.5rem",
                     }}
-                    transition={{
-                      width: { duration: prefersReducedMotion ? 0.01 : 0.42, ease: [0.4, 0, 0.2, 1] },
-                      borderRadius: { duration: prefersReducedMotion ? 0.01 : 0.3, ease: [0.4, 0, 0.2, 1] },
+                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                    style={{
+                      boxShadow: isSubmitting ? "none" : undefined,
                     }}
-                    className={`relative flex h-14 items-center justify-center gap-2 overflow-hidden border border-[#8ebde3] bg-[linear-gradient(135deg,#d7eafb_0%,#b9d9f5_42%,#a3cef1_78%,#93c4ee_100%)] px-5 py-4 text-sm font-semibold tracking-[0.02em] text-slate-900 shadow-[0_12px_24px_rgba(120,164,199,0.34)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.5)_50%,transparent_88%)] before:opacity-0 before:transition-opacity before:duration-300 after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-[1px] after:bg-white/70 ${
-                      isSubmitting ? 'cursor-wait opacity-90' : 'before:opacity-100'
+                    className={`relative flex h-[3.5rem] items-center justify-center border px-5 py-4 text-sm font-semibold tracking-[0.02em] transition-all duration-300 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.5)_50%,transparent_88%)] before:transition-opacity before:duration-300 after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-[1px] after:bg-white/70 ${
+                      isSubmitting 
+                        ? 'overflow-visible cursor-wait before:opacity-0 after:opacity-0 border-transparent bg-transparent bg-none shadow-none text-transparent' 
+                        : 'overflow-hidden hover:before:opacity-100 before:opacity-0 border-[#8ebde3] bg-[linear-gradient(135deg,#d7eafb_0%,#b9d9f5_42%,#a3cef1_78%,#93c4ee_100%)] text-slate-900 shadow-[0_12px_24px_rgba(120,164,199,0.34)]'
                     }`}
                   >
-                    <span className={`whitespace-nowrap transition-all duration-150 ${isSubmitting ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}>
-                      Login
-                    </span>
                     <motion.span
-                      aria-hidden="true"
-                      className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-all duration-300 ${
-                        isSubmitting ? 'opacity-100' : 'opacity-0'
-                      }`}
+                      className="absolute whitespace-nowrap"
+                      initial={false}
+                      animate={{
+                        opacity: isSubmitting ? 0 : 1,
+                        scale: isSubmitting ? 0.8 : 1,
+                      }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
-                      <motion.span
-                        className="h-8 w-8 rounded-full border-2 border-slate-500/25 border-t-slate-800"
-                        animate={isSubmitting ? { rotate: 360, boxShadow: ['0 0 0px rgba(148,196,238,0.2)', '0 0 16px rgba(148,196,238,0.65)', '0 0 0px rgba(148,196,238,0.2)'] } : { rotate: 0, boxShadow: '0 0 0px rgba(148,196,238,0)' }}
-                        transition={
-                          isSubmitting
-                            ? { rotate: { repeat: Infinity, duration: 0.9, ease: 'linear' }, boxShadow: { repeat: Infinity, duration: 1.25, ease: 'easeInOut' } }
-                            : { duration: 0.2 }
-                        }
-                      />
+                      Login
                     </motion.span>
+                    
+                    <motion.div
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      initial={false}
+                      animate={{
+                        opacity: isSubmitting ? 1 : 0,
+                        scale: isSubmitting ? 1 : 0.8,
+                      }}
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      {isSubmitting && (
+                        <div ref={customLoaderRef} className="h-8 w-8 text-[#06b6d4]">
+                          <svg className="h-full w-full drop-shadow-md" viewBox="0 0 50 50" fill="none">
+                            <circle cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="5" strokeLinecap="round" className="opacity-25" />
+                            <path d="M 25 5 A 20 20 0 0 1 45 25" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+                          </svg>
+                        </div>
+                      )}
+                    </motion.div>
                   </motion.button>
                 </div>
 

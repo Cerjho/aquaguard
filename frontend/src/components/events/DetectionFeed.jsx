@@ -28,7 +28,6 @@ function DetectionFeed({ headerTabs }) {
   const { socketConnected } = useSocketState();
   const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
-  const [lastPollAt, setLastPollAt] = useState(null);
   const intervalRef = useRef(null);
   const failureCountRef = useRef(0);
 
@@ -39,7 +38,6 @@ function DetectionFeed({ headerTabs }) {
       });
       const data = Array.isArray(res.data) ? res.data : res.data.events || [];
       setPolledEvents(data);
-      setLastPollAt(Date.now());
       setError(null);
       failureCountRef.current = 0;
       return true;

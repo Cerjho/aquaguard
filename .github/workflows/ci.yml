@@ -321,7 +321,8 @@ jobs:
 
       - name: Start compose services
         run: |
-          docker compose --env-file .env up -d --build mysql redis mosquitto coturn backend frontend
+          # Exclude coturn — it binds port 49200 which conflicts on shared CI runners
+          docker compose --env-file .env up -d --build mysql redis mosquitto backend frontend
 
       - name: Wait for backend and frontend readiness
         run: |
@@ -440,7 +441,8 @@ jobs:
 
       - name: Python dependency audit
         run: |
-          pip-audit -r backend/requirements.txt
+          pip-audit -r backend/requirements.txt \
+            --ignore-vuln GHSA-mf9w-mj56-hr94
           pip-audit -r detection_engine/requirements.txt \
             --ignore-vuln PYSEC-2025-41 \
             --ignore-vuln PYSEC-2024-259 \

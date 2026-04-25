@@ -83,7 +83,7 @@ test.describe('Smoke Tests @smoke', () => {
     await expect(authenticatedPage).toHaveURL(ROOT_DASHBOARD_URL);
 
     // Open the account popover in the sidebar first, then click logout
-    await authenticatedPage.getByRole('complementary').click(); // opens sidebar popover via account card click
+    await authenticatedPage.getByTestId('account-menu-trigger').click();
     await authenticatedPage.getByRole('button', { name: /logout/i }).click();
 
     // Verify logged-out state by URL and login form visibility.

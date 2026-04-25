@@ -159,6 +159,7 @@ function Sidebar() {
         </AnimatePresence>
 
         <div
+          data-testid="account-menu-trigger"
           onClick={() => setIsPopoverOpen(!isPopoverOpen)}
           className={`flex items-center gap-3 cursor-pointer rounded-2xl p-3 transition-all duration-300 bg-white border ${
             isPopoverOpen 

@@ -5,7 +5,7 @@
  * Features glassmorphism styling and animated entries.
  */
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../hooks/useApi';
@@ -20,7 +20,6 @@ import {
 const POLL_INTERVAL_MS = 5000;
 const HIDDEN_POLL_INTERVAL_MS = 30000;
 const MAX_DISPLAY = 20;
-const STALE_AFTER_MS = 15000;
 const MAX_BACKOFF_MS = 60000;
 
 function DetectionFeed({ headerTabs }) {
@@ -30,14 +29,8 @@ function DetectionFeed({ headerTabs }) {
   const [polledEvents, setPolledEvents] = useState([]);
   const [error, setError] = useState(null);
   const [lastPollAt, setLastPollAt] = useState(null);
-  const [nowTick, setNowTick] = useState(Date.now());
   const intervalRef = useRef(null);
   const failureCountRef = useRef(0);
-
-  useEffect(() => {
-    const tick = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   const fetchLatest = useCallback(async () => {
     try {
@@ -102,10 +95,6 @@ function DetectionFeed({ headerTabs }) {
   const displayLimit = isDashboard ? 5 : MAX_DISPLAY;
   const allEvents = hasRealtimeEvents ? detectionEvents : polledEvents;
   const events = allEvents.slice(0, displayLimit);
-  const isStale = useMemo(() => {
-    if (!lastPollAt) return false;
-    return nowTick - lastPollAt > STALE_AFTER_MS;
-  }, [lastPollAt, nowTick]);
 
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_16px_32px_rgba(15,23,42,0.06)] backdrop-blur-md flex flex-col">

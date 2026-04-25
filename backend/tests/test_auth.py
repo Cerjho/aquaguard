@@ -152,3 +152,70 @@ def test_login_rejects_non_boolean_remember_me(client):
     })
     assert resp.status_code == 400
     assert resp.get_json()['error'] == 'remember_me must be a boolean'
+
+
+# ---------------------------------------------------------------------------
+# change-password endpoint tests
+# ---------------------------------------------------------------------------
+
+def test_change_password_success(client, guard_token):
+    """Authenticated user can change their password with correct current password."""
+    resp = client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'guardpass', 'new_password': 'NewSecure@99'},
+        headers={'Authorization': f'Bearer {guard_token}'},
+    )
+    assert resp.status_code == 200
+    assert 'updated' in resp.get_json().get('message', '').lower()
+
+
+def test_change_password_wrong_current(client, admin_token):
+    """Returns 401 when current password is incorrect."""
+    resp = client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'wrongpassword', 'new_password': 'NewSecure@99'},
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert resp.status_code == 401
+    assert 'incorrect' in resp.get_json().get('error', '').lower()
+
+
+def test_change_password_too_short(client, admin_token):
+    """Returns 400 when new password is shorter than 8 characters."""
+    resp = client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'adminpass', 'new_password': 'short'},
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert resp.status_code == 400
+    assert '8' in resp.get_json().get('error', '')
+
+
+def test_change_password_same_as_current(client, admin_token):
+    """Returns 400 when new password is identical to the current password."""
+    resp = client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'adminpass', 'new_password': 'adminpass'},
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert resp.status_code == 400
+    assert 'differ' in resp.get_json().get('error', '').lower()
+
+
+def test_change_password_missing_fields(client, admin_token):
+    """Returns 400 when required fields are missing."""
+    resp = client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'adminpass'},
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert resp.status_code == 400
+
+
+def test_change_password_unauthenticated(client):
+    """Returns 401 when no JWT is provided."""
+    resp = client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'adminpass', 'new_password': 'NewSecure@99'},
+    )
+    assert resp.status_code == 401

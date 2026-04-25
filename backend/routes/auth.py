@@ -131,3 +131,45 @@ def logout():
     response = jsonify({'message': 'Logged out successfully'})
     unset_jwt_cookies(response)
     return response, 200
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+@jwt_required()
+@limiter.limit('5 per minute', exempt_when=lambda: current_app.config.get('TESTING', False))
+def change_password():
+    """
+    Change the authenticated user's password.
+
+    Body JSON:
+        current_password (str): the user's existing password
+        new_password     (str): the desired new password (min 8 chars)
+    """
+    data = request.get_json(silent=True) or {}
+    current_pw = data.get('current_password', '')
+    new_pw = data.get('new_password', '')
+
+    if not current_pw or not new_pw:
+        return jsonify({'error': 'current_password and new_password are required'}), 400
+
+    if len(new_pw) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters'}), 400
+
+    identity = get_jwt_identity()
+    user = db.session.get(User, int(identity))
+    if not user or not user.is_active:
+        return jsonify({'error': 'User not found'}), 404
+
+    if not bcrypt.check_password_hash(user.password_hash, current_pw):
+        current_app.logger.warning(
+            'change_password: wrong current password for user id=%s', identity
+        )
+        return jsonify({'error': 'Current password is incorrect'}), 401
+
+    if bcrypt.check_password_hash(user.password_hash, new_pw):
+        return jsonify({'error': 'New password must differ from the current password'}), 400
+
+    user.password_hash = bcrypt.generate_password_hash(new_pw).decode('utf-8')
+    db.session.commit()
+
+    current_app.logger.info('Password changed for user id=%s', identity)
+    return jsonify({'message': 'Password updated successfully'}), 200

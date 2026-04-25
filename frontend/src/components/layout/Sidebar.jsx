@@ -138,6 +138,7 @@ function Sidebar() {
               <button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
+                aria-label="Logout"
                 className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
               >
                 <div className="flex items-center gap-2.5">

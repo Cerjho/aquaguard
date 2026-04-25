@@ -95,7 +95,7 @@ Set-Location ..
 
 ```powershell
 
-Copy-Item .\.env.example .\backend\.env
+Copy-Item .\backend\.env.example .\backend\.env
 @"
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_WS_URL=http://localhost:5000

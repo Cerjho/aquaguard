@@ -76,7 +76,7 @@ function useAlertSocket({
     // Establish Socket.IO connection with credentialed cookie handshake.
     // Use polling-only transport since backend uses async_mode='threading' which
     // doesn't support native WebSocket upgrade (causes "Invalid frame header" errors).
-    const wsUrl = WS_URL || 'http://localhost:5000';
+    const wsUrl = WS_URL;
     logger.info('[AquaGuard WS] Connecting to:', wsUrl);
     
     const socket = io(wsUrl, {

@@ -255,15 +255,12 @@ function CameraCard({
           </div>
         )}
 
-        {/* Hover glass header background */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 -translate-y-2 bg-white/30 backdrop-blur-md opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100" />
 
         {/* Always-visible floating context pills + hover menu */}
         <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between p-3" ref={telemetryMenuRef}>
-          <span className="inline-flex max-w-[62%] items-center rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-900 shadow-sm backdrop-blur-md truncate">
+          <span className="text-[11px] font-bold text-slate-900 truncate max-w-[55%]">
             {camera.zone_name || camera.zone_id}
           </span>
-
           <div className="relative flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white/80 px-2 py-1 text-[11px] font-medium text-emerald-700 shadow-sm backdrop-blur-md">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

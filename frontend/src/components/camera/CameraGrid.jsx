@@ -28,6 +28,8 @@ function CameraGrid({ reloadToken = 0 }) {
   const [cameraRuntimeMap, setCameraRuntimeMap] = useState({});
   const [streamTokens, setStreamTokens] = useState({});
   const [focusedCamera, setFocusedCamera] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMultiViewOpen, setIsMultiViewOpen] = useState(false);
   const [zoneEvents, setZoneEvents] = useState([]);
   const [zoneAlerts, setZoneAlerts] = useState([]);
   const [streamSessionId, setStreamSessionId] = useState(() => Date.now());
@@ -242,6 +244,7 @@ function CameraGrid({ reloadToken = 0 }) {
     setFocusedCamera(null);
     setZoneEvents([]);
     setZoneAlerts([]);
+    setIsDetailsOpen(false);
   }, []);
 
   const openFocus = useCallback(async (camera, triggerElement) => {
@@ -408,97 +411,267 @@ function CameraGrid({ reloadToken = 0 }) {
           role="dialog"
           aria-modal="true"
           aria-label={`Focused view for ${focusedCamera.zone_name || focusedCamera.zone_id}`}
-          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm p-3 sm:p-6"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
+          transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeFocus(); }}
         >
-          <div className="mx-auto h-full max-h-[94vh] w-full max-w-7xl rounded-3xl bg-white/95 backdrop-blur-2xl border border-[#e7ecef] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="flex items-center justify-between border-b border-[#e7ecef] px-5 sm:px-7 py-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500 font-semibold">Focused camera</p>
-                <h3 className="text-lg sm:text-xl font-semibold text-slate-900">
+          {/* Main cinematic container */}
+          <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black shadow-2xl">
+
+            {/* Video / stream fill */}
+            {!isDetectionEngineOnline ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-4">
+                <svg className="w-14 h-14 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                <span className="text-sm font-medium">Detection engine offline</span>
+                <span className="text-xs text-slate-500">Live feed unavailable</span>
+              </div>
+            ) : focusedStreamUrl ? (
+              <img
+                src={focusedStreamUrl}
+                alt={`Live feed — ${focusedCamera.zone_name || focusedCamera.zone_id}`}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
+                Stream unavailable
+              </div>
+            )}
+
+            {/* ── TOP OVERLAY ─────────────────────────────────── */}
+            <div className="absolute top-0 left-0 w-full p-5 sm:p-6 flex justify-between items-start z-10 pointer-events-none">
+              {/* Camera info */}
+              <div className="pointer-events-auto">
+                <div className="inline-flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-white leading-tight [text-shadow:0_2px_8px_rgba(0,0,0,0.9)]">
                   {focusedCamera.zone_name || focusedCamera.zone_id}
                 </h3>
-                <p className="text-xs text-slate-500">{focusedCamera.location_description || focusedCamera.zone_id}</p>
+                <p className="text-sm text-white/70 mt-0.5 [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
+                  {focusedCamera.location_description || focusedCamera.zone_id}
+                </p>
               </div>
+
+              {/* Hamburger menu */}
+              <button
+                type="button"
+                onClick={() => setIsDetailsOpen((v) => !v)}
+                className="pointer-events-auto bg-transparent text-white hover:opacity-80 active:scale-95 transition-all p-2 rounded-full"
+                aria-label="Toggle camera details panel"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+
+            {/* ── SLIDING DETAILS PANEL ──────────────────────── */}
+            <motion.div
+              initial={false}
+              animate={{ x: isDetailsOpen ? 0 : '110%' }}
+              transition={{ duration: prefersReducedMotion ? 0.01 : 0.35, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute top-0 right-0 h-full w-72 sm:w-80 z-20 bg-white/10 backdrop-blur-2xl border-l border-white/10 p-6 flex flex-col gap-5 overflow-y-auto"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-widest text-white/50 font-semibold">Camera Details</p>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailsOpen(false)}
+                  className="text-white/60 hover:text-white transition-colors"
+                  aria-label="Close details panel"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Telemetry */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/40">Telemetry</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-white/50">Zone</span>
+                    <span className="text-white font-medium">{focusedCamera.zone_name || focusedCamera.zone_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/50">Status</span>
+                    <span className="text-emerald-300 font-medium capitalize">{normalizeServiceStatus(focusedHealth?.status || focusedCamera.runtime_status || 'unknown')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/50">FPS</span>
+                    <span className="text-white font-medium">{typeof focusedHealth?.fps_actual === 'number' ? focusedHealth.fps_actual.toFixed(1) : '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/50">Resolution</span>
+                    <span className="text-white font-medium">{focusedCamera.resolution || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent detections */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/40 mb-3">Recent Detections</p>
+                <ul className="space-y-2">
+                  {zoneEvents.length === 0 ? (
+                    <li className="text-xs text-white/30">No recent detections</li>
+                  ) : zoneEvents.map((ev) => (
+                    <li key={ev.event_id || ev.id} className="text-xs text-white/70">
+                      {formatDateTime(ev.timestamp || ev.detected_at)} — {ev.class_label || ev.class_name || 'Detection'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Recent alerts */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/40 mb-3">Recent Alerts</p>
+                <ul className="space-y-2">
+                  {zoneAlerts.length === 0 ? (
+                    <li className="text-xs text-white/30">No recent alerts</li>
+                  ) : zoneAlerts.map((al) => (
+                    <li key={al.alert_id || al.id} className="text-xs text-white/70">
+                      <p className="font-medium text-white/90 capitalize">{al.status || 'unknown'}</p>
+                      <p className="text-white/40">{formatDateTime(al.alerted_at || al.timestamp)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* ── BOTTOM OVERLAY CONTROLS ───────────────────── */}
+            <div className="absolute bottom-6 right-6 flex items-center gap-1 z-10">
+              {/* Grid / multi-view icon */}
+              <button
+                type="button"
+                onClick={() => setIsMultiViewOpen(true)}
+                className="hover:bg-white/10 rounded-full p-2.5 text-white/70 hover:text-white transition-all active:scale-95"
+                aria-label="Open all-cameras overview"
+                title="All cameras"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                </svg>
+              </button>
+
+              {/* Separator */}
+              <span className="h-5 w-px border-l border-white/20 mx-1" />
+
+              {/* Minimize / close icon */}
               <button
                 ref={closeButtonRef}
                 type="button"
                 onClick={closeFocus}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+                className="hover:bg-white/10 rounded-full p-2.5 text-white/70 hover:text-white transition-all active:scale-95"
                 aria-label="Close camera focus and return to camera grid"
+                title="Minimize"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 9L4 4m0 0l5 0M4 4l0 5M15 9l5-5m0 0l-5 0m5 0l0 5M9 15l-5 5m0 0l5 0m-5 0l0-5M15 15l5 5m0 0l-5 0m5 0l0-5" />
+                </svg>
+              </button>
+            </div>
+
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── MULTI-CAMERA OVERVIEW MODAL ───────────────────────── */}
+      {isMultiViewOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="All cameras overview"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setIsMultiViewOpen(false); }}
+        >
+          <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black shadow-2xl flex flex-col">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-white/40 font-semibold">All Cameras</p>
+                <h3 className="text-lg font-bold text-white">
+                  {cameras.length} Camera{cameras.length !== 1 ? 's' : ''} Active
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMultiViewOpen(false)}
+                className="hover:bg-white/10 rounded-full p-2.5 text-white/60 hover:text-white transition-all active:scale-95"
+                aria-label="Close all-cameras overview"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 p-5 sm:p-7 h-[calc(94vh-76px)]">
-              <div className="xl:col-span-8 rounded-3xl overflow-hidden border border-[#e7ecef] bg-slate-900 relative min-h-[320px]">
-                <span className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-emerald-100/95 text-emerald-700 px-3 py-1 text-xs font-semibold shadow-sm">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
-                </span>
+            {/* Camera grid — zero gap, fills all available height */}
+            <div
+              className={`flex-1 min-h-0 grid ${
+                cameras.length === 1 ? 'grid-cols-1' :
+                cameras.length === 2 ? 'grid-cols-2' :
+                cameras.length <= 4 ? 'grid-cols-2' :
+                'grid-cols-3'
+              }`}
+              style={{ gridAutoRows: '1fr' }}
+            >
+              {cameras.map((camera) => {
+                const token = streamTokens[camera.zone_id]?.token;
+                const streamUrl = token
+                  ? `${API_BASE_URL}/api/v1/cameras/${camera.zone_id}/stream?token=${encodeURIComponent(token)}&session=${encodeURIComponent(streamSessionId)}`
+                  : null;
 
-                {!isDetectionEngineOnline ? (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
-                    <svg className="w-12 h-12 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                    <span className="text-sm font-medium">Detection engine offline</span>
-                    <span className="text-xs text-slate-400">Live snapshots unavailable</span>
-                  </div>
-                ) : focusedStreamUrl ? (
-                  <img
-                    src={focusedStreamUrl}
-                    alt={`Focused live feed — ${focusedCamera.zone_name || focusedCamera.zone_id}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-slate-300 text-sm">Stream unavailable</div>
-                )}
-              </div>
+                return (
+                  <button
+                    key={camera.zone_id || camera.id}
+                    type="button"
+                    onClick={() => { setIsMultiViewOpen(false); openFocus(camera); }}
+                    className="relative overflow-hidden group cursor-pointer border-r border-b border-white/10 bg-slate-950 last:border-r-0"
+                  >
+                    {/* Stream fill */}
+                    {streamUrl && isDetectionEngineOnline ? (
+                      <img
+                        src={streamUrl}
+                        alt={`Live feed — ${camera.zone_name || camera.zone_id}`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-slate-700">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.724v6.552a1 1 0 01-1.447.894L15 14M4 8a1 1 0 00-1 1v6a1 1 0 001 1h10a1 1 0 001-1V9a1 1 0 00-1-1H4z" />
+                        </svg>
+                      </div>
+                    )}
 
-              <div className="xl:col-span-4 h-full overflow-hidden rounded-3xl border border-[#e7ecef] bg-white shadow-sm p-4 sm:p-5 flex flex-col gap-5">
-                <section className="rounded-2xl border border-[#e7ecef] bg-[#a3cef1]/10 p-4">
-                  <h4 className="text-sm font-semibold text-slate-900 mb-3">Telemetry</h4>
-                  <div className="space-y-2 text-sm text-slate-700">
-                    <p><span className="text-slate-500">Zone:</span> {focusedCamera.zone_name || focusedCamera.zone_id}</p>
-                    <p><span className="text-slate-500">Health:</span> {normalizeServiceStatus(focusedHealth?.status || focusedCamera.runtime_status || 'unknown')}</p>
-                    <p><span className="text-slate-500">FPS:</span> {typeof focusedHealth?.fps_actual === 'number' ? focusedHealth.fps_actual.toFixed(1) : '—'}</p>
-                  </div>
-                  <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Recent detections</p>
-                    <ul className="text-xs text-slate-600 space-y-1.5">
-                      {zoneEvents.length === 0 ? <li>No recent detections</li> : zoneEvents.map((ev) => (
-                        <li key={ev.event_id || ev.id}>
-                          {formatDateTime(ev.timestamp || ev.detected_at)} — {(ev.class_label || ev.class_name || 'Detection')}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </section>
+                    {/* Label — no vignette, text-shadow for readability */}
+                    <div className="absolute top-3 left-3 text-left pointer-events-none">
+                      <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold leading-none mb-0.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">
+                        {camera.zone_id}
+                      </p>
+                      <p className="text-sm font-bold text-white leading-tight [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
+                        {camera.zone_name || camera.zone_id}
+                      </p>
+                    </div>
 
-                <section className="flex-1 min-h-0 rounded-2xl border border-[#e7ecef] bg-[#ffffff] p-4">
-                  <h4 className="text-sm font-semibold text-slate-900 mb-3">Recent alerts</h4>
-                  <ul className="space-y-2 max-h-full overflow-y-auto pr-1">
-                    {zoneAlerts.length === 0 ? (
-                      <li className="text-xs text-slate-500">No recent alerts</li>
-                    ) : zoneAlerts.map((al) => (
-                      <li
-                        key={al.alert_id || al.id}
-                        className="p-3 text-xs text-slate-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:bg-white border border-transparent hover:border-slate-100 rounded-xl cursor-pointer"
-                      >
-                        <p className="font-medium text-slate-900">{al.status || 'unknown'}</p>
-                        <p className="mt-1 text-slate-500">{formatDateTime(al.alerted_at || al.timestamp)}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              </div>
+                    {/* Hover highlight */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none ring-2 ring-inset ring-white/30" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </motion.div>

@@ -29,19 +29,16 @@ jest.mock('gsap', () => {
 
 // Prevent axios ESM import errors from transitive deps
 jest.mock('../../hooks/useApi', () => ({ post: jest.fn(), get: jest.fn() }));
-jest.mock(
-  '@lottiefiles/dotlottie-react',
-  () => ({
-    DotLottieReact: (props) => <div data-testid="lottie-player" {...props} />,
-  }),
-  { virtual: true }
-);
 
 // Mock useNavigate
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
 }));
+
+// Mock video/image assets imported by the new LoginPage
+jest.mock('../../vector/lifeguard.mp4', () => 'lifeguard.mp4', { virtual: true });
+jest.mock('../../vector/bubbles.png', () => 'bubbles.png', { virtual: true });
 
 const mockLogin = jest.fn();
 
@@ -67,9 +64,9 @@ afterEach(() => {
 });
 
 describe('LoginPage', () => {
-  test('renders email and password fields and sign-in button', () => {
+  test('renders username and password fields and sign-in button', () => {
     renderLoginPage();
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in|login/i })).toBeInTheDocument();
   });
@@ -83,7 +80,7 @@ describe('LoginPage', () => {
 
   test('shows validation error when password is empty', () => {
     renderLoginPage();
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'admin' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in|login/i }));
     expect(screen.getByRole('alert')).toHaveTextContent('Password is required.');
     expect(mockLogin).not.toHaveBeenCalled();
@@ -92,7 +89,7 @@ describe('LoginPage', () => {
   test('calls login with trimmed username and password on valid submit', async () => {
     mockLogin.mockResolvedValue(true);
     renderLoginPage();
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: '  admin  ' } });
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: '  admin  ' } });
     fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in|login/i }));
     expect(mockLogin).toHaveBeenCalledWith('admin', 'secret', false);
@@ -106,7 +103,7 @@ describe('LoginPage', () => {
   test('disables button and inputs when loading', () => {
     renderLoginPage({ loading: true });
     expect(screen.getByRole('button', { name: /sign in|login/i })).toBeDisabled();
-    expect(screen.getByLabelText(/email/i)).toBeDisabled();
+    expect(screen.getByLabelText(/username/i)).toBeDisabled();
     expect(screen.getByLabelText(/^password$/i)).toBeDisabled();
   });
 });

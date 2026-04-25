@@ -568,86 +568,110 @@ function AlertHistory({ headerTabs }) {
 
       <AnimatePresence>
         {selectedIncident && (
-          <>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/30 backdrop-blur-sm">
             <motion.div
-              className="fixed inset-0 z-40 bg-slate-900/25 backdrop-blur-[1px]"
+              className="absolute inset-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedIncident(null)}
             />
-            <motion.aside
-              className="fixed top-0 right-0 z-50 h-full w-full max-w-xl bg-white shadow-md border-l border-[#e7ecef] p-6 overflow-y-auto"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
-              aria-label="Incident detail drawer"
-              data-testid="incident-detail-drawer"
+            
+            <motion.div
+              className="relative w-full max-w-[95vw] xl:max-w-6xl 2xl:max-w-7xl bg-white shadow-2xl rounded-[2rem] p-6 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-8 animate-in fade-in zoom-in-95 duration-200"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              role="dialog"
+              aria-modal="true"
             >
-              <div className="flex items-start justify-between mb-6">
+              {/* Media Player Container */}
+              <div className="w-full md:w-[60%] bg-slate-900 flex items-center justify-center min-h-[300px] rounded-2xl overflow-hidden shadow-inner relative group">
+                {selectedIncident.video_url || selectedIncident.videoUrl ? (
+                  <video 
+                    src={selectedIncident.video_url || selectedIncident.videoUrl} 
+                    controls 
+                    autoPlay 
+                    muted 
+                    className="w-full h-full object-cover aspect-video"
+                  />
+                ) : selectedIncident.snapshot_url || selectedIncident.snapshotUrl ? (
+                  <img
+                    src={selectedIncident.snapshot_url || selectedIncident.snapshotUrl}
+                    alt="Event snapshot"
+                    className="w-full h-full object-cover aspect-video"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 p-10 h-full w-full aspect-video">
+                    <svg className="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm font-medium">Media unavailable</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Bento Grid Metadata */}
+              <div className="w-full md:w-[40%] flex flex-col justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Incident Details</p>
-                  <h3 className="text-xl font-semibold text-slate-900 mt-1">
-                    {selectedIncident.zone_name || selectedIncident.zone_id || 'Unknown Zone'}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedIncident(null)}
-                  className="rounded-full border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 transition-all"
-                  aria-label="Close incident details"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-[#e7ecef] bg-[#a3cef1]/15 p-4 mb-5">
-                <p className="text-xs font-medium text-slate-600 mb-3">Event Snapshot</p>
-                <div className="h-44 rounded-2xl border border-dashed border-slate-300 bg-white flex items-center justify-center text-slate-400 text-sm">
-                  Snapshot placeholder
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                  <p className="text-xs text-slate-500 mb-1">Timestamp</p>
-                  <p className="text-sm font-medium text-slate-900">{formatAlertTime(selectedIncident)}</p>
-                </div>
-                <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                  <p className="text-xs text-slate-500 mb-1">Zone Name</p>
-                  <p className="text-sm font-medium text-slate-900">
-                    {selectedIncident.zone_name || selectedIncident.zone_id || '—'}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500 mb-1">AI Confidence</p>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {formatConfidence(selectedIncident)}
-                    </p>
+                  <div className="flex items-start justify-between mb-8">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-1.5">Incident Details</p>
+                      <h3 className="text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
+                        {selectedIncident.zone_name || selectedIncident.zone_id || 'Unknown Zone'}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIncident(null)}
+                      className="rounded-full bg-slate-50 p-2.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                      aria-label="Close incident details"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="rounded-2xl border border-[#e7ecef] bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500 mb-1">Threat Level</p>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {getThreatLevel(selectedIncident)}
-                    </p>
+
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Timestamp</p>
+                      <p className="text-sm font-bold text-slate-900">{formatAlertTime(selectedIncident)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Status</p>
+                      <p className="text-sm font-bold text-slate-900 capitalize">{selectedIncident.status || 'Alert'}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Confidence</p>
+                      <p className="text-sm font-bold text-slate-900">{formatConfidence(selectedIncident)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Threat Level</p>
+                      <p className="text-sm font-bold text-slate-900">{getThreatLevel(selectedIncident)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-6">
-                <button
-                  type="button"
-                  className="w-full rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium hover:bg-slate-800 transition-all shadow-sm"
-                >
-                  {selectedIncident.status === 'acknowledged' ? 'Export Report' : 'Acknowledge'}
-                </button>
+                <div className="flex gap-3 justify-end mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIncident(null)}
+                    className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                  >
+                    {selectedIncident.status === 'acknowledged' ? 'Download Log' : 'Acknowledge'}
+                  </button>
+                </div>
               </div>
-            </motion.aside>
-          </>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.section>

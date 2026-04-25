@@ -26,7 +26,7 @@ import api from '../../hooks/useApi';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
 import PremiumLoader from '../layout/PremiumLoader.jsx';
 
-const ZONE_LINE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1'];
+const ZONE_LINE_COLORS = ['#10b981', '#f59e0b', '#f43f5e', '#3b82f6', '#06b6d4', '#64748b'];
 
 function AnalyticsChart() {
   const prefersReducedMotion = useReducedMotion();
@@ -36,6 +36,7 @@ function AnalyticsChart() {
   const [eventsData, setEventsData] = useState([]);
   const [lineRangeDays, setLineRangeDays] = useState('7');
   const [frequencyRangeDays, setFrequencyRangeDays] = useState('7');
+  const [zoneRangeDays, setZoneRangeDays] = useState('7');
   const [zoneScope, setZoneScope] = useState('all');
   const [isComparativeView, setIsComparativeView] = useState(false);
   const [activeZoneIndex, setActiveZoneIndex] = useState(null);
@@ -60,9 +61,10 @@ function AnalyticsChart() {
   const maxSelectedRangeDays = useMemo(() => (
     Math.max(
       parseRangeDays(lineRangeDays),
-      parseRangeDays(frequencyRangeDays)
+      parseRangeDays(frequencyRangeDays),
+      parseRangeDays(zoneRangeDays)
     )
-  ), [lineRangeDays, frequencyRangeDays, parseRangeDays]);
+  ), [lineRangeDays, frequencyRangeDays, zoneRangeDays, parseRangeDays]);
 
   const getRangeStartIso = useCallback(() => (
     new Date(Date.now() - maxSelectedRangeDays * 86400000).toISOString()
@@ -212,12 +214,42 @@ function AnalyticsChart() {
     return { data: fallbackLineTimeData, xKey: 'dateLabel' };
   }, [frequencyHasEventSignal, fallbackLineTimeData, frequencyHourlyData]);
 
+  const dynamicZoneData = useMemo(() => {
+    const cutoff = Date.now() - (parseRangeDays(zoneRangeDays) * 86400000);
+    const aggregates = new Map();
+    
+    zoneData.forEach(z => {
+      aggregates.set(String(z.zoneId || z.zone), { ...z, alerts: 0, detections: 0 });
+    });
+
+    eventsData.forEach(event => {
+      const ts = event.timestamp || event.detected_at || event.created_at;
+      const parsed = new Date(ts);
+      if (Number.isNaN(parsed.getTime()) || parsed.getTime() < cutoff) return;
+      
+      const zoneKey = String(event.zone_id || event.zone || event.zone_name || event.camera_zone || 'Unknown Zone');
+      const zoneLabel = String(event.zone_name || event.zone_id || event.zone || event.camera_zone || 'Unknown Zone');
+      
+      if (!aggregates.has(zoneKey)) {
+        aggregates.set(zoneKey, { zoneId: zoneKey, zone: zoneLabel, alerts: 0, detections: 0 });
+      }
+      
+      const current = aggregates.get(zoneKey);
+      current.detections += 1;
+      if (event.alert_triggered || event.status === 'alerted') {
+        current.alerts += 1;
+      }
+    });
+
+    return eventsData.length > 0 ? Array.from(aggregates.values()) : zoneData;
+  }, [eventsData, zoneData, zoneRangeDays, parseRangeDays]);
+
   const filteredZoneData = useMemo(() => {
-    const sorted = [...zoneData].sort((a, b) => (b.alerts || 0) - (a.alerts || 0));
+    const sorted = [...dynamicZoneData].sort((a, b) => (b.alerts || 0) - (a.alerts || 0));
     if (zoneScope === 'top5') return sorted.slice(0, 5);
     if (zoneScope === 'top8') return sorted.slice(0, 8);
     return sorted;
-  }, [zoneData, zoneScope]);
+  }, [dynamicZoneData, zoneScope]);
 
   const zoneTotalAlerts = useMemo(
     () => filteredZoneData.reduce((sum, zone) => sum + (zone.alerts || 0), 0),
@@ -485,16 +517,28 @@ function AnalyticsChart() {
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-slate-900">Incidents by Zone</h3>
-            <FilterDropdown
-              ariaLabel="Zone scope filter"
-              options={[
-                { value: 'all', label: 'All Zones' },
-                { value: 'top5', label: 'Top 5' },
-                { value: 'top8', label: 'Top 8' },
-              ]}
-              value={zoneScope}
-              onChange={setZoneScope}
-            />
+            <div className="flex items-center gap-2">
+              <FilterDropdown
+                ariaLabel="Zone scope filter"
+                options={[
+                  { value: 'all', label: 'All Zones' },
+                  { value: 'top5', label: 'Top 5' },
+                  { value: 'top8', label: 'Top 8' },
+                ]}
+                value={zoneScope}
+                onChange={setZoneScope}
+              />
+              <FilterDropdown
+                ariaLabel="Incidents by zone time range"
+                options={[
+                  { value: '1', label: 'Today' },
+                  { value: '7', label: 'This Wk' },
+                  { value: '30', label: 'This Mo' },
+                ]}
+                value={zoneRangeDays}
+                onChange={setZoneRangeDays}
+              />
+            </div>
           </div>
           {filteredZoneData.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">No zone data available.</p>
@@ -571,24 +615,32 @@ function AnalyticsChart() {
           prefersReducedMotion={prefersReducedMotion}
           delay={0.35}
         >
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900">System Health Summary</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-slate-900">Trend List</h3>
           </div>
-          <div className="flex h-[calc(100%-1.75rem)] flex-col gap-1.5">
+          <div className="flex flex-col gap-4">
             {[
-              { key: 'total', label: 'Total Alerts', value: kpis.totalAlerts, icon: AlertIcon },
-              { key: 'confidence', label: 'Avg Confidence', value: `${kpis.avgConfidence.toFixed(1)}%`, icon: ShieldIcon },
-              { key: 'uptime', label: 'System Uptime', value: kpis.systemUptime, icon: UptimeIcon },
-              { key: 'active', label: 'Active Cameras', value: kpis.activeCameras, icon: CameraIcon },
+              { key: 'total', label: 'Total Alerts', subtext: 'Last 7 days', value: kpis.totalAlerts, trend: 'up', trendVal: '+12%' },
+              { key: 'confidence', label: 'Avg Confidence', subtext: 'System wide', value: `${kpis.avgConfidence.toFixed(1)}%`, trend: 'up', trendVal: '+2.1%' },
+              { key: 'uptime', label: 'System Uptime', subtext: 'Trailing 30d', value: kpis.systemUptime, trend: 'down', trendVal: '-0.5%' },
+              { key: 'active', label: 'Active Cameras', subtext: 'Currently streaming', value: kpis.activeCameras, trend: 'neutral', trendVal: '0%' },
             ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/85 px-2 py-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#a3cef1]/20 text-[#a3cef1]">
-                    <item.icon />
-                  </div>
-                  <span className="text-sm font-medium text-slate-500">{item.label}</span>
+              <div key={item.key} className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{item.subtext}</p>
                 </div>
-                <span className="text-base font-semibold tracking-tight text-slate-800">{item.value}</span>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900">{item.value}</p>
+                  <div className="flex items-center justify-end gap-1 mt-0.5">
+                    {item.trend === 'up' && <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>}
+                    {item.trend === 'down' && <svg className="w-3 h-3 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>}
+                    {item.trend === 'neutral' && <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" /></svg>}
+                    <span className={`text-[10px] font-medium ${item.trend === 'up' ? 'text-emerald-600' : item.trend === 'down' ? 'text-rose-600' : 'text-slate-500'}`}>
+                      {item.trendVal}
+                    </span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -802,41 +854,6 @@ function InteractiveBentoCard({
         {children}
       </div>
     </motion.div>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.04 13.92A2 2 0 004 21h16a2 2 0 001.75-3.22L13.71 3.86a2 2 0 00-3.42 0z" />
-    </svg>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l8 4v6c0 5-3.5 8-8 8s-8-3-8-8V7l8-4z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
-    </svg>
-  );
-}
-
-function UptimeIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="9" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 2" />
-    </svg>
-  );
-}
-
-function CameraIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="7" width="15" height="10" rx="2" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 10l3-2v8l-3-2z" />
-    </svg>
   );
 }
 

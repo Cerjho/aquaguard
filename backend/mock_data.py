@@ -12,6 +12,7 @@ from extensions import db
 from models import CameraZone, DetectionEvent, Alert, SystemLog
 from utils.date_utils import utcnow_naive
 
+
 def add_mock_data():
     app = create_app()
     with app.app_context():
@@ -86,6 +87,7 @@ def add_mock_data():
         db.session.commit()
         print("Mock data added successfully.")
 
+
 def remove_mock_data():
     app = create_app()
     with app.app_context():
@@ -118,6 +120,7 @@ def remove_mock_data():
         
         db.session.commit()
         print("Mock data removed successfully.")
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "remove":

@@ -2,10 +2,30 @@ services:
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aquaguard-backend:${APP_VERSION:-latest}
     build: null # Override the build context to force image pull
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aquaguard-frontend:${APP_VERSION:-latest}
     build: null
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   detection_engine:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/aquaguard-detection:${APP_VERSION:-latest}

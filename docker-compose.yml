@@ -60,7 +60,7 @@ services:
       - --lt-cred-mech
       - --realm=${TURN_REALM:-aquaguard.local}
       - --user=${TURN_USERNAME:-aquaguard}:${TURN_PASSWORD:-aquaguardpass}
-      - --external-ip=127.0.0.1
+      - --external-ip=${TURN_EXTERNAL_IP:-127.0.0.1}
       - --listening-ip=0.0.0.0
       - --min-port=${TURN_RELAY_MIN_PORT:-49152}
       - --max-port=${TURN_RELAY_MAX_PORT:-49200}
@@ -69,6 +69,12 @@ services:
       - "3478:3478/udp"
       - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/udp"
       - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/tcp"
+    healthcheck:
+      test: ["CMD", "turnutils_stunclient", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   backend:
@@ -81,10 +87,11 @@ services:
     environment:
       - FLASK_ENV=production
       - APP_ENV=production
+      - ALLOW_UNSAFE_WERKZEUG=1
       - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://aquaguard:aquaguardpass@mysql:3306/aquaguard}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-me}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://aquaguard.local}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-redis://redis:6379/1}
       - MQTT_BROKER_HOST=mosquitto
@@ -109,9 +116,9 @@ services:
       mosquitto:
         condition: service_healthy
       coturn:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health', timeout=3).read()"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -122,12 +129,15 @@ services:
     build:
       context: ./frontend
       args:
+        # TURN credentials are intentionally omitted here. The frontend
+        # fetches ICE config at runtime from GET /api/v1/webrtc/ice-config
+        # so credentials are never baked into the JS bundle.
         REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000}
         REACT_APP_WS_URL: ${REACT_APP_WS_URL:-http://localhost:5000}
         REACT_APP_WEBRTC_STUN_URLS: ${REACT_APP_WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
-        REACT_APP_WEBRTC_TURN_URL: ${REACT_APP_WEBRTC_TURN_URL:-turn:aquaguard.local:3478?transport=udp}
-        REACT_APP_WEBRTC_TURN_USERNAME: ${REACT_APP_WEBRTC_TURN_USERNAME:-aquaguard}
-        REACT_APP_WEBRTC_TURN_CREDENTIAL: ${REACT_APP_WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
+        REACT_APP_WEBRTC_TURN_URL: ""
+        REACT_APP_WEBRTC_TURN_USERNAME: ""
+        REACT_APP_WEBRTC_TURN_CREDENTIAL: ""
         REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY: ${REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY:-all}
         REACT_APP_WEBRTC_FORCE_RELAY: ${REACT_APP_WEBRTC_FORCE_RELAY:-false}
         REACT_APP_WEBRTC_ENABLE: ${REACT_APP_WEBRTC_ENABLE:-true}
@@ -138,7 +148,7 @@ services:
       backend:
         condition: service_healthy
       coturn:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   detection_engine:

@@ -17,14 +17,13 @@ from config.settings import (
 from runtime_status import update_esp32_heartbeat
 
 
-_TRUE_VALUES = {"1", "true", "yes", "on"}
-
+from utils.env_utils import is_truthy
 
 def _is_enabled(env_name: str, default: bool) -> bool:
     value = os.getenv(env_name)
     if value is None:
         return default
-    return str(value).strip().lower() in _TRUE_VALUES
+    return is_truthy(value)
 
 
 def _normalize_status(raw_status: Any) -> str:

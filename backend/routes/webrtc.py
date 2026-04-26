@@ -231,10 +231,12 @@ def _session_payload(session):
     }
 
 
+from utils.env_utils import is_truthy
+
 def _parse_bool(value, default=False):
     if value is None:
         return default
-    return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+    return is_truthy(value)
 
 
 def _normalize_session_id(raw_session_id):

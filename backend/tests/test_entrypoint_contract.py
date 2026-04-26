@@ -15,11 +15,14 @@ def test_entrypoint_waits_for_database_before_migrations() -> None:
     assert "wait_for_database\nrun_migrations_with_retry" in content
 
 
-def test_entrypoint_uses_gunicorn_for_production() -> None:
+def test_entrypoint_uses_socketio_run_for_all_environments() -> None:
+    """socketio.run() is used instead of gunicorn because gunicorn -k gevent
+    is incompatible with SocketIO async_mode='threading'."""
     content = _entrypoint_text()
 
-    assert 'if [[ "${FLASK_ENV:-development}" == "production" ]]; then' in content
-    assert "exec gunicorn" in content
+    assert "exec python wsgi.py" in content
+    # gunicorn is intentionally NOT used — see Bug 3 in the environment audit.
+    assert "exec gunicorn" not in content
 
 
 def test_entrypoint_allows_optional_seed_step() -> None:

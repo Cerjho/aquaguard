@@ -46,7 +46,10 @@ RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # -- Non-root user ------------------------------------------------------------
 # Create a dedicated unprivileged user. The snapshots volume is writable by this user.
-RUN groupadd --gid 1000 appuser && \
+# Install curl for lightweight health checks.
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --gid 1000 appuser && \
     useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser && \
     mkdir -p /app/snapshots && chown -R appuser:appuser /app
 
@@ -54,7 +57,7 @@ USER appuser
 
 # -- Health check --------------------------------------------------------------
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health', timeout=3).read()" || exit 1
+    CMD curl -f http://localhost:5000/api/health || exit 1
 
 EXPOSE 5000
 

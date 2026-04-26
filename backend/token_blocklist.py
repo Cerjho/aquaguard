@@ -20,11 +20,13 @@ def _env_float(name, default):
         return default
 
 
+from utils.env_utils import is_truthy
+
 def _env_bool(name, default):
     raw = os.getenv(name)
     if raw is None or str(raw).strip() == '':
         return default
-    return str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+    return is_truthy(raw)
 
 
 _APP_ENV = str(

@@ -49,9 +49,9 @@ def _seed_users():
     admin.role = 'admin'
     admin.is_active = True
 
-    guard = User.query.filter_by(username='guard').first()
+    guard = User.query.filter_by(username='lifeguard').first()
     if not guard:
-        guard = User(username='guard', password_hash='', role='lifeguard')
+        guard = User(username='lifeguard', password_hash='', role='lifeguard')
         _db.session.add(guard)
     guard.password_hash = bcrypt.generate_password_hash('guardpass').decode('utf-8')
     guard.role = 'lifeguard'
@@ -83,7 +83,7 @@ def admin_token(client):
 @pytest.fixture()
 def guard_token(client):
     resp = client.post('/api/v1/auth/login', json={
-        'username': 'guard',
+        'username': 'lifeguard',
         'password': 'guardpass',
     })
     return resp.get_json()['access_token']

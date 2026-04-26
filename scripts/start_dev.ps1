@@ -227,6 +227,7 @@ if ($generatedGuardSeed) {
 $env:FLASK_APP = "wsgi.py"
 $env:FLASK_ENV = "development"
 $env:APP_ENV = "development"
+$env:CORS_ALLOWED_ORIGINS = "http://localhost:3000"
 Push-Location "$ROOT\backend"
 try {
     $ErrorActionPreference = 'Stop'
@@ -311,12 +312,27 @@ $backendPortListening = Test-TcpPortListening -Port 5000
 if ($backendPortListening -and -not $ForceRestartBackend) {
     Write-Host "    Port 5000 already listening (backend assumed running, skip start)" -ForegroundColor Yellow
 } else {
+    # Pass all required env vars into the job. Start-Job runs in an isolated
+    # process that does NOT inherit $env: vars set in this session.
+    $backendEnvVars = @{
+        FLASK_APP              = $env:FLASK_APP
+        FLASK_ENV              = $env:FLASK_ENV
+        FLASK_DEBUG            = $env:FLASK_DEBUG
+        APP_ENV                = $env:APP_ENV
+        CORS_ALLOWED_ORIGINS   = $env:CORS_ALLOWED_ORIGINS
+        ALLOW_UNSAFE_WERKZEUG  = $env:ALLOW_UNSAFE_WERKZEUG
+        SEED_ADMIN_PASSWORD    = $env:SEED_ADMIN_PASSWORD
+        SEED_GUARD_PASSWORD    = $env:SEED_GUARD_PASSWORD
+    }
     $backendScript = {
-        param($root, $pythonPath)
+        param($root, $pythonPath, $envVars)
+        foreach ($key in $envVars.Keys) {
+            [System.Environment]::SetEnvironmentVariable($key, $envVars[$key], 'Process')
+        }
         Set-Location "$root\backend"
         & $pythonPath wsgi.py
     }
-    $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_PYTHON
+    $backendJob = Start-Job -ScriptBlock $backendScript -ArgumentList $ROOT, $VENV_PYTHON, $backendEnvVars
     Write-Host "    Flask starting on http://localhost:5000" -ForegroundColor Green
 }
 

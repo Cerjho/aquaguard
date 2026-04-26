@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
+from werkzeug.utils import safe_join
 
 # Allow imports from project-root modules (e.g., config/) when running from backend/.
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,6 +23,7 @@ from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
 from utils.logging_utils import configure_app_logging
 from utils.error_reporting import init_error_reporting
+from utils.env_utils import is_truthy
 from services.esp32_mqtt_bridge import start_esp32_mqtt_bridge
 
 
@@ -39,8 +41,7 @@ def _is_localhost_origin(origin):
     return hostname in {'localhost', '127.0.0.1'}
 
 
-def _is_truthy(value):
-    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
 
 
 def create_app():
@@ -133,6 +134,30 @@ def create_app():
             'message': 'ok',
         }, 200
 
+    # ── Serve alert snapshot images ──────────────────────────────────────────
+    snapshots_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'snapshots')
+
+    @app.get('/snapshots/live/<path:filename>')
+    @limiter.limit('600 per minute')
+    def serve_snapshot(filename):
+        """Serve snapshot images from the snapshots directory.
+
+        Requires a valid JWT cookie or Authorization header.
+        """
+        from flask import send_from_directory, abort
+        from flask_jwt_extended import verify_jwt_in_request
+        from flask_jwt_extended.exceptions import JWTExtendedException
+
+        try:
+            verify_jwt_in_request()
+        except JWTExtendedException:
+            abort(401)
+
+        resolved = safe_join(snapshots_dir, filename)
+        if resolved is None or not os.path.isfile(resolved):
+            abort(404)
+        return send_from_directory(snapshots_dir, filename)
+
     # Register SocketIO handlers
     import sockets  # noqa: F401
 
@@ -153,16 +178,19 @@ def create_app():
 
     # Skip startup bootstrap during migration CLI commands to avoid
     # creating tables before `flask db upgrade` runs.
-    skip_bootstrap = _is_truthy(os.environ.get('AQUAGUARD_SKIP_STARTUP_BOOTSTRAP'))
+    skip_bootstrap = is_truthy(os.environ.get('AQUAGUARD_SKIP_STARTUP_BOOTSTRAP'))
 
     with app.app_context():
         if not skip_bootstrap:
-            db.create_all()
+            # Rely on Alembic migrations in production, rather than db.create_all()
+            if env_name != 'production':
+                db.create_all()
             _ensure_default_users(app)
 
-    bridge = start_esp32_mqtt_bridge(app)
-    if bridge is not None:
-        app.extensions['esp32_mqtt_bridge'] = bridge
+        # Start the MQTT bridge inside the application context
+        bridge = start_esp32_mqtt_bridge(app)
+        if bridge is not None:
+            app.extensions['esp32_mqtt_bridge'] = bridge
 
     return app
 
@@ -173,13 +201,13 @@ def _ensure_default_users(app):
 
     # Default credentials - use env vars if available, otherwise use defaults
     default_admin_password = os.environ.get('SEED_ADMIN_PASSWORD', 'aquaguard2026')
-    default_guard_password = os.environ.get('SEED_GUARD_PASSWORD', 'lifeguard123')
+    default_guard_password = os.environ.get('SEED_GUARD_PASSWORD', 'lifeguard2026')
 
     # Preserve seeded test fixture passwords unless explicitly overridden.
-    reset_passwords_on_startup = os.environ.get(
+    reset_passwords_on_startup = is_truthy(os.environ.get(
         'RESET_DEFAULT_PASSWORDS_ON_STARTUP',
-        '1',
-    ).strip().lower() in {'1', 'true', 'yes', 'on'}
+        '0',
+    ))
     if app.config.get('TESTING'):
         reset_passwords_on_startup = False
 

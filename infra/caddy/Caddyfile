@@ -1,10 +1,22 @@
 https://aquaguard.local {
+    # Uses Caddy's internal CA. Clients must trust this root CA (e.g., via `caddy trust`)
+    # or bypass browser warnings for local development.
     tls internal
 
-    @api path /api/* /socket.io/*
-    reverse_proxy @api backend:5000
+    @api path /api/* /socket.io/* /snapshots/live/*
+    reverse_proxy @api backend:5000 {
+        header_up Host {host}
+        transport http {
+            dial_timeout 5s
+        }
+    }
 
-    reverse_proxy frontend:80
+    reverse_proxy frontend:80 {
+        header_up Host {host}
+        transport http {
+            dial_timeout 5s
+        }
+    }
 }
 
 http://aquaguard.local {

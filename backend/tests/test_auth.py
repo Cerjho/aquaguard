@@ -27,7 +27,7 @@ def test_login_missing_fields(client):
 def test_refresh(client, guard_token):
     # Get a refresh token
     resp = client.post('/api/v1/auth/login', json={
-        'username': 'guard', 'password': 'guardpass'
+        'username': 'lifeguard', 'password': 'guardpass'
     })
     refresh = resp.get_json()['refresh_token']
     resp2 = client.post('/api/v1/auth/refresh',
@@ -38,7 +38,7 @@ def test_refresh(client, guard_token):
 
 def test_refresh_revokes_previous_refresh_token(client):
     login = client.post('/api/v1/auth/login', json={
-        'username': 'guard', 'password': 'guardpass'
+        'username': 'lifeguard', 'password': 'guardpass'
     })
     refresh = login.get_json()['refresh_token']
 
@@ -167,6 +167,13 @@ def test_change_password_success(client, guard_token):
     )
     assert resp.status_code == 200
     assert 'updated' in resp.get_json().get('message', '').lower()
+
+    # Restore the password so subsequent tests using guard_token don't fail
+    client.post(
+        '/api/v1/auth/change-password',
+        json={'current_password': 'NewSecure@99', 'new_password': 'guardpass'},
+        headers={'Authorization': f'Bearer {guard_token}'},
+    )
 
 
 def test_change_password_wrong_current(client, admin_token):

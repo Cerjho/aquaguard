@@ -6,12 +6,15 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # -- Build-time args (baked into the JS bundle at compile time) ----------------
+# IMPORTANT: TURN credentials are intentionally empty. The frontend fetches
+# ICE config at runtime from GET /api/v1/webrtc/ice-config to avoid leaking
+# credentials into the static JS bundle.
 ARG REACT_APP_API_URL=http://localhost:5000
 ARG REACT_APP_WS_URL=http://localhost:5000
 ARG REACT_APP_WEBRTC_STUN_URLS=stun:stun.l.google.com:19302
-ARG REACT_APP_WEBRTC_TURN_URL=turn:localhost:3478?transport=udp
-ARG REACT_APP_WEBRTC_TURN_USERNAME=aquaguard
-ARG REACT_APP_WEBRTC_TURN_CREDENTIAL=aquaguardpass
+ARG REACT_APP_WEBRTC_TURN_URL=
+ARG REACT_APP_WEBRTC_TURN_USERNAME=
+ARG REACT_APP_WEBRTC_TURN_CREDENTIAL=
 ARG REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY=all
 ARG REACT_APP_WEBRTC_FORCE_RELAY=false
 ARG REACT_APP_WEBRTC_ENABLE=true

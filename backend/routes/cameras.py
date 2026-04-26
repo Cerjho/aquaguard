@@ -35,12 +35,12 @@ def list_internal_cameras():
     }), 200
 
 
+from utils.env_utils import is_truthy
+
 @cameras_bp.route('/cameras', methods=['GET'])
 @jwt_required()
 def list_cameras():
-    include_inactive = request.args.get('include_inactive', '').strip().lower() in {
-        '1', 'true', 'yes'
-    }
+    include_inactive = is_truthy(request.args.get('include_inactive'))
     # Soft-deleted cameras use is_active=None and are always excluded from lists.
     query = CameraZone.query.filter(CameraZone.is_active.isnot(None))
     if not include_inactive:

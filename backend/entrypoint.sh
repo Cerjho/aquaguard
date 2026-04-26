@@ -95,13 +95,9 @@ else
 fi
 
 echo "==> Starting AquaGuard backend..."
-if [[ "${FLASK_ENV:-development}" == "production" ]]; then
-	exec gunicorn \
-		-k gevent \
-		-w "${GUNICORN_WORKERS:-1}" \
-		-b "0.0.0.0:${PORT:-5000}" \
-		wsgi:app
-fi
-
-export ALLOW_UNSAFE_WERKZEUG="${ALLOW_UNSAFE_WERKZEUG:-1}"
+# Use socketio.run() for all environments. Gunicorn with -k gevent is
+# incompatible with SocketIO async_mode='threading', silently breaking
+# WebSocket transports, real-time alerts, and camera status events.
+# socketio.run() handles threading mode correctly in both dev and prod.
+export ALLOW_UNSAFE_WERKZEUG="${ALLOW_UNSAFE_WERKZEUG:-0}"
 exec python wsgi.py

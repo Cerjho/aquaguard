@@ -353,6 +353,8 @@ if (-not $SkipFrontend) {
     } else {
         $frontendScript = {
             param($root)
+            $env:REACT_APP_API_URL="http://localhost:5000"
+            $env:REACT_APP_WS_URL="http://localhost:5000"
             Set-Location "$root\frontend"
             npm start
         }

@@ -1,7 +1,6 @@
 import os
 import sys
 from datetime import timedelta
-from urllib.parse import urlparse
 from flask import Flask
 from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
@@ -18,6 +17,8 @@ from config.settings import (
     get_backend_config,
     resolve_backend_environment,
     validate_runtime_settings,
+    _is_localhost_origin,
+    _parse_cors_origins,
 )
 from extensions import db, jwt, socketio, bcrypt, migrate, cors, limiter
 from token_blocklist import is_token_revoked
@@ -35,10 +36,7 @@ def _resolve_database_uri(env_name):
         raise RuntimeError('DATABASE_URL is required in production')
     return 'sqlite:///aquaguard.db'
 
-
-def _is_localhost_origin(origin):
-    hostname = (urlparse(origin).hostname or '').lower()
-    return hostname in {'localhost', '127.0.0.1'}
+SNAPSHOT_RATE_LIMIT = '600 per minute'
 
 
 
@@ -79,9 +77,7 @@ def create_app():
     migrate.init_app(app, db)
     limiter.init_app(app)
     allowed_origins_raw = app.config.get('CORS_ALLOWED_ORIGINS', '')
-    allowed_origins = [
-        origin.strip() for origin in allowed_origins_raw.split(',') if origin.strip()
-    ]
+    allowed_origins = _parse_cors_origins(allowed_origins_raw)
     if not allowed_origins:
         if env_name == 'production':
             raise RuntimeError('CORS_ALLOWED_ORIGINS is required in production')
@@ -140,7 +136,7 @@ def create_app():
     snapshots_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'snapshots')
 
     @app.get('/snapshots/live/<path:filename>')
-    @limiter.limit('600 per minute')
+    @limiter.limit(SNAPSHOT_RATE_LIMIT)
     def serve_snapshot(filename):
         """Serve snapshot images from the snapshots directory.
 

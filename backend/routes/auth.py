@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import (
@@ -62,7 +62,6 @@ def login():
 
     # If remember_me is True, use extended token expiration (30 days)
     # Otherwise use default expiration from config
-    from datetime import timedelta
     if remember_me:
         access_token = create_access_token(
             identity=str(user.id),

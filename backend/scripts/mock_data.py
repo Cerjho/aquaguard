@@ -5,7 +5,7 @@ import random
 from datetime import timedelta
 
 # Allow running from project root or backend/
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
 from extensions import db

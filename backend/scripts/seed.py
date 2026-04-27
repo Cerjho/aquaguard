@@ -8,8 +8,13 @@ import logging
 import os
 import sys
 
-# Allow running from project root or backend/
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Allow running from project root, backend/, or backend/scripts/
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(_SCRIPT_DIR)
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
 
 from app import create_app
 from extensions import db, bcrypt

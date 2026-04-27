@@ -100,6 +100,42 @@ def create_app():
     def check_if_token_revoked(jwt_header, jwt_payload):
         return is_token_revoked(jwt_payload.get('jti'))
 
+    @jwt.unauthorized_loader
+    def unauthorized_callback(callback):
+        return {
+            'status': 'error',
+            'data': None,
+            'message': 'Missing Authorization Header',
+            'error': 'Unauthorized',
+        }, 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(callback):
+        return {
+            'status': 'error',
+            'data': None,
+            'message': 'Invalid token',
+            'error': 'Unauthorized',
+        }, 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return {
+            'status': 'error',
+            'data': None,
+            'message': 'Token has expired',
+            'error': 'Unauthorized',
+        }, 401
+
+    @jwt.revoked_token_loader
+    def revoked_token_callback(jwt_header, jwt_payload):
+        return {
+            'status': 'error',
+            'data': None,
+            'message': 'Token has been revoked',
+            'error': 'Unauthorized',
+        }, 401
+
     # Register blueprints
     from routes.auth import auth_bp
     from routes.events import events_bp
@@ -162,16 +198,20 @@ def create_app():
     @app.errorhandler(HTTPException)
     def handle_http_exception(exc):
         return {
-            'error': exc.name,
+            'status': 'error',
+            'data': None,
             'message': exc.description,
+            'error': exc.name,
         }, exc.code
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(exc):
         app.logger.exception('Unhandled server error: %s', exc)
         return {
-            'error': 'Internal Server Error',
+            'status': 'error',
+            'data': None,
             'message': 'An unexpected error occurred.',
+            'error': 'Internal Server Error',
         }, 500
 
     # Skip startup bootstrap during migration CLI commands to avoid

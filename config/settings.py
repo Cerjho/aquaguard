@@ -1,7 +1,15 @@
 """AquaGuard system-wide constants and runtime profile helpers."""
 
 import os
+import sys
 from urllib.parse import urlparse
+
+# Allow importing backend utils when running from project root
+_BACKEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend')
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+
+from utils.env_utils import is_truthy
 
 # ── Confidence Filter (Rolling Window) ────────────────────────────────────────
 CONFIDENCE_WINDOW_SIZE = 15         # N — rolling window size
@@ -120,7 +128,7 @@ def get_backend_config(env_name):
 def _to_bool(value, default=False):
     if value is None:
         return default
-    return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+    return is_truthy(value)
 
 
 def _to_int(value, default):

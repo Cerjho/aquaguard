@@ -19,8 +19,14 @@ def _env_float(name, default):
     except ValueError:
         return default
 
-
 from utils.env_utils import is_truthy
+
+
+_APP_ENV = str(
+    os.getenv('APP_ENV') or os.getenv('FLASK_ENV') or 'development'
+).strip().lower()
+_DEFAULT_FAIL_CLOSED = _APP_ENV == 'production'
+
 
 def _env_bool(name, default):
     raw = os.getenv(name)
@@ -29,10 +35,6 @@ def _env_bool(name, default):
     return is_truthy(raw)
 
 
-_APP_ENV = str(
-    os.getenv('APP_ENV') or os.getenv('FLASK_ENV') or 'development'
-).strip().lower()
-_DEFAULT_FAIL_CLOSED = _APP_ENV == 'production'
 _TOKEN_BLOCKLIST_FAIL_CLOSED = _env_bool(
     'TOKEN_BLOCKLIST_FAIL_CLOSED',
     _DEFAULT_FAIL_CLOSED,

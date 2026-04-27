@@ -13,6 +13,7 @@ from flask_jwt_extended import verify_jwt_in_request
 from flask_jwt_extended.exceptions import JWTExtendedException
 
 from extensions import socketio, limiter
+from routes.metrics import WEBRTC_SESSIONS_ACTIVE
 
 webrtc_bp = Blueprint('webrtc', __name__, url_prefix='/api/v1/webrtc')
 
@@ -213,6 +214,8 @@ def _cleanup_expired_sessions():
             sid = s['session_id']
             _SESSIONS.pop(sid, None)
             _close_peer_connection(s)
+
+    WEBRTC_SESSIONS_ACTIVE.set(len(_SESSIONS))
 
 
 def _authorized_actor():
@@ -536,6 +539,7 @@ def create_offer():
 
     with _SESSION_LOCK:
         _SESSIONS[session_id] = session_payload
+        WEBRTC_SESSIONS_ACTIVE.set(len(_SESSIONS))
 
     socketio.emit('webrtc_offer_received', {
         'session_id': session_id,
@@ -605,6 +609,7 @@ def add_ice_candidate():
                 },
             }
             _SESSIONS[session_id] = session
+            WEBRTC_SESSIONS_ACTIVE.set(len(_SESSIONS))
 
         if not skip_candidate:
             session['ice_candidates'].append({

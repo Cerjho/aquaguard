@@ -1,6 +1,5 @@
 from flask import Blueprint, Response
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, Gauge
-import time
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Gauge
 from extensions import limiter
 
 metrics_bp = Blueprint('metrics', __name__)

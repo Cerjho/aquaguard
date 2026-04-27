@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
 from extensions import db
-from models import CameraZone, DetectionEvent, Alert, SystemLog
+from models import CameraZone, DetectionEvent, Alert
 from utils.date_utils import utcnow_naive
 
 
@@ -73,17 +73,6 @@ def add_mock_data():
                     )
                     db.session.add(alert)
                     
-        # 3. Add some mock System Logs
-        for k in range(10):
-            log_time = now - timedelta(hours=random.randint(0, 48))
-            log = SystemLog(
-                level=random.choice(["INFO", "WARNING", "ERROR"]),
-                component=random.choice(["DetectionEngine", "API", "Database", "CameraStream"]),
-                message=f"This is a mock system log message {k}",
-                timestamp=log_time
-            )
-            db.session.add(log)
-        
         db.session.commit()
         print("Mock data added successfully.")
 
@@ -114,10 +103,6 @@ def remove_mock_data():
             zones_deleted = CameraZone.query.filter(CameraZone.zone_id.in_(zone_ids)).delete(synchronize_session=False)
             print(f"Deleted {zones_deleted} mock camera zones.")
 
-        # Remove mock System Logs
-        logs_deleted = SystemLog.query.filter(SystemLog.message.like('This is a mock system log message%')).delete(synchronize_session=False)
-        print(f"Deleted {logs_deleted} mock system logs.")
-        
         db.session.commit()
         print("Mock data removed successfully.")
 

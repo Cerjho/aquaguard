@@ -140,23 +140,4 @@ class Alert(db.Model):
         }
 
 
-class SystemLog(db.Model):
-    __tablename__ = 'system_logs'
 
-    id        = db.Column(db.Integer, primary_key=True)
-    level     = db.Column(db.String(10), nullable=False)
-    component = db.Column(db.String(50))
-    message   = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=utcnow_naive)
-
-    def __repr__(self):
-        return f'<SystemLog [{self.level}] {self.component}: {self.message[:40]}>'
-
-    def to_dict(self):
-        return {
-            'id':        self.id,
-            'level':     self.level,
-            'component': self.component,
-            'message':   self.message,
-            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
-        }

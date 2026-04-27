@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy.exc import SQLAlchemyError
 
-from extensions import db
+from extensions import db, limiter
 from models import CameraZone
 from auth_helpers import role_required, validate_internal_api_key
 
@@ -14,6 +14,7 @@ cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 
 
 @cameras_bp.route('/internal/cameras', methods=['GET'])
+@limiter.exempt
 def list_internal_cameras():
     if not validate_internal_api_key():
         return jsonify({'error': 'Unauthorized'}), 401
@@ -310,6 +311,7 @@ def get_all_cameras_health():
 
 
 @cameras_bp.route('/internal/cameras/<zone_id>/health', methods=['GET'])
+@limiter.exempt
 def get_internal_camera_health(zone_id):
     """Internal API for detection engine to report health (no JWT required)."""
     if not validate_internal_api_key():

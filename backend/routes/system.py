@@ -21,6 +21,7 @@ def system_status():
 
 
 @system_bp.route('/heartbeat', methods=['POST'])
+@limiter.exempt
 def heartbeat():
     if not validate_internal_api_key():
         return jsonify({'error': 'Unauthorized'}), 401

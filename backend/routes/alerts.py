@@ -1,6 +1,7 @@
 import logging
 
 from flask import Blueprint, request, jsonify, current_app
+from utils.response_utils import success_response, error_response
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -53,7 +54,7 @@ def list_alerts():
             max_confidence=max_confidence,
         )
     except ValueError:
-        return jsonify({'error': 'min_confidence and max_confidence must be numeric'}), 400
+        return error_response('min_confidence and max_confidence must be numeric', status_code=400)
 
     ordered_query = query.order_by(Alert.triggered_at.desc())
     if page_raw is not None or limit_raw is not None:
@@ -61,17 +62,17 @@ def list_alerts():
         limit = _parse_positive_int(limit_raw, 10)
         total = ordered_query.count()
         rows = ordered_query.offset((page - 1) * limit).limit(limit).all()
-        return jsonify({
+        return success_response({
             'alerts': [_serialize_alert(alert, confidence) for alert, confidence in rows],
             'total': total,
             'page': page,
             'limit': limit,
-        }), 200
+        })
 
     rows = ordered_query.all()
-    return jsonify([
+    return success_response([
         _serialize_alert(alert, confidence) for alert, confidence in rows
-    ]), 200
+    ])
 
 
 @alerts_bp.route('/alerts/<alert_id>/acknowledge', methods=['POST'])
@@ -80,7 +81,7 @@ def acknowledge_alert(alert_id):
     alert = Alert.query.filter_by(alert_id=alert_id).first_or_404()
 
     if alert.status == 'acknowledged':
-        return jsonify({'error': 'Alert already acknowledged'}), 409
+        return error_response('Alert already acknowledged', status_code=409)
 
     try:
         user_id = int(get_jwt_identity())
@@ -100,6 +101,6 @@ def acknowledge_alert(alert_id):
     except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error acknowledging alert: {exc}')
-        return jsonify({'error': 'Database error'}), 500
+        return error_response('Database error', status_code=500)
 
-    return jsonify(alert.to_dict()), 200
+    return success_response(alert.to_dict())

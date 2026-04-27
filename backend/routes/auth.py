@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify, current_app
+from utils.response_utils import success_response, error_response
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -40,21 +41,21 @@ def login():
     current_app.logger.info('Login attempt for user: %s', username)
 
     if not isinstance(remember_me, bool):
-        return jsonify({'error': 'remember_me must be a boolean'}), 400
+        return error_response('remember_me must be a boolean', status_code=400)
 
     if not username or not password:
         current_app.logger.warning('Login failed: missing username or password')
-        return jsonify({'error': 'username and password required'}), 400
+        return error_response('username and password required', status_code=400)
 
     user = User.query.filter_by(username=username, is_active=True).first()
 
     if not user:
         current_app.logger.warning('Login failed: user "%s" not found or inactive', username)
-        return jsonify({'error': 'Invalid credentials'}), 401
+        return error_response('Invalid credentials', status_code=401)
 
     if not bcrypt.check_password_hash(user.password_hash, password):
         current_app.logger.warning('Login failed: wrong password for user "%s"', username)
-        return jsonify({'error': 'Invalid credentials'}), 401
+        return error_response('Invalid credentials', status_code=401)
 
     current_app.logger.info('Login SUCCESS for user: %s (id=%s)', username, user.id)
 
@@ -99,7 +100,7 @@ def refresh():
     identity = get_jwt_identity()
     user = db.session.get(User, int(identity))
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return error_response('User not found', status_code=404)
 
     additional_claims = {'role': user.role}
     access_token = create_access_token(identity=identity, additional_claims=additional_claims)
@@ -118,8 +119,8 @@ def me():
     identity = get_jwt_identity()
     user = db.session.get(User, int(identity))
     if not user or not user.is_active:
-        return jsonify({'error': 'User not found or inactive'}), 404
-    return jsonify({'user': user.to_dict()}), 200
+        return error_response('User not found or inactive', status_code=404)
+    return success_response({'user': user.to_dict()})
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -148,27 +149,27 @@ def change_password():
     new_pw = data.get('new_password', '')
 
     if not current_pw or not new_pw:
-        return jsonify({'error': 'current_password and new_password are required'}), 400
+        return error_response('current_password and new_password are required', status_code=400)
 
     if len(new_pw) < 8:
-        return jsonify({'error': 'New password must be at least 8 characters'}), 400
+        return error_response('New password must be at least 8 characters', status_code=400)
 
     identity = get_jwt_identity()
     user = db.session.get(User, int(identity))
     if not user or not user.is_active:
-        return jsonify({'error': 'User not found'}), 404
+        return error_response('User not found', status_code=404)
 
     if not bcrypt.check_password_hash(user.password_hash, current_pw):
         current_app.logger.warning(
             'change_password: wrong current password for user id=%s', identity
         )
-        return jsonify({'error': 'Current password is incorrect'}), 401
+        return error_response('Current password is incorrect', status_code=401)
 
     if bcrypt.check_password_hash(user.password_hash, new_pw):
-        return jsonify({'error': 'New password must differ from the current password'}), 400
+        return error_response('New password must differ from the current password', status_code=400)
 
     user.password_hash = bcrypt.generate_password_hash(new_pw).decode('utf-8')
     db.session.commit()
 
     current_app.logger.info('Password changed for user id=%s', identity)
-    return jsonify({'message': 'Password updated successfully'}), 200
+    return success_response(None, message='Password updated successfully')

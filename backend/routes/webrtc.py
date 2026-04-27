@@ -14,6 +14,7 @@ from flask_jwt_extended.exceptions import JWTExtendedException
 
 from extensions import socketio, limiter
 from routes.metrics import WEBRTC_SESSIONS_ACTIVE
+from utils.response_utils import success_response, error_response
 
 webrtc_bp = Blueprint('webrtc', __name__, url_prefix='/api/v1/webrtc')
 
@@ -237,7 +238,7 @@ def _authorized_actor():
 def _ensure_authorized():
     auth = _authorized_actor()
     if not auth['authorized']:
-        return None, (jsonify({'error': 'Unauthorized'}), 401)
+        return None, error_response('Unauthorized', status_code=401)
     return auth, None
 
 
@@ -471,11 +472,11 @@ def create_offer():
     sdp = data.get('sdp')
     offer_type = data.get('type', 'offer')
     if not zone_id:
-        return jsonify({'error': 'zone_id is required'}), 400
+        return error_response('zone_id is required', status_code=400)
     if not sdp:
-        return jsonify({'error': 'sdp is required'}), 400
+        return error_response('sdp is required', status_code=400)
     if offer_type != 'offer':
-        return jsonify({'error': 'type must be offer'}), 400
+        return error_response('type must be offer', status_code=400)
 
     provided_session_id = data.get('session_id')
     if provided_session_id is None:
@@ -483,7 +484,7 @@ def create_offer():
     else:
         session_id, session_id_error = _normalize_session_id(provided_session_id)
         if session_id_error:
-            return jsonify({'error': session_id_error}), 400
+            return error_response(session_id_error, status_code=400)
     now = _utc_now()
     ttl = timedelta(seconds=_session_ttl_seconds())
     with _SESSION_LOCK:
@@ -547,7 +548,7 @@ def create_offer():
         'revision': revision,
     })
 
-    return jsonify({
+    return success_response({
         'session_id': session_id,
         'status': session_payload['status'],
         'accepted': True,
@@ -563,7 +564,7 @@ def create_offer():
             'active': session_payload['fallback']['active'],
             'reason': session_payload['fallback']['reason'],
         },
-    }), 202
+    }, status_code=202)
 
 
 @webrtc_bp.route('/ice-candidate', methods=['POST'])
@@ -577,9 +578,9 @@ def add_ice_candidate():
     session_id, session_id_error = _normalize_session_id(data.get('session_id'))
     candidate = data.get('candidate')
     if session_id_error:
-        return jsonify({'error': session_id_error}), 400
+        return error_response(session_id_error, status_code=400)
     if candidate is None:
-        return jsonify({'error': 'candidate is required'}), 400
+        return error_response('candidate is required', status_code=400)
     skip_candidate = _is_empty_candidate(candidate)
 
     now = _utc_now()
@@ -654,7 +655,7 @@ def add_ice_candidate():
         'candidate_count': candidate_count,
     })
 
-    return jsonify({
+    return success_response({
         'session_id': session_id,
         'status': 'collecting_candidates',
         'accepted': True,
@@ -664,7 +665,7 @@ def add_ice_candidate():
         'next': {
             'session_status_url': f'/api/v1/webrtc/session-status/{session_id}',
         },
-    }), 202
+    }, status_code=202)
 
 
 @webrtc_bp.route('/session-status', methods=['GET'])
@@ -675,7 +676,7 @@ def get_session_status_query():
 
     session_id, session_id_error = _normalize_session_id(request.args.get('session_id'))
     if session_id_error:
-        return jsonify({'error': session_id_error}), 400
+        return error_response(session_id_error, status_code=400)
     return _get_session_status(session_id, auth['auth_type'])
 
 
@@ -686,7 +687,7 @@ def get_session_status_path(session_id):
         return error
     session_id, session_id_error = _normalize_session_id(session_id)
     if session_id_error:
-        return jsonify({'error': session_id_error}), 400
+        return error_response(session_id_error, status_code=400)
     return _get_session_status(session_id, auth['auth_type'])
 
 
@@ -696,7 +697,7 @@ def _get_session_status(session_id, auth_type):
         _cleanup_expired_sessions()
         session = _SESSIONS.get(session_id)
         if not session:
-            return jsonify({'error': 'Session not found'}), 404
+            return error_response('Session not found', status_code=404)
 
         if force_fallback:
             session['status'] = 'fallback_active'
@@ -712,7 +713,7 @@ def _get_session_status(session_id, auth_type):
         'fallbackMode': payload['fallback']['transport'],
         'retry_after_ms': 1500,
     }
-    return jsonify(payload), 200
+    return success_response(payload)
 
 
 @webrtc_bp.route('/ice-config', methods=['GET'])
@@ -722,7 +723,7 @@ def get_ice_config():
         return error
 
     config_payload = _ice_servers_from_config()
-    return jsonify({
+    return success_response({
         **config_payload,
         'auth_type': auth['auth_type'],
-    }), 200
+    })

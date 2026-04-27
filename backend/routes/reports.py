@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+from utils.response_utils import success_response, error_response
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -26,7 +27,7 @@ def summary():
     # dashboard refresh bursts with identical filters.
     cached_response = get_cached_summary(cache_key)
     if cached_response is not None:
-        return jsonify(cached_response), 200
+        return success_response(cached_response)
 
     query = DetectionEvent.query
 
@@ -51,10 +52,10 @@ def summary():
         }
         if group_by == 'day':
             response['daily'] = []
-        return jsonify(response), 200
+        return success_response(response)
 
     if group_by == 'day':
         response['daily'] = compute_daily_breakdown(query)
 
     set_cached_summary(cache_key, response)
-    return jsonify(response), 200
+    return success_response(response)

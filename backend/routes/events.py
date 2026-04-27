@@ -6,6 +6,7 @@ import io
 from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
+from utils.response_utils import success_response, error_response
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
 from PIL import Image, UnidentifiedImageError
@@ -74,7 +75,7 @@ def _parse_event_id(raw_value):
     try:
         return str(uuid.UUID(str(raw_value))), None
     except (TypeError, ValueError, AttributeError):
-        return None, jsonify({'error': 'event_id must be a valid UUID'})
+        return None, error_response('event_id must be a valid UUID', status_code=400)
 
 
 def _parse_int_query(name, default, min_value=1, max_value=None):
@@ -82,9 +83,9 @@ def _parse_int_query(name, default, min_value=1, max_value=None):
     try:
         value = int(raw)
     except (TypeError, ValueError):
-        return None, jsonify({'error': f'{name} must be an integer'})
+        return None, error_response(f'{name} must be an integer', status_code=400)
     if value < min_value:
-        return None, jsonify({'error': f'{name} must be >= {min_value}'})
+        return None, error_response(f'{name} must be >= {min_value}', status_code=400)
     if max_value is not None and value > max_value:
         return max_value, None
     return value, None
@@ -99,11 +100,11 @@ def create_event():
                 'alert_triggered', 'detected_at']
     missing = [f for f in required if f not in data]
     if missing:
-        return jsonify({'error': f'Missing fields: {missing}'}), 400
+        return error_response(f'Missing fields: {missing}', status_code=400)
 
     event_id, event_id_error = _parse_event_id(data.get('event_id'))
     if event_id_error is not None:
-        return event_id_error, 400
+        return event_id_error
     snapshot_path = None
 
     # Save snapshot if provided
@@ -113,7 +114,7 @@ def create_event():
             os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
             img_data = base64.b64decode(snapshot_b64, validate=True)
             if len(img_data) > MAX_SNAPSHOT_BYTES:
-                return jsonify({'error': 'Snapshot too large'}), 413
+                return error_response('Snapshot too large', status_code=413)
             image_obj = Image.open(io.BytesIO(img_data))
             image_obj.verify()
             snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
@@ -128,9 +129,9 @@ def create_event():
                 temp_path = temp_file.name
             os.replace(temp_path, snapshot_path)
         except (base64.binascii.Error, ValueError):
-            return jsonify({'error': 'Invalid snapshot encoding'}), 400
+            return error_response('Invalid snapshot encoding', status_code=400)
         except UnidentifiedImageError:
-            return jsonify({'error': 'Invalid image data'}), 400
+            return error_response('Invalid image data', status_code=400)
         except OSError as exc:
             current_app.logger.warning(f'Failed to save snapshot: {exc}')
             snapshot_path = None
@@ -160,7 +161,7 @@ def create_event():
     except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error saving event: {exc}')
-        return jsonify({'error': 'Database error'}), 500
+        return error_response('Database error', status_code=500)
     try:
         socketio.emit('detection_event', _serialize_detection_event_payload(event))
         socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
@@ -204,7 +205,7 @@ def create_event():
         result['alert'] = alert_dict
         # Backward-compatible convenience field for clients expecting top-level alert_id
         result['alert_id'] = alert_dict.get('alert_id')
-    return jsonify(result), 201
+    return success_response(result, status_code=201)
 
 
 @events_bp.route('/events', methods=['GET'])
@@ -219,10 +220,10 @@ def list_events():
     max_confidence  = request.args.get('max_confidence')
     page, page_error = _parse_int_query('page', 1, min_value=1)
     if page_error is not None:
-        return page_error, 400
+        return page_error
     limit, limit_error = _parse_int_query('limit', 20, min_value=1, max_value=100)
     if limit_error is not None:
-        return limit_error, 400
+        return limit_error
 
     query = apply_event_filters(
         DetectionEvent.query,
@@ -248,16 +249,16 @@ def list_events():
     except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error('Failed to fetch events: %s', exc)
-        return jsonify({
+        return success_response({
             'total': 0,
             'page': page,
             'limit': limit,
             'events': [],
-        }), 200
+        })
 
-    return jsonify({
+    return success_response({
         'total': pagination.total,
         'page':  page,
         'limit': limit,
         'events': [e.to_dict() for e in pagination.items],
-    }), 200
+    })

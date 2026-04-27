@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, current_app
+from utils.response_utils import success_response, error_response
 from flask_jwt_extended import jwt_required
 
 from runtime_status import get_runtime_status, update_esp32_heartbeat
@@ -17,19 +18,19 @@ system_bp = Blueprint('system', __name__, url_prefix='/api/v1/system')
 )
 @jwt_required()
 def system_status():
-    return jsonify(get_runtime_status()), 200
+    return success_response(get_runtime_status())
 
 
 @system_bp.route('/heartbeat', methods=['POST'])
 @limiter.exempt
 def heartbeat():
     if not validate_internal_api_key():
-        return jsonify({'error': 'Unauthorized'}), 401
+        return error_response('Unauthorized', status_code=401)
 
     data = request.get_json(silent=True) or {}
     device_id = data.get('device_id')
     if not device_id:
-        return jsonify({'error': 'device_id is required'}), 400
+        return error_response('device_id is required', status_code=400)
 
     status = data.get('status', 'online')
     uptime_ms = data.get('uptime_ms')
@@ -47,4 +48,4 @@ def heartbeat():
         uptime_ms=uptime_ms,
         timestamp=timestamp,
     )
-    return jsonify({'message': 'heartbeat accepted'}), 200
+    return success_response(None, message='heartbeat accepted')

@@ -2,6 +2,7 @@ import os
 import time
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, current_app, Response
+from utils.response_utils import success_response, error_response
 from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,10 +18,10 @@ cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 @limiter.exempt
 def list_internal_cameras():
     if not validate_internal_api_key():
-        return jsonify({'error': 'Unauthorized'}), 401
+        return error_response('Unauthorized', status_code=401)
 
     cameras = CameraZone.query.filter_by(is_active=True).all()
-    return jsonify({
+    return success_response({
         'cameras': [
             {
                 'zone_id': camera.zone_id,
@@ -33,7 +34,7 @@ def list_internal_cameras():
             }
             for camera in cameras
         ]
-    }), 200
+    })
 
 
 from utils.env_utils import is_truthy
@@ -47,7 +48,7 @@ def list_cameras():
     if not include_inactive:
         query = query.filter_by(is_active=True)
     cameras = query.all()
-    return jsonify([c.to_dict() for c in cameras]), 200
+    return success_response([c.to_dict() for c in cameras])
 
 
 @cameras_bp.route('/cameras', methods=['POST'])
@@ -58,13 +59,13 @@ def create_camera():
     required = ['zone_id', 'zone_name', 'rtsp_url']
     missing = [f for f in required if not data.get(f)]
     if missing:
-        return jsonify({'error': f'Missing fields: {missing}'}), 400
+        return error_response(f'Missing fields: {missing}', status_code=400)
 
     if CameraZone.query.filter_by(zone_id=data['zone_id']).first():
-        return jsonify({'error': 'zone_id already exists'}), 409
+        return error_response('zone_id already exists', status_code=409)
 
     if 'is_active' in data and not isinstance(data.get('is_active'), bool):
-        return jsonify({'error': 'is_active must be a boolean'}), 400
+        return error_response('is_active must be a boolean', status_code=400)
 
     camera = CameraZone(
         zone_id              = data['zone_id'],
@@ -81,9 +82,9 @@ def create_camera():
     except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error creating camera: {exc}')
-        return jsonify({'error': 'Database error'}), 500
+        return error_response('Database error', status_code=500)
 
-    return jsonify(camera.to_dict()), 201
+    return success_response(camera.to_dict(), status_code=201)
 
 
 @cameras_bp.route('/cameras/<zone_id>', methods=['PUT'])
@@ -97,7 +98,7 @@ def update_camera(zone_id):
     data = request.get_json(silent=True) or {}
 
     if 'is_active' in data and not isinstance(data.get('is_active'), bool):
-        return jsonify({'error': 'is_active must be a boolean'}), 400
+        return error_response('is_active must be a boolean', status_code=400)
 
     for field in [
         'zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active'
@@ -110,9 +111,9 @@ def update_camera(zone_id):
     except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error updating camera: {exc}')
-        return jsonify({'error': 'Database error'}), 500
+        return error_response('Database error', status_code=500)
 
-    return jsonify(camera.to_dict()), 200
+    return success_response(camera.to_dict())
 
 
 @cameras_bp.route('/cameras/<zone_id>', methods=['DELETE'])
@@ -121,13 +122,13 @@ def update_camera(zone_id):
 def delete_camera(zone_id):
     camera = CameraZone.query.filter_by(zone_id=zone_id).first()
     if camera is None:
-        return jsonify({'error': f'Camera {zone_id} not found'}), 404
+        return error_response(f'Camera {zone_id} not found', status_code=404)
 
     if camera.is_active is None:
-        return jsonify({
-            'message': f'Camera {zone_id} already soft deleted',
-            'camera': camera.to_dict(),
-        }), 200
+        return success_response(
+            {'camera': camera.to_dict()},
+            message=f'Camera {zone_id} already soft deleted',
+        )
 
     camera.is_active = None
     try:
@@ -135,12 +136,12 @@ def delete_camera(zone_id):
     except SQLAlchemyError as exc:
         db.session.rollback()
         current_app.logger.error(f'DB error deleting camera: {exc}')
-        return jsonify({'error': 'Database error'}), 500
+        return error_response('Database error', status_code=500)
 
-    return jsonify({
-        'message': f'Camera {zone_id} soft deleted',
-        'camera': camera.to_dict(),
-    }), 200
+    return success_response(
+        {'camera': camera.to_dict()},
+        message=f'Camera {zone_id} soft deleted',
+    )
 
 
 # ── P3-10: MJPEG stream ──────────────────────────────────────────────────────
@@ -193,24 +194,24 @@ def create_stream_token(zone_id):
     CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
     ttl_seconds = _stream_token_ttl_seconds()
     expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
-    return jsonify({
+    return success_response({
         'zone_id': zone_id,
         'stream_token': _generate_stream_token(zone_id),
         'ttl_seconds': ttl_seconds,
         'expires_at': expires_at,
         'expires_in_seconds': ttl_seconds,
-    }), 200
+    })
 
 
 @cameras_bp.route('/cameras/<zone_id>/stream', methods=['GET'])
 def stream_camera(zone_id):
     token = request.args.get('token', '').strip()
     if not token:
-        return jsonify({'error': 'stream token is required'}), 401
+        return error_response('stream token is required', status_code=401)
 
     is_valid, reason = _validate_stream_token(token, zone_id)
     if not is_valid:
-        return jsonify({'error': reason}), 401
+        return error_response(reason, status_code=401)
 
     CameraZone.query.filter_by(
         zone_id=zone_id, is_active=True
@@ -259,24 +260,24 @@ def get_camera_health(zone_id):
 
     status_path = os.path.join(LIVE_DIR, f'{zone_id}_status.json')
     if not os.path.exists(status_path):
-        return jsonify({
+        return success_response({
             'zone_id': zone_id,
             'status': 'unknown',
             'error': 'No health data available - detection engine may not be running',
-        }), 200
+        })
 
     try:
         with open(status_path, 'r', encoding='utf-8') as f:
             import json
             health_data = json.load(f)
-        return jsonify(health_data), 200
+        return success_response(health_data)
     except (OSError, json.JSONDecodeError) as exc:
         current_app.logger.warning(f'Failed to read health data for {zone_id}: {exc}')
-        return jsonify({
+        return success_response({
             'zone_id': zone_id,
             'status': 'error',
             'error': 'Failed to read health data',
-        }), 200
+        })
 
 
 @cameras_bp.route('/cameras/health', methods=['GET'])
@@ -307,7 +308,7 @@ def get_all_cameras_health():
                 'error': 'No health data available',
             })
 
-    return jsonify({'cameras': health_results}), 200
+    return success_response({'cameras': health_results})
 
 
 @cameras_bp.route('/internal/cameras/<zone_id>/health', methods=['GET'])
@@ -315,21 +316,21 @@ def get_all_cameras_health():
 def get_internal_camera_health(zone_id):
     """Internal API for detection engine to report health (no JWT required)."""
     if not validate_internal_api_key():
-        return jsonify({'error': 'Unauthorized'}), 401
+        return error_response('Unauthorized', status_code=401)
 
     status_path = os.path.join(LIVE_DIR, f'{zone_id}_status.json')
     if not os.path.exists(status_path):
-        return jsonify({
+        return success_response({
             'zone_id': zone_id,
             'status': 'unknown',
-        }), 200
+        })
 
     try:
         with open(status_path, 'r', encoding='utf-8') as f:
             import json
-            return jsonify(json.load(f)), 200
+            return success_response(json.load(f))
     except (OSError, json.JSONDecodeError):
-        return jsonify({
+        return success_response({
             'zone_id': zone_id,
             'status': 'error',
-        }), 200
+        })

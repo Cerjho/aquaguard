@@ -112,6 +112,7 @@ def create_app():
     from routes.reports import reports_bp
     from routes.system import system_bp
     from routes.webrtc import webrtc_bp
+    from routes.metrics import metrics_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(events_bp)
@@ -120,6 +121,7 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(webrtc_bp)
+    app.register_blueprint(metrics_bp)
 
     @app.get('/api/health')
     @limiter.exempt

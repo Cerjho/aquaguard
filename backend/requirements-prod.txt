@@ -18,3 +18,4 @@ gunicorn==23.0.0
 gevent==24.11.1
 aiortc==1.9.0
 av==12.3.0
+prometheus-client==0.20.0

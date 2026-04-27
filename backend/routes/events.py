@@ -91,54 +91,59 @@ def _parse_int_query(name, default, min_value=1, max_value=None):
     return value, None
 
 
-@events_bp.route('/events', methods=['POST'])
-def create_event():
-    """Internal endpoint called by the detection engine."""
-    data = request.get_json(silent=True) or {}
-
-    required = ['zone_id', 'track_id', 'confidence_score', 'behavior_flags',
-                'alert_triggered', 'detected_at']
+def _validate_event_payload(data):
+    """Return an error response if required fields are missing, else None."""
+    required = [
+        'zone_id', 'track_id', 'confidence_score', 'behavior_flags',
+        'alert_triggered', 'detected_at',
+    ]
     missing = [f for f in required if f not in data]
     if missing:
         return error_response(f'Missing fields: {missing}', status_code=400)
+    return None
 
-    event_id, event_id_error = _parse_event_id(data.get('event_id'))
-    if event_id_error is not None:
-        return event_id_error
-    snapshot_path = None
 
-    # Save snapshot if provided
-    snapshot_b64 = data.get('snapshot_base64')
-    if snapshot_b64:
-        try:
-            os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
-            img_data = base64.b64decode(snapshot_b64, validate=True)
-            if len(img_data) > MAX_SNAPSHOT_BYTES:
-                return error_response('Snapshot too large', status_code=413)
-            image_obj = Image.open(io.BytesIO(img_data))
-            image_obj.verify()
-            snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
-            with tempfile.NamedTemporaryFile(
-                mode='wb',
-                dir=SNAPSHOTS_DIR,
-                prefix=f'{event_id}_',
-                suffix='.tmp',
-                delete=False,
-            ) as temp_file:
-                temp_file.write(img_data)
-                temp_path = temp_file.name
-            os.replace(temp_path, snapshot_path)
-        except (base64.binascii.Error, ValueError):
-            return error_response('Invalid snapshot encoding', status_code=400)
-        except UnidentifiedImageError:
-            return error_response('Invalid image data', status_code=400)
-        except OSError as exc:
-            current_app.logger.warning(f'Failed to save snapshot: {exc}')
-            snapshot_path = None
+def _save_snapshot(snapshot_b64, event_id):
+    """Decode, validate, and atomically write a base64-encoded JPEG snapshot.
 
-    detected_at = parse_detected_at(data.get('detected_at'))
+    Returns:
+        (snapshot_path, None) on success
+        (None, None) when no snapshot provided or OS write fails
+        (None, error_response) on validation failure
+    """
+    if not snapshot_b64:
+        return None, None
+    try:
+        os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
+        img_data = base64.b64decode(snapshot_b64, validate=True)
+        if len(img_data) > MAX_SNAPSHOT_BYTES:
+            return None, error_response('Snapshot too large', status_code=413)
+        image_obj = Image.open(io.BytesIO(img_data))
+        image_obj.verify()
+        snapshot_path = os.path.join(SNAPSHOTS_DIR, f'{event_id}.jpg')
+        with tempfile.NamedTemporaryFile(
+            mode='wb',
+            dir=SNAPSHOTS_DIR,
+            prefix=f'{event_id}_',
+            suffix='.tmp',
+            delete=False,
+        ) as temp_file:
+            temp_file.write(img_data)
+            temp_path = temp_file.name
+        os.replace(temp_path, snapshot_path)
+        return snapshot_path, None
+    except (base64.binascii.Error, ValueError):
+        return None, error_response('Invalid snapshot encoding', status_code=400)
+    except UnidentifiedImageError:
+        return None, error_response('Invalid image data', status_code=400)
+    except OSError as exc:
+        current_app.logger.warning('Failed to save snapshot: %s', exc)
+        return None, None
 
-    event = DetectionEvent(
+
+def _build_detection_event(data, event_id, snapshot_path, detected_at):
+    """Construct a DetectionEvent ORM object from validated payload fields."""
+    return DetectionEvent(
         event_id         = event_id,
         zone_id          = data['zone_id'],
         track_id         = data.get('track_id'),
@@ -154,14 +159,22 @@ def create_event():
         detected_at      = detected_at,
         raw_payload      = data,
     )
-    db.session.add(event)
 
+
+def _persist_event(event):
+    """Add and commit a DetectionEvent. Roll back and return error on failure."""
+    db.session.add(event)
     try:
         db.session.commit()
     except SQLAlchemyError as exc:
         db.session.rollback()
-        current_app.logger.error(f'DB error saving event: {exc}')
+        current_app.logger.error('DB error saving event: %s', exc)
         return error_response('Database error', status_code=500)
+    return None
+
+
+def _emit_detection_signals(event, event_id):
+    """Emit SocketIO signals indicating a new detection event was ingested."""
     try:
         socketio.emit('detection_event', _serialize_detection_event_payload(event))
         socketio.emit('camera_status', {'zone_id': event.zone_id, 'status': 'online'})
@@ -171,39 +184,72 @@ def create_event():
             'message': f'Event received from {event.zone_id}',
         })
     except (RuntimeError, ValueError, OSError) as exc:
-        current_app.logger.error('SocketIO emit failed for detection event %s: %s', event_id, exc)
-
-    alert_dict = None
-    if event.alert_triggered:
-        alert = Alert(
-            alert_id     = str(uuid.uuid4()),
-            event_id     = event_id,
-            zone_id      = event.zone_id,
-            status       = 'unacknowledged',
-            triggered_at = parse_detected_at(None),
+        current_app.logger.error(
+            'SocketIO emit failed for detection event %s: %s', event_id, exc
         )
-        db.session.add(alert)
-        try:
-            db.session.commit()
-        except SQLAlchemyError as exc:
-            db.session.rollback()
-            current_app.logger.error(f'DB error saving alert: {exc}')
-        else:
-            # emit AFTER commit so alert_id exists in DB
-            alert_dict = _serialize_alert_event_payload(alert, event)
-            try:
-                socketio.emit('alert_event', alert_dict)
-            except (RuntimeError, ValueError, OSError) as exc:
-                current_app.logger.error(
-                    'SocketIO emit failed for alert event %s: %s',
-                    event_id,
-                    exc,
-                )
+
+
+def _create_and_emit_alert(event, event_id):
+    """Create an Alert record if the event triggered one, then emit alert_event.
+
+    Returns the serialized alert dict on success, or None if no alert
+    was triggered or if the DB commit failed.
+    """
+    if not event.alert_triggered:
+        return None
+    alert = Alert(
+        alert_id     = str(uuid.uuid4()),
+        event_id     = event_id,
+        zone_id      = event.zone_id,
+        status       = 'unacknowledged',
+        triggered_at = parse_detected_at(None),
+    )
+    db.session.add(alert)
+    try:
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        current_app.logger.error('DB error saving alert: %s', exc)
+        return None
+    # Emit AFTER commit so alert_id exists in DB
+    alert_dict = _serialize_alert_event_payload(alert, event)
+    try:
+        socketio.emit('alert_event', alert_dict)
+    except (RuntimeError, ValueError, OSError) as exc:
+        current_app.logger.error(
+            'SocketIO emit failed for alert event %s: %s', event_id, exc
+        )
+    return alert_dict
+
+
+@events_bp.route('/events', methods=['POST'])
+def create_event():
+    """Internal endpoint called by the detection engine."""
+    data = request.get_json(silent=True) or {}
+
+    if (validation_error := _validate_event_payload(data)) is not None:
+        return validation_error
+
+    event_id, event_id_error = _parse_event_id(data.get('event_id'))
+    if event_id_error is not None:
+        return event_id_error
+
+    snapshot_path, snapshot_error = _save_snapshot(data.get('snapshot_base64'), event_id)
+    if snapshot_error is not None:
+        return snapshot_error
+
+    detected_at = parse_detected_at(data.get('detected_at'))
+    event = _build_detection_event(data, event_id, snapshot_path, detected_at)
+
+    if (db_error := _persist_event(event)) is not None:
+        return db_error
+
+    _emit_detection_signals(event, event_id)
+    alert_dict = _create_and_emit_alert(event, event_id)
 
     result = event.to_dict()
     if alert_dict:
         result['alert'] = alert_dict
-        # Backward-compatible convenience field for clients expecting top-level alert_id
         result['alert_id'] = alert_dict.get('alert_id')
     return success_response(result, status_code=201)
 

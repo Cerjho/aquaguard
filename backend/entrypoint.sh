@@ -89,7 +89,7 @@ run_migrations_with_retry
 
 if is_truthy "${SEED_ON_STARTUP:-true}"; then
 	echo "==> Seeding default users and camera zones..."
-	python seed.py
+	python scripts/seed.py
 else
 	echo "==> Skipping seed.py because SEED_ON_STARTUP is disabled."
 fi

@@ -12,12 +12,13 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import verify_jwt_in_request
 from flask_jwt_extended.exceptions import JWTExtendedException
 
-from extensions import socketio
+from extensions import socketio, limiter
 
 webrtc_bp = Blueprint('webrtc', __name__, url_prefix='/api/v1/webrtc')
 
 _SESSION_LOCK = Lock()
 _SESSIONS = {}
+_MAX_WEBRTC_SESSIONS = 200
 _WEBRTC_LOOP = None
 _WEBRTC_LOOP_THREAD = None
 _WEBRTC_FUTURE_TIMEOUT_SECONDS = 10
@@ -61,6 +62,9 @@ LIVE_SNAPSHOT_DIR = os.path.join(
 )
 
 
+_ZONE_FRAME_CACHE = {}
+_ZONE_CACHE_LOCKS = {}
+
 if AIORTC_AVAILABLE:
     class SnapshotVideoTrack(VideoStreamTrack):
         def __init__(self, zone_id):
@@ -71,18 +75,37 @@ if AIORTC_AVAILABLE:
             self._cache_interval = 0.033  # ~30fps
 
         async def _read_latest_frame_async(self):
-            loop = asyncio.get_event_loop()
-            frame_path = os.path.join(LIVE_SNAPSHOT_DIR, f'{self.zone_id}_latest.jpg')
-            try:
-                # Run I/O in thread pool to avoid blocking event loop
-                frame = await loop.run_in_executor(None, self._safe_read_jpeg, frame_path)
-                if frame is not None:
-                    self._cached_frame = frame
-                    self._frame_timestamp = time.time()
-                    return frame
-            except Exception as exc:
-                LOGGER.warning('WebRTC frame read failed for zone %s: %s', self.zone_id, exc)
-            return self._cached_frame
+            zone_id = self.zone_id
+            if zone_id not in _ZONE_CACHE_LOCKS:
+                _ZONE_CACHE_LOCKS[zone_id] = asyncio.Lock()
+            
+            async with _ZONE_CACHE_LOCKS[zone_id]:
+                cache = _ZONE_FRAME_CACHE.get(zone_id, {'frame': None, 'timestamp': 0})
+                now = time.time()
+                # Serve cached frame if younger than ~33ms (30fps)
+                if now - cache['timestamp'] < self._cache_interval:
+                    self._cached_frame = cache['frame']
+                    self._frame_timestamp = cache['timestamp']
+                    return cache['frame']
+
+                loop = asyncio.get_event_loop()
+                frame_path = os.path.join(LIVE_SNAPSHOT_DIR, f'{self.zone_id}_latest.jpg')
+                try:
+                    # Run I/O in thread pool to avoid blocking event loop
+                    frame = await loop.run_in_executor(None, self._safe_read_jpeg, frame_path)
+                    if frame is not None:
+                        _ZONE_FRAME_CACHE[zone_id] = {'frame': frame, 'timestamp': time.time()}
+                        self._cached_frame = frame
+                        self._frame_timestamp = _ZONE_FRAME_CACHE[zone_id]['timestamp']
+                        return frame
+                except Exception as exc:
+                    LOGGER.warning('WebRTC frame read failed for zone %s: %s', self.zone_id, exc)
+                
+                # Update timestamp on failure to avoid spamming disk IO
+                if cache['timestamp'] == 0:
+                    _ZONE_FRAME_CACHE[zone_id] = {'frame': None, 'timestamp': time.time()}
+                
+                return self._cached_frame
 
         def _safe_read_jpeg(self, path):
             """Read JPEG with validation to avoid corrupted frames."""
@@ -177,6 +200,19 @@ def _cleanup_expired_sessions():
         _SESSIONS.pop(session_id, None)
     for payload in expired_payloads:
         _close_peer_connection(payload)
+
+    # Enforce maximum session bounds
+    if len(_SESSIONS) > _MAX_WEBRTC_SESSIONS:
+        # Evict oldest sessions
+        sorted_sessions = sorted(
+            _SESSIONS.values(),
+            key=lambda x: x.get('updated_at', datetime.min.replace(tzinfo=timezone.utc))
+        )
+        to_remove = sorted_sessions[:len(_SESSIONS) - _MAX_WEBRTC_SESSIONS]
+        for s in to_remove:
+            sid = s['session_id']
+            _SESSIONS.pop(sid, None)
+            _close_peer_connection(s)
 
 
 def _authorized_actor():
@@ -414,12 +450,14 @@ def _close_peer_connection(session):
     if not AIORTC_AVAILABLE:
         return
     try:
-        _run_in_webrtc_loop(_close_peer_connection_async(pc))
-    except RuntimeError as exc:
+        loop = _ensure_webrtc_loop()
+        asyncio.run_coroutine_threadsafe(_close_peer_connection_async(pc), loop)
+    except Exception as exc:
         LOGGER.warning('WebRTC peer connection close failed: %s', exc)
 
 
 @webrtc_bp.route('/offer', methods=['POST'])
+@limiter.limit('20 per minute')
 def create_offer():
     auth, error = _ensure_authorized()
     if error:
@@ -525,6 +563,7 @@ def create_offer():
 
 
 @webrtc_bp.route('/ice-candidate', methods=['POST'])
+@limiter.limit('60 per minute')
 def add_ice_candidate():
     auth, error = _ensure_authorized()
     if error:

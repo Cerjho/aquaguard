@@ -1,5 +1,27 @@
 from flask import Blueprint, Response
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Gauge
+
+# prometheus_client is optional in CI environments; provide a safe fallback
+try:
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Gauge
+except Exception:  # pragma: no cover - fallback for CI/runtime without prometheus
+    def generate_latest() -> bytes:
+        return b""
+
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+    class Gauge:  # minimal no-op Gauge replacement
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def set(self, *args, **kwargs):
+            return None
+
+        def inc(self, *args, **kwargs):
+            return None
+
+        def dec(self, *args, **kwargs):
+            return None
+
 from extensions import limiter
 
 metrics_bp = Blueprint('metrics', __name__)

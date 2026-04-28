@@ -1,6 +1,7 @@
 import pytest
 
 import routes.webrtc as webrtc_routes
+import services.webrtc_video_service as webrtc_video_service
 
 
 def _auth_headers(token):
@@ -27,17 +28,18 @@ def test_webrtc_offer_accepts_jwt_and_returns_contract_shape(client, admin_token
                        })
     assert resp.status_code == 202
     payload = resp.get_json()
-    assert payload['status'] in {'answer_created', 'fallback_active'}
-    assert payload['accepted'] is True
-    assert payload['session_id']
-    assert payload['next']['ice_candidate_url'] == '/api/v1/webrtc/ice-candidate'
-    assert '/api/v1/webrtc/session-status/' in payload['next']['session_status_url']
-    if payload['status'] == 'answer_created':
-        assert payload['type'] == 'answer'
-        assert payload['sdp']
+    data = payload['data']
+    assert data['status'] in {'answer_created', 'fallback_active'}
+    assert data['accepted'] is True
+    assert data['session_id']
+    assert data['next']['ice_candidate_url'] == '/api/v1/webrtc/ice-candidate'
+    assert '/api/v1/webrtc/session-status/' in data['next']['session_status_url']
+    if data['status'] == 'answer_created':
+        assert data['type'] == 'answer'
+        assert data['sdp']
     else:
-        assert payload['fallback']['active'] is True
-        assert payload['fallback']['reason']
+        assert data['fallback']['active'] is True
+        assert data['fallback']['reason']
 
 
 def test_webrtc_ice_config_accepts_cookie_jwt(client):
@@ -51,7 +53,8 @@ def test_webrtc_ice_config_accepts_cookie_jwt(client):
     resp = client.get('/api/v1/webrtc/ice-config')
     assert resp.status_code == 200
     payload = resp.get_json()
-    assert payload.get('auth_type') == 'jwt_cookie'
+    data = payload['data']
+    assert data.get('auth_type') == 'jwt_cookie'
 
 
 def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
@@ -63,7 +66,7 @@ def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
                             'type': 'offer',
                             'sdp': 'v=0\r\no=- 5 6 IN IP4 127.0.0.1',
                         })
-    session_id = offer.get_json()['session_id']
+    session_id = offer.get_json()['data']['session_id']
 
     candidate_payload = {
         'session_id': session_id,
@@ -77,14 +80,14 @@ def test_webrtc_ice_candidate_and_session_status_flow(client, admin_token):
         json=candidate_payload,
     )
     assert candidate.status_code == 202
-    candidate_payload = candidate.get_json()
+    candidate_payload = candidate.get_json()['data']
     assert candidate_payload['status'] == 'collecting_candidates'
     assert candidate_payload['candidate_count'] >= 1
 
     status = client.get(f'/api/v1/webrtc/session-status/{session_id}',
                         headers=_auth_headers(admin_token))
     assert status.status_code == 200
-    status_payload = status.get_json()
+    status_payload = status.get_json()['data']
     assert status_payload['session_id'] == session_id
     assert status_payload['webrtc']['offer_received'] is True
     assert 'answer_created' in status_payload['webrtc']
@@ -101,14 +104,14 @@ def test_webrtc_session_status_force_fallback(client, admin_token):
                             'type': 'offer',
                             'sdp': 'v=0\r\no=- 9 10 IN IP4 127.0.0.1',
                         })
-    session_id = offer.get_json()['session_id']
+    session_id = offer.get_json()['data']['session_id']
 
     status = client.get(
         f'/api/v1/webrtc/session-status/{session_id}?force_fallback=true',
         headers=_auth_headers(admin_token),
     )
     assert status.status_code == 200
-    payload = status.get_json()
+    payload = status.get_json()['data']
     assert payload['status'] == 'fallback_active'
     assert payload['fallback']['active'] is True
     assert payload['fallback']['reason'] == 'forced_by_client'
@@ -117,7 +120,7 @@ def test_webrtc_session_status_force_fallback(client, admin_token):
 def test_webrtc_ice_config_contract(client, admin_token):
     resp = client.get('/api/v1/webrtc/ice-config', headers=_auth_headers(admin_token))
     assert resp.status_code == 200
-    payload = resp.get_json()
+    payload = resp.get_json()['data']
     assert 'ice_servers' in payload
     assert 'ice_transport_policy' in payload
     assert 'force_relay' in payload
@@ -168,7 +171,7 @@ def test_webrtc_empty_ice_candidate_is_ignored(client, admin_token):
                             'type': 'offer',
                             'sdp': 'v=0\r\no=- 13 14 IN IP4 127.0.0.1',
                         })
-    session_id = offer.get_json()['session_id']
+    session_id = offer.get_json()['data']['session_id']
 
     candidate = client.post(
         '/api/v1/webrtc/ice-candidate',
@@ -181,7 +184,7 @@ def test_webrtc_empty_ice_candidate_is_ignored(client, admin_token):
         },
     )
     assert candidate.status_code == 202
-    candidate_payload = candidate.get_json()
+    candidate_payload = candidate.get_json()['data']
     assert candidate_payload['accepted'] is True
     assert candidate_payload['candidate_ignored'] is True
     assert candidate_payload['candidate_count'] == 0
@@ -191,7 +194,7 @@ def test_webrtc_empty_ice_candidate_is_ignored(client, admin_token):
         headers=_auth_headers(admin_token),
     )
     assert status.status_code == 200
-    status_payload = status.get_json()
+    status_payload = status.get_json()['data']
     assert status_payload['webrtc']['candidate_count'] == 0
     assert status_payload.get('fallback', {}).get('reason') != 'ice_candidate_rejected'
 
@@ -200,9 +203,9 @@ def test_webrtc_offer_survives_missing_opencv_decoder(client, admin_token, monke
     if not webrtc_routes.AIORTC_AVAILABLE:
         pytest.skip(f'aiortc unavailable in test env: {webrtc_routes.AIORTC_IMPORT_ERROR}')
 
-    monkeypatch.setattr(webrtc_routes, '_CV2_DECODER_AVAILABLE', False)
-    monkeypatch.setattr(webrtc_routes, 'cv2', None)
-    monkeypatch.setattr(webrtc_routes, 'np', None)
+    monkeypatch.setattr(webrtc_video_service, '_CV2_DECODER_AVAILABLE', False)
+    monkeypatch.setattr(webrtc_video_service, 'cv2', None)
+    monkeypatch.setattr(webrtc_video_service, 'np', None)
 
     resp = client.post(
         '/api/v1/webrtc/offer',
@@ -216,7 +219,7 @@ def test_webrtc_offer_survives_missing_opencv_decoder(client, admin_token, monke
     )
 
     assert resp.status_code == 202
-    payload = resp.get_json()
+    payload = resp.get_json()['data']
     assert payload['status'] in {'answer_created', 'fallback_active'}
     if payload['status'] == 'fallback_active':
         reason = ((payload.get('fallback') or {}).get('reason') or '').lower()

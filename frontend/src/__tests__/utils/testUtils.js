@@ -167,7 +167,7 @@ export function suppressConsole(patterns = []) {
   };
 }
 
-export default {
+const testUtils = {
   renderWithProviders,
   mockApiResponse,
   createMockFetch,
@@ -176,3 +176,5 @@ export default {
   createMockSocket,
   suppressConsole,
 };
+
+export default testUtils;

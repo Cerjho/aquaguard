@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import DetectionFeed from '../../../components/events/DetectionFeed.jsx';
 import api from '../../../hooks/useApi';
 import { useAlertState, useSocketState } from '../../../context/AlertContext.jsx';
+import { MemoryRouter } from 'react-router-dom';
 
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
@@ -19,8 +20,6 @@ jest.mock('../../../context/AlertContext.jsx', () => ({
 jest.mock('../../../context/DataCacheContext.jsx', () => ({
   useDataCache: jest.fn(),
 }));
-
-import { MemoryRouter } from 'react-router-dom';
 
 async function renderFeed() {
   render(

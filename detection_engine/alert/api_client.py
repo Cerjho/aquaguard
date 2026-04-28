@@ -139,8 +139,12 @@ class APIClient:
             logger.error("API fetch_active_cameras returned non-JSON response")
             raise RuntimeError("Backend camera fetch returned invalid JSON") from exc
 
-        data = payload.get("data") if isinstance(payload, dict) else None
-        cameras = data.get("cameras") if isinstance(data, dict) else None
+        cameras = None
+        if isinstance(payload, dict):
+            cameras = payload.get("cameras")
+            if not isinstance(cameras, list):
+                data = payload.get("data")
+                cameras = data.get("cameras") if isinstance(data, dict) else None
         if not isinstance(cameras, list):
             logger.error(
                 "API fetch_active_cameras malformed payload: expected {'cameras': [...]} got %r",

@@ -202,7 +202,7 @@ export function AlertProvider({ children }) {
 
     try {
       const response = await api.get('/api/v1/system/status');
-      const payload = response?.data || {};
+      const payload = response?.data?.data ?? response?.data ?? {};
       setSystemStatus(payload);
       if (Array.isArray(payload.camera_status)) {
         onCameraStatus(payload.camera_status);
@@ -236,7 +236,8 @@ export function AlertProvider({ children }) {
     }
     try {
       const response = await api.get('/api/v1/cameras/health');
-      const healthRows = Array.isArray(response?.data?.cameras) ? response.data.cameras : [];
+      const payload = response?.data?.data ?? response?.data;
+      const healthRows = Array.isArray(payload?.cameras) ? payload.cameras : [];
       const next = {};
       healthRows.forEach((row) => {
         if (!row || !row.zone_id) return;

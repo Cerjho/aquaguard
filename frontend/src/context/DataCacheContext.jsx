@@ -63,7 +63,11 @@ export function DataCacheProvider({ children }) {
       const res = await api.get('/api/v1/cameras', {
         params: includeInactive ? { include_inactive: true } : {},
       });
-      const data = Array.isArray(res.data) ? res.data : res.data.cameras || [];
+      if (!res || typeof res !== 'object' || res.data === undefined) {
+        throw new Error('Invalid camera response payload');
+      }
+      const payload = res?.data?.data ?? res?.data;
+      const data = Array.isArray(payload) ? payload : payload?.cameras || [];
       setCameras(data);
       camerasLoadedRef.current = true;
       return data;
@@ -114,21 +118,21 @@ export function DataCacheProvider({ children }) {
 
         if (cancelled) return;
 
-        const alertsData = alertsRes?.data;
+        const alertsData = alertsRes?.data?.data ?? alertsRes?.data;
         setAlertHistorySnapshot({
           alerts: Array.isArray(alertsData) ? alertsData : alertsData?.alerts || [],
           total: Array.isArray(alertsData) ? alertsData.length : alertsData?.total || 0,
           fetchedAt: Date.now(),
         });
 
-        const incidentsData = incidentsRes?.data;
+        const incidentsData = incidentsRes?.data?.data ?? incidentsRes?.data;
         setIncidentHistorySnapshot({
           events: Array.isArray(incidentsData) ? incidentsData : incidentsData?.events || [],
           total: Array.isArray(incidentsData) ? incidentsData.length : incidentsData?.total || 0,
           fetchedAt: Date.now(),
         });
 
-        const summaryData = summaryRes?.data;
+        const summaryData = summaryRes?.data?.data ?? summaryRes?.data;
         const zones = Array.isArray(summaryData) ? summaryData : summaryData?.zones || summaryData?.by_zone || [];
         const daily = summaryData?.daily || summaryData?.by_date || [];
         const normalizedZones = zones.map((z) => ({

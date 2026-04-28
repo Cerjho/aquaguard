@@ -7,3 +7,4 @@ numpy==1.26.4
 paho-mqtt==2.1.0
 requests==2.33.0
 python-dotenv==1.0.1
+lapx>=0.5.2

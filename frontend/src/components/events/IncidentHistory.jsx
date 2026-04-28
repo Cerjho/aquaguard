@@ -33,7 +33,7 @@ function IncidentHistory({ headerTabs }) {
           limit: PAGE_SIZE,
         },
       });
-      const data = res.data;
+      const data = res?.data?.data ?? res?.data;
       if (requestId !== requestIdRef.current) return;
       
       if (Array.isArray(data)) {

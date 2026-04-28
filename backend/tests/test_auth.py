@@ -76,7 +76,7 @@ def test_me_endpoint_with_valid_token(client, admin_token):
     resp = client.get('/api/v1/auth/me',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert 'user' in data
     assert data['user']['username'] == 'admin'
     assert data['user']['role'] == 'admin'
@@ -89,10 +89,10 @@ def test_me_endpoint_without_token(client):
 
 
 def test_me_endpoint_with_invalid_token(client):
-    """Test that /me returns 422 when token is invalid."""
+    """Test that /me returns 401 when token is invalid."""
     resp = client.get('/api/v1/auth/me',
                       headers={'Authorization': 'Bearer invalid-token'})
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_login_with_remember_me_false(client):

@@ -1,3 +1,4 @@
+/* eslint-disable testing-library/prefer-screen-queries, jest/no-conditional-expect */
 import { test, expect } from '../fixtures/auth.fixture';
 import { IncidentsPage } from '../pages';
 

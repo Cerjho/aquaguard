@@ -132,8 +132,8 @@ services:
         # TURN credentials are intentionally omitted here. The frontend
         # fetches ICE config at runtime from GET /api/v1/webrtc/ice-config
         # so credentials are never baked into the JS bundle.
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000}
-        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-http://localhost:5000}
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-}
         REACT_APP_WEBRTC_STUN_URLS: ${REACT_APP_WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
         REACT_APP_WEBRTC_TURN_URL: ""
         REACT_APP_WEBRTC_TURN_USERNAME: ""

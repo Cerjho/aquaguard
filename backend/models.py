@@ -138,6 +138,3 @@ class Alert(db.Model):
             'acknowledged_at':  self.acknowledged_at.isoformat() if self.acknowledged_at else None,
             'notes':            self.notes,
         }
-
-
-

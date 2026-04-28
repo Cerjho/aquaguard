@@ -253,7 +253,7 @@ export const createDetectionEvent = (overrides = {}) => ({
   ...overrides,
 });
 
-export default {
+const fixtures = {
   mockCameras,
   mockAlerts,
   mockIncidentHistoryAlerts,
@@ -268,3 +268,5 @@ export default {
   createAlert,
   createDetectionEvent,
 };
+
+export default fixtures;

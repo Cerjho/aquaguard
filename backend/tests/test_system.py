@@ -30,7 +30,7 @@ def test_heartbeat_updates_esp32_status(client, admin_token):
     status = client.get('/api/v1/system/status',
                         headers={'Authorization': f'Bearer {admin_token}'})
     assert status.status_code == 200
-    payload = status.get_json()
+    payload = status.get_json()['data']
     assert 'esp32' in payload
     assert payload['esp32']['device_id'] == 'ESP32_AquaGuard_01'
     assert payload['esp32']['status'] == 'online'
@@ -59,7 +59,7 @@ def test_heartbeat_explicit_offline_status_overrides_fresh_timestamp(client, adm
     status = client.get('/api/v1/system/status',
                         headers={'Authorization': f'Bearer {admin_token}'})
     assert status.status_code == 200
-    payload = status.get_json()
+    payload = status.get_json()['data']
     assert payload['esp32']['status'] == 'offline'
 
 
@@ -78,7 +78,7 @@ def test_heartbeat_stale_timeout_transitions_to_offline(client, admin_token, mon
     status = client.get('/api/v1/system/status',
                         headers={'Authorization': f'Bearer {admin_token}'})
     assert status.status_code == 200
-    payload = status.get_json()
+    payload = status.get_json()['data']
     assert payload['esp32']['status'] == 'offline'
     assert payload['esp32']['heartbeat_age_seconds'] >= 1
 
@@ -87,7 +87,7 @@ def test_system_status_contains_subsystem_freshness_and_health(client, admin_tok
     status = client.get('/api/v1/system/status',
                         headers={'Authorization': f'Bearer {admin_token}'})
     assert status.status_code == 200
-    payload = status.get_json()
+    payload = status.get_json()['data']
 
     assert payload.get('generated_at')
     assert 'subsystems' in payload

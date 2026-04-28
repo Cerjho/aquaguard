@@ -226,7 +226,7 @@ export const staggerDelay = (index, baseDelay = 0.05) => ({
  * Reduced Motion Check
  * Use to respect user's accessibility preferences
  */
-export const useReducedMotion = () => {
+export const prefersReducedMotion = () => {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 };
@@ -236,7 +236,7 @@ export const useReducedMotion = () => {
  * Automatically disables animations if user prefers reduced motion
  */
 export const safeAnimation = (animation) => {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = prefersReducedMotion();
   if (shouldReduce) {
     // Return instant transitions
     return {

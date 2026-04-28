@@ -19,6 +19,7 @@ def _env_float(name, default):
     except ValueError:
         return default
 
+
 from utils.env_utils import is_truthy
 
 

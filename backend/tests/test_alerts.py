@@ -11,7 +11,8 @@ def _make_alert_event(client):
         'alert_triggered':  True,
         'detected_at':      datetime.now(timezone.utc).isoformat(),
     })
-    return resp.get_json().get('alert', {}).get('alert_id')
+    payload = resp.get_json()['data']
+    return (payload.get('alert') or {}).get('alert_id')
 
 
 def test_list_alerts_requires_auth(client):
@@ -23,7 +24,7 @@ def test_list_alerts(client, admin_token):
     resp = client.get('/api/v1/alerts',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-    assert isinstance(resp.get_json(), list)
+    assert isinstance(resp.get_json()['data'], list)
 
 
 def test_list_alerts_filter_unacknowledged(client, admin_token):
@@ -41,7 +42,7 @@ def test_list_alerts_pagination_contract(client, admin_token):
         headers={'Authorization': f'Bearer {admin_token}'},
     )
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert isinstance(data, dict)
     assert isinstance(data.get('alerts'), list)
     assert data.get('page') == 1
@@ -77,7 +78,7 @@ def test_list_alerts_filters_by_zone_time_and_confidence(client, admin_token):
         headers={'Authorization': f'Bearer {admin_token}'},
     )
     assert resp.status_code == 200
-    items = resp.get_json()
+    items = resp.get_json()['data']
     assert len(items) >= 1
     assert all(item['zone_id'] == 'zone_filter_a' for item in items)
 
@@ -92,7 +93,7 @@ def test_acknowledge_alert(client, admin_token):
         headers={'Authorization': f'Bearer {admin_token}'},
     )
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert data['status'] == 'acknowledged'
     assert data['notes'] == 'handled'
 

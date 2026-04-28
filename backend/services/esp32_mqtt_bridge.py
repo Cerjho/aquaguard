@@ -15,9 +15,8 @@ from config.settings import (
     MQTT_TOPIC_DEVICE_STATUS,
 )
 from runtime_status import update_esp32_heartbeat
-
-
 from utils.env_utils import is_truthy
+
 
 def _is_enabled(env_name: str, default: bool) -> bool:
     value = os.getenv(env_name)

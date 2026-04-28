@@ -157,10 +157,8 @@ describe('AlertPanel', () => {
 
     renderAlertPanel({ activeAlert: sampleAlert });
 
-    await waitFor(() => {
-      expect(audioContextMock).toHaveBeenCalled();
-      expect(oscillator.start).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(audioContextMock).toHaveBeenCalled());
+    await waitFor(() => expect(oscillator.start).toHaveBeenCalled());
 
     global.AudioContext = previousAudioContext;
   });

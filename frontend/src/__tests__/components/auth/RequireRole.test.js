@@ -5,7 +5,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import RequireRole from '../../../components/auth/RequireRole';
-import { AuthProvider } from '../../../context/AuthContext';
 
 // Mock the useApi hook to prevent actual API calls
 jest.mock('../../../hooks/useApi', () => ({

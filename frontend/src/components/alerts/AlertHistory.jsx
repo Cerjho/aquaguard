@@ -266,7 +266,7 @@ function AlertHistory({ headerTabs }) {
           ...(isValidDateFilter(filterState.to) ? { to: filterState.to } : {}),
         },
       });
-      const data = res.data;
+      const data = res?.data?.data ?? res?.data;
       if (requestId !== requestIdRef.current) return;
       // Backend may return { alerts: [...], total: N } or directly an array
       if (Array.isArray(data)) {

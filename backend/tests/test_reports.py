@@ -21,7 +21,7 @@ def test_summary(client, admin_token):
     resp = client.get('/api/v1/reports/summary',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert 'total_detections' in data
     assert 'confirmed_alerts' in data
     assert 'false_positives_suppressed' in data
@@ -38,7 +38,7 @@ def test_summary_date_range(client, admin_token):
         headers={'Authorization': f'Bearer {admin_token}'}
     )
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert 'total_detections' in data
     assert 'by_zone' in data
 
@@ -62,7 +62,7 @@ def test_summary_daily_grouping_keeps_existing_contract(client, admin_token):
         headers={'Authorization': f'Bearer {admin_token}'},
     )
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
 
     # Existing contract preserved
     assert 'total_detections' in data

@@ -317,7 +317,7 @@ function AnalyticsChart() {
           from: getRangeStartIso(),
         },
       });
-      const data = res.data;
+      const data = res?.data?.data ?? res?.data;
 
       // Normalize zone data: expects { zones: [{zone_name, alert_count, event_count}] }
       // or a flat array
@@ -360,7 +360,7 @@ function AnalyticsChart() {
             from: eventRangeStart,
           },
         });
-        const eventsPayload = eventsRes.data;
+        const eventsPayload = eventsRes?.data?.data ?? eventsRes?.data;
         events = Array.isArray(eventsPayload)
           ? eventsPayload
           : eventsPayload.events || [];

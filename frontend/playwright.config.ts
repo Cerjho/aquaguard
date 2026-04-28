@@ -91,6 +91,9 @@ export default defineConfig({
   webServer: {
     command: 'npm run start',
     url: 'http://localhost:3000',
+    env: {
+      REACT_APP_API_URL: 'http://localhost:5000',
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

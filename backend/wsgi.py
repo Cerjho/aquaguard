@@ -19,4 +19,3 @@ if __name__ == '__main__':
         use_reloader=False,
         allow_unsafe_werkzeug=(debug_enabled or allow_unsafe_werkzeug),
     )
-

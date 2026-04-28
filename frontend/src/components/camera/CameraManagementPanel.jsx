@@ -38,7 +38,11 @@ function CameraManagementPanel({ onCamerasChanged }) {
       const res = await api.get('/api/v1/cameras', {
         params: { include_inactive: true },
       });
-      const data = Array.isArray(res.data) ? res.data : res.data.cameras || [];
+      if (!res || typeof res !== 'object' || res.data === undefined) {
+        throw new Error('Invalid camera response payload');
+      }
+      const payload = res?.data?.data ?? res?.data;
+      const data = Array.isArray(payload) ? payload : payload?.cameras || [];
       setCameras(data);
       setHasLoaded(true);
     } catch (err) {

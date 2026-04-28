@@ -36,7 +36,8 @@ function DetectionFeed({ headerTabs }) {
       const res = await api.get('/api/v1/events', {
         params: { limit: MAX_DISPLAY, page: 1 },
       });
-      const data = Array.isArray(res.data) ? res.data : res.data.events || [];
+      const payload = res?.data?.data ?? res?.data;
+      const data = Array.isArray(payload) ? payload : payload?.events || [];
       setPolledEvents(data);
       setError(null);
       failureCountRef.current = 0;

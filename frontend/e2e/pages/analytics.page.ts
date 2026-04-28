@@ -16,10 +16,17 @@ export class AnalyticsPage {
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('heading', { name: /analytics/i });
-    this.timeRangeSelect = page.getByRole('combobox', { name: /time range/i });
-    this.groupingSelect = page.getByRole('combobox', { name: /grouping/i });
-    this.zoneBarChart = page.getByText(/alert counts by zone/i);
-    this.timeLineChart = page.getByText(/detections over time/i);
+    // Time range control may be a native <select> or a custom dropdown button.
+    this.timeRangeSelect = page.locator(
+      'select[aria-label*="time range"], select[name*="time"], button:has-text("time range"), button:has-text("Incidents by time range"), button:has-text("Detection frequency range")'
+    );
+    // Grouping control may also be a select or custom button
+    this.groupingSelect = page.locator(
+      'select[aria-label*="grouping"], select[name*="grouping"], button:has-text("grouping"), button:has-text("group by")'
+    );
+    // Headings can vary between builds; match common variants for robustness
+    this.zoneBarChart = page.getByRole('heading', { name: /incidents by zone|alert counts by zone/i });
+    this.timeLineChart = page.getByRole('heading', { name: /incidents by time of day|detections over time/i });
     this.alertCountHeading = page.getByRole('heading', { name: /alert counts/i });
     this.detectionsHeading = page.getByRole('heading', { name: /detections/i });
   }
@@ -34,12 +41,43 @@ export class AnalyticsPage {
   }
 
   async setTimeRange(days: '1' | '7' | '30') {
-    await this.timeRangeSelect.selectOption(days);
-    await this.page.waitForTimeout(1000); // Wait for refetch
+    // Try native select first
+    try {
+      await this.timeRangeSelect.selectOption(days as any);
+      await this.page.waitForTimeout(1000);
+      return;
+    } catch {
+      // Fallback to custom dropdown button
+    }
+
+    const btn = this.page.getByRole('button', { name: /time range|incidents by time range|detection frequency range/i }).first();
+    await btn.click();
+
+    const pattern = days === '1'
+      ? /today|24|last 24 hours/i
+      : days === '7'
+        ? /week|7 days|this wk|this week/i
+        : /month|30 days|this mo|this month/i;
+
+    const item = this.page.getByText(pattern).first();
+    await item.click();
+    await this.page.waitForTimeout(1000);
   }
 
   async setGrouping(grouping: 'zone' | 'day') {
-    await this.groupingSelect.selectOption(grouping);
+    try {
+      await this.groupingSelect.selectOption(grouping as any);
+      await this.page.waitForTimeout(1000);
+      return;
+    } catch {
+      // Fallback to custom dropdown
+    }
+
+    const btn = this.page.getByRole('button', { name: /grouping|group by/i }).first();
+    await btn.click();
+    const pattern = grouping === 'zone' ? /zone/i : /day|date/i;
+    const item = this.page.getByText(pattern).first();
+    await item.click();
     await this.page.waitForTimeout(1000);
   }
 

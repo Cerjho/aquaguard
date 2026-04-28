@@ -26,7 +26,7 @@ def test_internal_list_cameras_with_valid_api_key(client, admin_token):
         headers={'X-API-Key': 'test-internal-api-key'}
     )
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert 'cameras' in data
     assert isinstance(data['cameras'], list)
     camera = next((c for c in data['cameras'] if c['zone_id'] == 'zone_internal_active'), None)
@@ -51,7 +51,7 @@ def test_internal_list_cameras_excludes_inactive(client, admin_token):
         headers={'X-API-Key': 'test-internal-api-key'}
     )
     assert resp.status_code == 200
-    zone_ids = [c['zone_id'] for c in resp.get_json()['cameras']]
+    zone_ids = [c['zone_id'] for c in resp.get_json()['data']['cameras']]
     assert 'zone_internal_inactive' not in zone_ids
 
 
@@ -59,7 +59,7 @@ def test_list_cameras(client, admin_token):
     resp = client.get('/api/v1/cameras',
                       headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-    assert isinstance(resp.get_json(), list)
+    assert isinstance(resp.get_json()['data'], list)
 
 
 def test_list_cameras_include_inactive(client, admin_token):
@@ -77,12 +77,14 @@ def test_list_cameras_include_inactive(client, admin_token):
     default_list = client.get('/api/v1/cameras',
                               headers={'Authorization': f'Bearer {admin_token}'})
     assert default_list.status_code == 200
-    assert 'zone_inactive_1' not in [c['zone_id'] for c in default_list.get_json()]
+    assert 'zone_inactive_1' not in [
+        c['zone_id'] for c in default_list.get_json()['data']
+    ]
 
     include_inactive = client.get('/api/v1/cameras?include_inactive=true',
                                   headers={'Authorization': f'Bearer {admin_token}'})
     assert include_inactive.status_code == 200
-    rows = include_inactive.get_json()
+    rows = include_inactive.get_json()['data']
     match = next((c for c in rows if c['zone_id'] == 'zone_inactive_1'), None)
     assert match is not None
     assert match['is_active'] is False
@@ -97,7 +99,7 @@ def test_list_cameras_include_inactive(client, admin_token):
     )
     assert include_inactive_after_delete.status_code == 200
     assert 'zone_inactive_1' not in [
-        c['zone_id'] for c in include_inactive_after_delete.get_json()
+        c['zone_id'] for c in include_inactive_after_delete.get_json()['data']
     ]
 
 
@@ -108,7 +110,7 @@ def test_create_camera_admin(client, admin_token):
         'rtsp_url':  'rtsp://localhost/test',
     }, headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 201
-    data = resp.get_json()
+    data = resp.get_json()['data']
     assert data['zone_id'] == 'zone_test'
 
 
@@ -140,7 +142,7 @@ def test_update_camera(client, admin_token):
         'zone_name': 'New Name'
     }, headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-    assert resp.get_json()['zone_name'] == 'New Name'
+    assert resp.get_json()['data']['zone_name'] == 'New Name'
 
 
 def test_update_camera_forbidden_for_guard(client, admin_token, guard_token):
@@ -165,12 +167,14 @@ def test_update_camera_can_toggle_is_active(client, admin_token):
         'is_active': False
     }, headers={'Authorization': f'Bearer {admin_token}'})
     assert resp.status_code == 200
-    assert resp.get_json()['is_active'] is False
+    assert resp.get_json()['data']['is_active'] is False
 
     include_all = client.get('/api/v1/cameras?include_inactive=1',
                              headers={'Authorization': f'Bearer {admin_token}'})
     assert include_all.status_code == 200
-    match = next((c for c in include_all.get_json() if c['zone_id'] == 'zone_toggle'), None)
+    match = next((
+        c for c in include_all.get_json()['data'] if c['zone_id'] == 'zone_toggle'
+    ), None)
     assert match is not None
     assert match['is_active'] is False
 
@@ -209,7 +213,7 @@ def test_delete_camera(client, admin_token):
     # Should not appear in list after soft-delete
     list_resp = client.get('/api/v1/cameras',
                            headers={'Authorization': f'Bearer {admin_token}'})
-    zone_ids = [c['zone_id'] for c in list_resp.get_json()]
+    zone_ids = [c['zone_id'] for c in list_resp.get_json()['data']]
     assert 'zone_del' not in zone_ids
 
 
@@ -235,13 +239,13 @@ def test_delete_camera_is_idempotent(client, admin_token):
     first = client.delete('/api/v1/cameras/zone_del_twice',
                           headers={'Authorization': f'Bearer {admin_token}'})
     assert first.status_code == 200
-    assert first.get_json()['camera']['is_active'] is None
+    assert first.get_json()['data']['camera']['is_active'] is None
 
     second = client.delete('/api/v1/cameras/zone_del_twice',
                            headers={'Authorization': f'Bearer {admin_token}'})
     assert second.status_code == 200
     assert 'already soft deleted' in second.get_json()['message']
-    assert second.get_json()['camera']['is_active'] is None
+    assert second.get_json()['data']['camera']['is_active'] is None
 
 
 def test_delete_inactive_camera_soft_deletes_and_hides_it(client, admin_token):
@@ -259,13 +263,13 @@ def test_delete_inactive_camera_soft_deletes_and_hides_it(client, admin_token):
     delete_resp = client.delete('/api/v1/cameras/zone_soft_delete_from_inactive',
                                 headers={'Authorization': f'Bearer {admin_token}'})
     assert delete_resp.status_code == 200
-    assert delete_resp.get_json()['camera']['is_active'] is None
+    assert delete_resp.get_json()['data']['camera']['is_active'] is None
 
     include_inactive = client.get('/api/v1/cameras?include_inactive=1',
                                   headers={'Authorization': f'Bearer {admin_token}'})
     assert include_inactive.status_code == 200
     assert 'zone_soft_delete_from_inactive' not in [
-        c['zone_id'] for c in include_inactive.get_json()
+        c['zone_id'] for c in include_inactive.get_json()['data']
     ]
 
 
@@ -306,7 +310,7 @@ def test_stream_token_mint_and_use(client, admin_token):
         headers={'Authorization': f'Bearer {admin_token}'},
     )
     assert mint.status_code == 200
-    token_payload = mint.get_json()
+    token_payload = mint.get_json()['data']
     token = token_payload['stream_token']
     assert 'expires_at' in token_payload
     assert 'ttl_seconds' in token_payload
@@ -341,7 +345,7 @@ def test_stream_token_zone_mismatch_is_rejected(client, admin_token):
         '/api/v1/cameras/zone_01/stream-token',
         headers={'Authorization': f'Bearer {admin_token}'},
     )
-    token = mint.get_json()['stream_token']
+    token = mint.get_json()['data']['stream_token']
 
     mismatch = client.get(f'/api/v1/cameras/zone_02/stream?token={token}')
     assert mismatch.status_code == 401

@@ -88,21 +88,22 @@ function CameraGrid({ reloadToken = 0 }) {
     if (!zoneId) return null;
     try {
       const res = await api.get(`/api/v1/cameras/${zoneId}/stream-token`);
+      const payload = res?.data?.data ?? res?.data;
       const token = (
-        res?.data?.stream_token
-        || res?.data?.token
-        || res?.data?.access_token
+        payload?.stream_token
+        || payload?.token
+        || payload?.access_token
         || null
       );
       if (!token) return null;
 
       const ttlSeconds = Number(
-        res?.data?.ttl_seconds
-        ?? res?.data?.expires_in_seconds
+        payload?.ttl_seconds
+        ?? payload?.expires_in_seconds
         ?? 30
       );
-      const expiresAt = res?.data?.expires_at
-        ? new Date(res.data.expires_at).getTime()
+      const expiresAt = payload?.expires_at
+        ? new Date(payload.expires_at).getTime()
         : Date.now() + (ttlSeconds * 1000);
 
       return {
@@ -259,8 +260,10 @@ function CameraGrid({ reloadToken = 0 }) {
           params: { page: 1, limit: 5, zone_id: camera.zone_id },
         }),
       ]);
-      const eventsData = Array.isArray(eventsRes.data) ? eventsRes.data : eventsRes.data.events || [];
-      const alertsData = Array.isArray(alertsRes.data) ? alertsRes.data : alertsRes.data.alerts || [];
+      const eventsPayload = eventsRes?.data?.data ?? eventsRes?.data;
+      const alertsPayload = alertsRes?.data?.data ?? alertsRes?.data;
+      const eventsData = Array.isArray(eventsPayload) ? eventsPayload : eventsPayload?.events || [];
+      const alertsData = Array.isArray(alertsPayload) ? alertsPayload : alertsPayload?.alerts || [];
       setZoneEvents(eventsData);
       setZoneAlerts(alertsData);
     } catch {

@@ -39,6 +39,7 @@ RUN python -m pip install --upgrade pip && \
 
 # Copy application source.
 COPY . /app/detection_engine
+RUN chmod +x /app/detection_engine/entrypoint.sh || true
 
 ENV PYTHONPATH=/app
 
@@ -55,5 +56,7 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD python -c "import detection_engine" || exit 1
 
-ENTRYPOINT ["python", "-m"]
+# Use a small wrapper entrypoint so callers can run arbitrary python commands
+# (e.g. `docker run image python -c "..."`) while keeping the default module startup.
+ENTRYPOINT ["/bin/bash", "/app/detection_engine/entrypoint.sh"]
 CMD ["detection_engine.main"]

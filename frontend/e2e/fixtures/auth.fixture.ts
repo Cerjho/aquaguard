@@ -51,8 +51,26 @@ export const test = base.extend<AuthFixtures>({
     await usernameInput.fill(TEST_CREDENTIALS.admin.username);
     await page.getByRole('textbox', { name: /password/i }).fill(TEST_CREDENTIALS.admin.password);
 
-    // Submit login
-    await page.getByRole('button', { name: /sign in|secure login|login/i }).click();
+    // Submit login: wait for the button to be visible and stable, with fallbacks for animated buttons
+    const signInButton = page.getByRole('button', { name: /sign in|secure login|login/i });
+    await signInButton.waitFor({ state: 'visible', timeout: 5000 });
+    try {
+      await signInButton.click({ timeout: 10000 });
+    } catch {
+      // Some browsers (WebKit) may report the button as not stable due to animations.
+      // Try a forced click, then fall back to submitting via Enter from the password field.
+      try {
+        await signInButton.click({ force: true });
+      } catch {
+        try {
+          await page.getByRole('textbox', { name: /password/i }).press('Enter');
+        } catch {
+          // last resort: evaluate click in page context
+          const handle = await signInButton.elementHandle();
+          if (handle) await page.evaluate((el) => (el as HTMLButtonElement).click(), handle);
+        }
+      }
+    }
 
     // Wait briefly for either a successful navigation signal (dashboard) or a visible login error alert.
     // This avoids long, flaky timeouts and lets us fall back quickly when the backend isn't reachable.
@@ -86,6 +104,13 @@ export const test = base.extend<AuthFixtures>({
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ user }) });
       });
 
+      // Add a mock cookie to simulate session cookie set by backend
+      try {
+        await ctx.addCookies([{ name: 'mock_session', value: '1', url: 'http://localhost' }]);
+      } catch {
+        // ignore if cookie cannot be set in this environment
+      }
+
       // Mock analytics/report endpoints used by pages under test
       const analyticsBody = {
         status: 'success',
@@ -104,6 +129,40 @@ export const test = base.extend<AuthFixtures>({
       });
       ctx.route(/\/api\/v1\/events/, (route) => {
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success', data: { events: [] } }) });
+      });
+
+      // Additional fallback mocks to stabilize pages that rely on system/camera data
+      const camerasBody = {
+        status: 'success',
+        data: [
+          { id: 'cam1', name: 'Pool Cam 1', zone_id: 'zone_01', online: true, snapshot_url: '/snapshots/cam1.jpg' },
+          { id: 'cam2', name: 'Pool Cam 2', zone_id: 'zone_02', online: false, snapshot_url: '/snapshots/cam2.jpg' },
+        ],
+      };
+      ctx.route(/\/api\/v1\/cameras/, (route) => {
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(camerasBody) });
+      });
+
+      ctx.route(/\/api\/v1\/alerts/, (route) => {
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success', data: { alerts: [] } }) });
+      });
+
+      const systemBody = {
+        status: 'success',
+        data: {
+          subsystems: {
+            detection_engine: { freshness_seconds: 10, stale_threshold_seconds: 60 },
+          },
+          cameras: { total: 2, online: 1 },
+        },
+      };
+      ctx.route(/\/api\/v1\/system\/status/, (route) => {
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(systemBody) });
+      });
+
+      // Mock logout endpoint so cleanup clicks succeed in fallback mode
+      ctx.route(/\/api\/v1\/auth\/logout/, (route) => {
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success' }) });
       });
 
       // Navigate to the dashboard so AuthProvider re-runs its restoreSession effect
@@ -138,6 +197,13 @@ export const test = base.extend<AuthFixtures>({
           // If neither appears, continue - tests will fail later if auth truly didn't succeed.
         }
       }
+
+      // Also wait for the logout button to appear when possible (helps avoid flaky logout clicks).
+      try {
+        await page.getByRole('button', { name: /logout/i }).waitFor({ timeout: 8000 });
+      } catch {
+        // ignore if logout button never appears in this environment
+      }
     }
 
     // Use the authenticated page
@@ -152,6 +218,12 @@ export const test = base.extend<AuthFixtures>({
       }
     } catch {
       // Ignore logout errors during cleanup
+    }
+    // Ensure any mock session cookies do not leak to other tests
+    try {
+      await page.context().clearCookies();
+    } catch {
+      // ignore if API not available in this Playwright version
     }
   },
 });

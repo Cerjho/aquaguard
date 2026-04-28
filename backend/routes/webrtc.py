@@ -1,13 +1,12 @@
 import asyncio
 import logging
-import os
 import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import datetime, timedelta, timezone
 from threading import Lock, Thread
 from uuid import UUID, uuid4
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, request
 from flask_jwt_extended import verify_jwt_in_request
 from flask_jwt_extended.exceptions import JWTExtendedException
 
@@ -29,11 +28,9 @@ LOGGER = logging.getLogger(__name__)
 from services.webrtc_video_service import (
     AIORTC_AVAILABLE,
     AIORTC_IMPORT_ERROR,
-    LIVE_SNAPSHOT_DIR,
     RTCPeerConnection,
     RTCSessionDescription,
     SnapshotVideoTrack,
-    VideoFrame,
     candidate_from_sdp,
 )
 
@@ -139,6 +136,7 @@ def _session_payload(session):
 
 
 from utils.env_utils import is_truthy
+
 
 def _parse_bool(value, default=False):
     if value is None:

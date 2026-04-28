@@ -11,6 +11,7 @@ WEBRTC_SESSIONS_ACTIVE = Gauge(
     'Number of active WebRTC sessions'
 )
 
+
 @metrics_bp.route('/metrics')
 @limiter.exempt
 def metrics():

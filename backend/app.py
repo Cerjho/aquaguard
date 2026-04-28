@@ -36,10 +36,8 @@ def _resolve_database_uri(env_name):
         raise RuntimeError('DATABASE_URL is required in production')
     return 'sqlite:///aquaguard.db'
 
+
 SNAPSHOT_RATE_LIMIT = '600 per minute'
-
-
-
 
 
 def create_app():

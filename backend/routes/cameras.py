@@ -1,7 +1,7 @@
 import os
 import time
 from datetime import datetime, timezone, timedelta
-from flask import Blueprint, request, jsonify, current_app, Response
+from flask import Blueprint, request, current_app, Response
 from utils.response_utils import success_response, error_response
 from flask_jwt_extended import jwt_required
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db, limiter
 from models import CameraZone
 from auth_helpers import role_required, validate_internal_api_key
+from utils.env_utils import is_truthy
 
 cameras_bp = Blueprint('cameras', __name__, url_prefix='/api/v1')
 
@@ -36,8 +37,6 @@ def list_internal_cameras():
         ]
     })
 
-
-from utils.env_utils import is_truthy
 
 @cameras_bp.route('/cameras', methods=['GET'])
 @jwt_required()

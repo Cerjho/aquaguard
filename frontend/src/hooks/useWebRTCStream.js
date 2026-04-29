@@ -124,7 +124,8 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       if (!sessionIdRef.current) return;
       try {
         const response = await api.get(`/api/v1/webrtc/session-status/${sessionIdRef.current}`);
-        const status = response?.data?.status;
+        const payload = response?.data?.data || response?.data || {};
+        const status = payload.status;
         pollFailureCountRef.current = 0;
         pollIntervalMsRef.current = WEBRTC_STATUS_POLL_MS;
         if (status === 'fallback_active' && !negotiatedRef.current) {
@@ -158,7 +159,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
     const fetchIceConfig = async () => {
       try {
         const response = await api.get('/api/v1/webrtc/ice-config');
-        const payload = response?.data || {};
+        const payload = response?.data?.data || response?.data || {};
         const servers = Array.isArray(payload.ice_servers) ? payload.ice_servers : [];
         const policy = payload.ice_transport_policy || WEBRTC_ICE_TRANSPORT_POLICY;
         const forceRelay = Boolean(payload.force_relay || WEBRTC_FORCE_RELAY);
@@ -225,9 +226,10 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           fallback_transport: 'mjpeg',
         });
 
-        sessionIdRef.current = offerResponse?.data?.session_id || null;
-        const offerStatus = offerResponse?.data?.status;
-        const fallbackActive = Boolean(offerResponse?.data?.fallback?.active);
+        const offerData = offerResponse?.data?.data || offerResponse?.data || {};
+        sessionIdRef.current = offerData.session_id || null;
+        const offerStatus = offerData.status;
+        const fallbackActive = Boolean(offerData.fallback?.active);
         if (offerStatus === 'fallback_active' || fallbackActive) {
           clearTimers();
           teardownPeer();
@@ -236,8 +238,8 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           setStreamUrl(fallbackUrlRef.current);
           return;
         }
-        const answerSdp = offerResponse?.data?.sdp;
-        const answerType = offerResponse?.data?.type || 'answer';
+        const answerSdp = offerData.sdp;
+        const answerType = offerData.type || 'answer';
         if (!answerSdp) {
           scheduleRetry();
           return;

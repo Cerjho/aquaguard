@@ -162,7 +162,7 @@ services:
       - AQUAGUARD_API_URL=http://backend:5000
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
       - RTSP_TRANSPORT=${RTSP_TRANSPORT:-udp}
-      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov11s.pt}
+      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov8s.pt}
       - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-10}
       - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-5}
       - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-10}

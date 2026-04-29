@@ -35,9 +35,9 @@ export function AuthProvider({ children }) {
         password,
         remember_me: rememberMe
       });
-      const { user } = response.data;
+      const user = response.data?.data?.user || response.data?.user;
 
-      setCurrentUser(user);
+      setCurrentUser(user || null);
       return true;
     } catch (error) {
       const message =
@@ -79,8 +79,8 @@ export function AuthProvider({ children }) {
     const restoreSession = async () => {
       try {
         const response = await api.get('/api/v1/auth/me');
-        const { user } = response.data;
-        setCurrentUser(user);
+        const user = response.data?.data?.user || response.data?.user;
+        setCurrentUser(user || null);
       } catch (error) {
         // Session invalid or no cookies — user is not authenticated
         setCurrentUser(null);

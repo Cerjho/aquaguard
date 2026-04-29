@@ -62,7 +62,7 @@ class DrowningDetector:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._cuda_oom_cooldown_until = 0.0
         logger.info("Loading YOLOv11s from %s on device=%s", model_path, self.device)
-        self.model = YOLO(model_path)
+        self.model = YOLO(model_path, task='detect')
         # Warm up to ensure device is assigned
         logger.info("DrowningDetector ready on %s", self.device)
 

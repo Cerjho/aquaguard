@@ -66,7 +66,8 @@ _SNAPSHOT_DIR = os.path.join(_BASE_DIR, "backend", "snapshots")
 os.makedirs(_SNAPSHOT_DIR, exist_ok=True)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-_MODEL_PATH = os.path.join(_BASE_DIR, "detection_engine", "models", "aquaguard_yolov8s.onnx")
+_MODEL_FILENAME = os.environ.get("AQUAGUARD_MODEL", "aquaguard_yolov11s.pt")
+_MODEL_PATH = os.path.join(_BASE_DIR, "detection_engine", "models", _MODEL_FILENAME)
 _BACKEND_ENV_PATH = os.path.join(_BASE_DIR, "backend", ".env")
 
 from config.settings import (

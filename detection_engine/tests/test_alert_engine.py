@@ -39,7 +39,7 @@ class _DummyAPI:
 def test_dispatch_uses_executor_and_fans_out(monkeypatch, tmp_path):
     executor = _ImmediateExecutor()
     monkeypatch.setattr(
-        "detection_engine.alert.alert_engine.ThreadPoolExecutor",
+        "detection_engine.alert.alert_engine.BoundedThreadPoolExecutor",
         lambda *args, **kwargs: executor,
     )
 
@@ -75,7 +75,7 @@ def test_dispatch_uses_executor_and_fans_out(monkeypatch, tmp_path):
 def test_close_is_idempotent(monkeypatch, tmp_path):
     executor = _ImmediateExecutor()
     monkeypatch.setattr(
-        "detection_engine.alert.alert_engine.ThreadPoolExecutor",
+        "detection_engine.alert.alert_engine.BoundedThreadPoolExecutor",
         lambda *args, **kwargs: executor,
     )
 
@@ -89,7 +89,7 @@ def test_close_is_idempotent(monkeypatch, tmp_path):
 def test_pipeline_compat_methods_dispatch_alert(monkeypatch, tmp_path):
     executor = _ImmediateExecutor()
     monkeypatch.setattr(
-        "detection_engine.alert.alert_engine.ThreadPoolExecutor",
+        "detection_engine.alert.alert_engine.BoundedThreadPoolExecutor",
         lambda *args, **kwargs: executor,
     )
 

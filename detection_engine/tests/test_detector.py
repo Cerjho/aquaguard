@@ -14,7 +14,7 @@ class TestDrowningDetectorInit:
         from detection_engine.vision.detector import DrowningDetector
         det = DrowningDetector("fake_model.pt")
         assert det.device == "cpu"
-        mock_yolo.assert_called_once_with("fake_model.pt")
+        mock_yolo.assert_called_once_with("fake_model.pt", task="detect")
 
     @patch("detection_engine.vision.detector.YOLO")
     @patch("detection_engine.vision.detector.torch.cuda.is_available", return_value=True)

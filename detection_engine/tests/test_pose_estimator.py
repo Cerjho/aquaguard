@@ -15,6 +15,7 @@ def _make_pose_estimator_with_mock(mock_results):
     mock_pose = MagicMock()
     mock_pose.process.return_value = mock_results
     estimator._pose = mock_pose
+    estimator._frame_count = 0
     return estimator
 
 
@@ -77,6 +78,7 @@ class TestPoseEstimatorEstimate:
         mock_pose = MagicMock()
         mock_pose.process.side_effect = RuntimeError("MediaPipe crash")
         estimator._pose = mock_pose
+        estimator._frame_count = 0
         bbox = (50.0, 50.0, 300.0, 400.0)
         assert estimator.estimate(blank_frame, bbox) is None
 

@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 import logging
 import uuid
 import os
+import queue
+import threading
+import time
 from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import cv2
@@ -18,6 +21,12 @@ if TYPE_CHECKING:
     from detection_engine.alert.api_client import APIClient
 
 logger = logging.getLogger(__name__)
+
+
+class BoundedThreadPoolExecutor(ThreadPoolExecutor):
+    def __init__(self, max_workers=None, thread_name_prefix='', max_queue_size=100):
+        super().__init__(max_workers=max_workers, thread_name_prefix=thread_name_prefix)
+        self._work_queue = queue.Queue(maxsize=max_queue_size)
 
 
 class AlertEngine:
@@ -37,12 +46,43 @@ class AlertEngine:
         self._mqtt = mqtt_client
         self._api = api_client
         self._snapshot_dir = snapshot_dir
-        self._executor = ThreadPoolExecutor(
+        self._executor = BoundedThreadPoolExecutor(
             max_workers=max(int(max_workers), 3),
             thread_name_prefix="alert-dispatch",
+            max_queue_size=100,
         )
         self._closed = False
         atexit.register(self.close)
+
+        # Start background cleanup thread for snapshots
+        self._cleanup_thread = threading.Thread(
+            target=self._snapshot_cleanup_loop,
+            name="snapshot-cleanup",
+            daemon=True,
+        )
+        self._cleanup_thread.start()
+
+    def _snapshot_cleanup_loop(self) -> None:
+        """Periodically clean up snapshot files older than 7 days to prevent disk leak."""
+        retention_seconds = 7 * 24 * 3600
+        while not self._closed:
+            try:
+                now = time.time()
+                for entry in os.scandir(self._snapshot_dir):
+                    if entry.is_file() and entry.name.endswith(".jpg"):
+                        if now - entry.stat().st_mtime > retention_seconds:
+                            try:
+                                os.remove(entry.path)
+                            except OSError as exc:
+                                logger.debug("Failed to delete stale snapshot %s: %s", entry.path, exc)
+            except OSError as exc:
+                logger.error("Snapshot cleanup loop failed: %s", exc)
+
+            # Sleep for 24 hours, waking up occasionally to check if closed
+            for _ in range(24 * 60):
+                if self._closed:
+                    return
+                time.sleep(60)
 
     def dispatch(
         self,

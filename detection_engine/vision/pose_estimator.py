@@ -66,6 +66,7 @@ class PoseEstimator:
     def __init__(self):
         self._pose = _create_pose_runner()
         self._suppress_first_process_noise = True
+        self._frame_count = 0
 
     def estimate(
         self,
@@ -84,6 +85,18 @@ class PoseEstimator:
         """
         h, w = frame.shape[:2]
         x1, y1, x2, y2 = bbox
+
+        # Prevent native memory leak by periodically recreating the MediaPipe C++ graph
+        self._frame_count += 1
+        if self._frame_count > 100000:
+            logger.info("Flushing MediaPipe native memory after 100,000 frames")
+            try:
+                self._pose.close()
+            except Exception as exc:
+                logger.debug("Failed to close old pose runner: %s", exc)
+            self._pose = _create_pose_runner()
+            self._frame_count = 0
+            self._suppress_first_process_noise = True
 
         # Clamp bbox to frame boundaries
         x1 = max(0, int(x1))

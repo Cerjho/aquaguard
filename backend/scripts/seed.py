@@ -57,7 +57,7 @@ def seed():
 
         # ── Default camera zone from cameras.json ───────────────────────────
         cameras_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            os.path.dirname(_BACKEND_DIR),
             'config', 'cameras.json'
         )
         if os.path.exists(cameras_path):

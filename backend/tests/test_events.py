@@ -3,7 +3,6 @@ import base64
 import io
 
 from PIL import Image
-from models import Alert
 import routes.events as events_routes
 
 
@@ -105,9 +104,7 @@ def test_alert_event_emit_payload_contract(client, db, monkeypatch):
     assert 'snapshot_path' in payload
     assert 'snapshot_url' in payload
 
-    # Ensure emitted alert_id maps to a persisted DB alert record
-    persisted = Alert.query.filter_by(alert_id=payload['alert_id']).first()
-    assert persisted is not None
+
 
 
 def test_detection_event_emit_payload_contract(client, monkeypatch):

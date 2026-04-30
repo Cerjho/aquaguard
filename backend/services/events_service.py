@@ -1,6 +1,6 @@
 """Service helpers for detection events routes."""
 
-from models import Alert, DetectionEvent
+from models import DetectionEvent
 from utils.date_utils import parse_iso_datetime, utcnow_naive
 
 
@@ -42,8 +42,7 @@ def apply_event_filters(
         elif normalized_status in {"normal", "clear"}:
             query = query.filter(DetectionEvent.alert_triggered.is_(False))
         elif normalized_status in {"unacknowledged", "acknowledged"}:
-            query = query.join(Alert, Alert.event_id == DetectionEvent.event_id).filter(
-                Alert.status == normalized_status
-            )
+            # Acknowledge logic is deprecated. These statuses are now ignored.
+            pass
 
     return query

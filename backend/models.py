@@ -105,36 +105,3 @@ class DetectionEvent(db.Model):
         }
 
 
-class Alert(db.Model):
-    __tablename__ = 'alerts'
-    __table_args__ = (
-        db.Index('ix_alerts_zone_status_triggered_at', 'zone_id', 'status', 'triggered_at'),
-    )
-
-    id              = db.Column(db.Integer, primary_key=True)
-    alert_id        = db.Column(db.String(36), unique=True, nullable=False)
-    event_id        = db.Column(
-        db.String(36), db.ForeignKey('detection_events.event_id'), nullable=False
-    )
-    zone_id         = db.Column(db.String(50), nullable=False, index=True)
-    status          = db.Column(db.String(30), default='unacknowledged', index=True)
-    triggered_at    = db.Column(db.DateTime, default=utcnow_naive)
-    acknowledged_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    acknowledged_at = db.Column(db.DateTime, nullable=True)
-    notes           = db.Column(db.Text, nullable=True)
-
-    def __repr__(self):
-        return f'<Alert {self.alert_id} zone={self.zone_id} status={self.status}>'
-
-    def to_dict(self):
-        return {
-            'id':               self.id,
-            'alert_id':         self.alert_id,
-            'event_id':         self.event_id,
-            'zone_id':          self.zone_id,
-            'status':           self.status,
-            'triggered_at':     self.triggered_at.isoformat() if self.triggered_at else None,
-            'acknowledged_by':  self.acknowledged_by,
-            'acknowledged_at':  self.acknowledged_at.isoformat() if self.acknowledged_at else None,
-            'notes':            self.notes,
-        }

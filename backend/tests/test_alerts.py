@@ -83,24 +83,4 @@ def test_list_alerts_filters_by_zone_time_and_confidence(client, admin_token):
     assert all(item['zone_id'] == 'zone_filter_a' for item in items)
 
 
-def test_acknowledge_alert(client, admin_token):
-    alert_id = _make_alert_event(client)
-    assert alert_id, 'No alert was created'
 
-    resp = client.post(
-        f'/api/v1/alerts/{alert_id}/acknowledge',
-        json={'notes': 'handled'},
-        headers={'Authorization': f'Bearer {admin_token}'},
-    )
-    assert resp.status_code == 200
-    data = resp.get_json()['data']
-    assert data['status'] == 'acknowledged'
-    assert data['notes'] == 'handled'
-
-
-def test_acknowledge_nonexistent_alert(client, admin_token):
-    resp = client.post(
-        '/api/v1/alerts/nonexistent-id/acknowledge',
-        headers={'Authorization': f'Bearer {admin_token}'},
-    )
-    assert resp.status_code == 404

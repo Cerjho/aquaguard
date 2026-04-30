@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from PIL import Image, UnidentifiedImageError
 
 from extensions import db, socketio
-from models import DetectionEvent, Alert
+from models import DetectionEvent
 from services.events_service import apply_event_filters, parse_detected_at
 
 events_bp = Blueprint('events', __name__, url_prefix='/api/v1')
@@ -31,14 +31,14 @@ def _serialize_alert_event_payload(alert, event):
     fields: alert_id, zone_id, status, triggered_at/timestamp,
     confidence_score, snapshot_path and snapshot_url.
     """
-    payload = alert.to_dict()
+    payload = event.to_dict()
     payload.update({
-        'alert_id': alert.alert_id,
-        'zone_id': alert.zone_id,
-        'status': alert.status,
-        'triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
+        'alert_id': event.event_id,
+        'zone_id': event.zone_id,
+        'status': 'unacknowledged',
+        'triggered_at': event.detected_at.isoformat() if event.detected_at else None,
         # Alias used by some clients
-        'timestamp': alert.triggered_at.isoformat() if alert.triggered_at else None,
+        'timestamp': event.detected_at.isoformat() if event.detected_at else None,
         'confidence_score': event.confidence_score,
         'bbox': event.bbox,
         'snapshot_path': event.snapshot_path,
@@ -190,29 +190,16 @@ def _emit_detection_signals(event, event_id):
 
 
 def _create_and_emit_alert(event, event_id):
-    """Create an Alert record if the event triggered one, then emit alert_event.
+    """Emit an alert_event if the detection event triggered an alert.
 
     Returns the serialized alert dict on success, or None if no alert
-    was triggered or if the DB commit failed.
+    was triggered.
     """
     if not event.alert_triggered:
         return None
-    alert = Alert(
-        alert_id     = str(uuid.uuid4()),
-        event_id     = event_id,
-        zone_id      = event.zone_id,
-        status       = 'unacknowledged',
-        triggered_at = parse_detected_at(None),
-    )
-    db.session.add(alert)
-    try:
-        db.session.commit()
-    except SQLAlchemyError as exc:
-        db.session.rollback()
-        current_app.logger.error('DB error saving alert: %s', exc)
-        return None
-    # Emit AFTER commit so alert_id exists in DB
-    alert_dict = _serialize_alert_event_payload(alert, event)
+
+    # Emit using the event directly
+    alert_dict = _serialize_alert_event_payload(None, event)
     try:
         socketio.emit('alert_event', alert_dict)
     except (RuntimeError, ValueError, OSError) as exc:

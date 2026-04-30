@@ -96,9 +96,13 @@ class ContinuousFrameWriter:
             loop_start = time.time()
 
             # Get best available frame (prefer annotated, fall back to raw)
+            # Annotated frame is consumed on read so we don't keep
+            # re-serving a stale detection result while fresh raw
+            # frames are available.
             with self._frame_lock:
                 if self._latest_annotated_frame is not None:
                     frame = self._latest_annotated_frame
+                    self._latest_annotated_frame = None
                 elif self._latest_raw_frame is not None:
                     frame = self._latest_raw_frame
                 else:

@@ -77,7 +77,7 @@ function CameraCard({
   const imgRef = useRef(null);
   const streamToken = camera.stream_token || null;
   const streamSessionId = camera.stream_session_id || 0;
-  const { activeAlerts, acknowledge } = useAlertState();
+  const { activeAlerts } = useAlertState();
   const videoRef = useRef(null);
   const detectionStatus = normalizeServiceStatus(camera.detection_engine_status);
   const cameraStatus = normalizeServiceStatus(camera.runtime_status ?? camera.status ?? camera.is_active);
@@ -325,20 +325,6 @@ function CameraCard({
                   <p className="text-xs mt-0.5 opacity-90">{alertConfidenceLabel} · {alertLabelTime}</p>
                 </div>
               </div>
-            </div>
-            <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-950/95 via-slate-900/60 to-transparent">
-              <motion.button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  acknowledge(activeZoneAlert?.alert_id || activeZoneAlert?.id || activeZoneAlert);
-                }}
-                className="btn btn-danger w-full"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                Acknowledge Alert
-              </motion.button>
             </div>
           </>
         )}

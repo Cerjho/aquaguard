@@ -16,7 +16,6 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from './context/AuthContext.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
-import AlertPanel from './components/alerts/AlertPanel.jsx';
 import FullScreenLoader from './components/layout/FullScreenLoader.jsx';
 
 import LoginPage from './pages/LoginPage.jsx';
@@ -74,7 +73,6 @@ function PrivateLayout() {
           <AnimatedOutlet />
         </main>
       </div>
-      <AlertPanel />
     </div>
   );
 }

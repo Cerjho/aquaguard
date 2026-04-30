@@ -17,7 +17,6 @@ import {
   useSocketState,
   useSystemState,
 } from '../../context/AlertContext.jsx';
-import AlertBadge from '../alerts/AlertBadge.jsx';
 
 function StatusIndicator({ label, connected, checking }) {
   const getStatusColor = () => {
@@ -44,7 +43,6 @@ function StatusIndicator({ label, connected, checking }) {
 
 function TopBar() {
   const { currentUser, logout, initializingSession } = useAuth();
-  const { unacknowledgedCount } = useAlertState();
   const { socketConnected } = useSocketState();
   const { systemStatus, apiStatus } = useSystemState();
   const navigate = useNavigate();
@@ -112,9 +110,6 @@ function TopBar() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-5">
-          {/* Alert badge */}
-          <AlertBadge count={unacknowledgedCount} />
-
           {/* User profile */}
           <div className="flex items-center gap-3 pl-5 border-l border-slate-200">
             <motion.div 

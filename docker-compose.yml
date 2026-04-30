@@ -182,6 +182,8 @@ services:
         condition: service_healthy
     deploy:
       resources:
+        limits:
+          memory: 4096M
         reservations:
           devices:
             - driver: nvidia

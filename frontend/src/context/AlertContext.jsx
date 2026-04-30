@@ -43,9 +43,7 @@ export function AlertProvider({ children }) {
   const [activeAlert, setActiveAlert] = useState(null);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [alertHistory, setAlertHistory] = useState([]);
-  const [unacknowledgedCount, setUnacknowledgedCount] = useState(0);
-  const [acknowledgingAlertId, setAcknowledgingAlertId] = useState(null);
-  const [acknowledgeError, setAcknowledgeError] = useState(null);
+  const alertTimeoutsRef = useRef({});
 
   const [detectionEvents, setDetectionEvents] = useState([]);
   const [cameraStatuses, setCameraStatuses] = useState({});
@@ -89,7 +87,19 @@ export function AlertProvider({ children }) {
       return [normalizedPayload, ...filtered];
     });
     setAlertHistory((prev) => [normalizedPayload, ...prev].slice(0, MAX_ALERT_HISTORY));
-    setUnacknowledgedCount((c) => c + 1);
+    
+    // Auto-expire the alert border after 5 seconds of no new detection
+    const zoneId = normalizedPayload.zone_id;
+    if (zoneId) {
+      if (alertTimeoutsRef.current[zoneId]) {
+        clearTimeout(alertTimeoutsRef.current[zoneId]);
+      }
+      alertTimeoutsRef.current[zoneId] = setTimeout(() => {
+        setActiveAlerts((prev) => prev.filter(a => a.zone_id !== zoneId));
+        setActiveAlert((curr) => curr?.zone_id === zoneId ? null : curr);
+        delete alertTimeoutsRef.current[zoneId];
+      }, 5000);
+    }
   }, []);
 
   const onDetectionEvent = useCallback((payload) => {
@@ -301,86 +311,15 @@ export function AlertProvider({ children }) {
     };
   }, [refreshSystemStatus, refreshCameraHealth, realtimeEnabled]);
 
-  /**
-   * Acknowledge an alert by ID.
-   * Calls POST /api/v1/alerts/<id>/acknowledge and updates local state.
-   * @param {string|number} alertId
-   */
-  const acknowledge = useCallback(async (alertId) => {
-    // Prefer active alert canonical ID to avoid legacy id vs alert_id mismatch.
-    const canonicalAlertId = (
-      alertId && typeof alertId === 'object'
-        ? resolveAlertId(alertId)
-        : null
-    ) || resolveAlertId(activeAlert) || resolveAlertId(alertId);
-
-    if (!canonicalAlertId) {
-      logger.error('[AlertContext] Missing canonical alert_id for acknowledge.');
-      setActiveAlert(null);
-      setUnacknowledgedCount((c) => Math.max(0, c - 1));
-      return;
-    }
-
-    setAcknowledgeError(null);
-    setAcknowledgingAlertId(canonicalAlertId);
-
-    try {
-      await api.post(`/api/v1/alerts/${canonicalAlertId}/acknowledge`);
-      setActiveAlerts((prev) => {
-        const next = prev.filter((item) => resolveAlertId(item) !== canonicalAlertId);
-        setActiveAlert((current) => {
-          const currentId = resolveAlertId(current);
-          if (!currentId || currentId === canonicalAlertId) return next[0] || null;
-          return current;
-        });
-        return next;
-      });
-      setUnacknowledgedCount((c) => Math.max(0, c - 1));
-    } catch (error) {
-      logger.error('[AlertContext] Acknowledge failed:', error.message);
-      setAcknowledgeError(
-        error.response?.data?.error
-        || error.response?.data?.message
-        || 'Acknowledge failed. Check your network connection and try again.'
-      );
-    } finally {
-      setAcknowledgingAlertId(null);
-    }
-  }, [activeAlert]);
-
-  /**
-   * Dismiss the active alert overlay without calling the API.
-   * Used when the alert has already been acknowledged externally.
-   */
-  const dismissActive = useCallback(() => {
-    const currentId = resolveAlertId(activeAlert);
-    if (!currentId) {
-      setActiveAlert(null);
-      return;
-    }
-    setActiveAlerts((prev) => prev.filter((item) => resolveAlertId(item) !== currentId));
-    setActiveAlert(null);
-  }, [activeAlert]);
-
   const alertStateValue = useMemo(() => ({
     activeAlert,
     activeAlerts,
     alertHistory,
-    unacknowledgedCount,
-    acknowledgingAlertId,
-    acknowledgeError,
-    acknowledge,
-    dismissActive,
     detectionEvents,
   }), [
     activeAlert,
     activeAlerts,
     alertHistory,
-    unacknowledgedCount,
-    acknowledgingAlertId,
-    acknowledgeError,
-    acknowledge,
-    dismissActive,
     detectionEvents,
   ]);
 

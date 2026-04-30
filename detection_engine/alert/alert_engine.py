@@ -153,8 +153,13 @@ class AlertEngine:
             "bbox": list(bbox) if bbox is not None else None,
         }
 
+        mqtt_hardware_payload = {
+            "event_id": event_id,
+            "zone_id": zone_id
+        }
+
         # Dispatch asynchronously through a bounded pool to avoid unbounded thread growth.
-        self._executor.submit(self._send_mqtt, payload_dict)
+        self._executor.submit(self._send_mqtt, mqtt_hardware_payload)
         self._executor.submit(self._send_api, payload)
         self._executor.submit(self._log_alert, zone_id, track_id, score, event_id, timestamp)
 

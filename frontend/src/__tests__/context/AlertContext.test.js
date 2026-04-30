@@ -22,7 +22,6 @@ function TestConsumer() {
     activeAlert,
     activeAlerts,
     alertHistory,
-    acknowledge,
     detectionEvents,
     socketConnected,
   } = useAlerts();
@@ -37,7 +36,6 @@ function TestConsumer() {
       <span data-testid="active-alerts-size">{String(activeAlerts.length)}</span>
       <span data-testid="detection-history-size">{String(detectionEvents.length)}</span>
       <span data-testid="socket-connected">{String(socketConnected)}</span>
-      <button onClick={() => acknowledge('legacy-param-id')}>Ack</button>
     </div>
   );
 }
@@ -84,69 +82,29 @@ describe('AlertContext payload normalization and acknowledge contract', () => {
     expect(screen.getByTestId('history-size')).toHaveTextContent('1');
   });
 
-  test('acknowledge always calls API with canonical alert_id and clears active alert', async () => {
-    api.post.mockResolvedValue({});
+  test('auto-expires active alerts after 5000ms', () => {
+    jest.useFakeTimers();
     renderWithProvider();
 
     act(() => {
       socketCallbacks.onAlert({
-        id: 'legacy-ack-id',
+        id: 'expire-id-123',
+        zone_id: 'zone_a',
+        confidence_score: 0.9,
       });
     });
 
-    fireEvent.click(screen.getByText('Ack'));
-
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/alerts/legacy-ack-id/acknowledge');
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('active-alert-id')).toHaveTextContent('');
-    });
-  });
-
-  test('maintains multiple active alerts and acknowledges selected alert object', async () => {
-    api.post.mockResolvedValue({});
-    renderWithProvider();
+    expect(screen.getByTestId('active-alert-id')).toHaveTextContent('expire-id-123');
+    expect(screen.getByTestId('active-alerts-size')).toHaveTextContent('1');
 
     act(() => {
-      socketCallbacks.onAlert({ id: 'alert-a', zone_id: 'zone_a' });
-      socketCallbacks.onAlert({ id: 'alert-b', zone_id: 'zone_b' });
+      jest.advanceTimersByTime(5000);
     });
 
-    expect(screen.getByTestId('active-alerts-size')).toHaveTextContent('2');
-
-    act(() => {
-      socketCallbacks.onAlert({ id: 'alert-c', zone_id: 'zone_c' });
-    });
-
-    fireEvent.click(screen.getByText('Ack'));
-
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/alerts/alert-c/acknowledge');
-    });
-  });
-
-  test('prefers canonical alert_id for new payload shape over passed parameter', async () => {
-    api.post.mockResolvedValue({});
-    renderWithProvider();
-
-    act(() => {
-      socketCallbacks.onAlert({
-        alert: {
-          alert_id: 'canonical-777',
-          confidence_score: 0.9,
-          timestamp: '2026-02-02T00:00:00Z',
-          snapshot_url: '/snapshots/canonical-777.jpg',
-        },
-      });
-    });
-
-    fireEvent.click(screen.getByText('Ack'));
-
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/api/v1/alerts/canonical-777/acknowledge');
-    });
+    expect(screen.getByTestId('active-alert-id')).toHaveTextContent('');
+    expect(screen.getByTestId('active-alerts-size')).toHaveTextContent('0');
+    
+    jest.useRealTimers();
   });
 
   test('prefers snapshot_url over snapshot_path fields during normalization', () => {

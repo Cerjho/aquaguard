@@ -4,7 +4,6 @@ import { MemoryRouter } from 'react-router-dom';
 import TopBar from '../../../components/layout/TopBar.jsx';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import {
-  useAlertState,
   useSocketState,
   useSystemState,
 } from '../../../context/AlertContext.jsx';
@@ -14,7 +13,6 @@ jest.mock('../../../context/AuthContext.jsx', () => ({
 }));
 
 jest.mock('../../../context/AlertContext.jsx', () => ({
-  useAlertState: jest.fn(),
   useSocketState: jest.fn(),
   useSystemState: jest.fn(),
 }));
@@ -30,9 +28,7 @@ describe('TopBar connectivity health strip', () => {
       logout: jest.fn(),
       login: jest.fn(),
     });
-    useAlertState.mockReturnValue({
-      unacknowledgedCount: 2,
-    });
+
     useSocketState.mockReturnValue({
       socketConnected: false,
     });

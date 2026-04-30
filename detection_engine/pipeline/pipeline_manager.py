@@ -132,7 +132,8 @@ class ZonePipeline:
         This is the "glue" that connects Worker 1 (Camera) to the pipeline:
         - Reads frames from camera at camera FPS
         - Puts raw frames into raw_frame_queue (for detection)
-        - Also feeds raw frames to frame_writer (for smooth streaming)
+        - Continuously drains annotated_frame_queue to feed frame writer
+        - Ensures annotated frames are prioritized over raw frames for streaming
         """
         logger.info("[%s] Camera feeder starting...", self.zone_id)
         frames_fed = 0
@@ -162,14 +163,23 @@ class ZonePipeline:
                 # Feed to raw frame queue (for detection worker)
                 self.raw_frame_queue.put(frame, timestamp, metadata)
 
-                # Feed raw frame to frame writer (for smooth streaming)
-                # This ensures stream never blacks out even when detection is slow
-                self.frame_writer.update_raw_frame(frame)
-
-                # Check for annotated frame and feed to writer
-                annotated_data = self.annotated_frame_queue.get()
-                if annotated_data is not None and annotated_data.annotated_frame is not None:
+                # CRITICAL FIX: Drain ALL available annotated frames FIRST.
+                # Detection worker runs slower (~10-15 FPS) than feeder (~30 FPS),
+                # so annotated frames accumulate in queue. Must drain continuously
+                # to prioritize annotated frames over raw frames on stream.
+                # Without this, raw frames overwrite pending annotations before
+                # they reach the frame writer, causing annotation loss on stream.
+                annotated_frames_drained = 0
+                while True:
+                    annotated_data = self.annotated_frame_queue.get()
+                    if annotated_data is None or annotated_data.annotated_frame is None:
+                        break
                     self.frame_writer.update_annotated_frame(annotated_data.annotated_frame)
+                    annotated_frames_drained += 1
+
+                # Feed raw frame to frame writer (fallback for smooth streaming)
+                # Annotated frames are preferred via continuous drain above.
+                self.frame_writer.update_raw_frame(frame)
 
                 frames_fed += 1
 
@@ -179,8 +189,9 @@ class ZonePipeline:
                     fps = frames_fed / (now - last_log_time)
                     queue_stats = self.raw_frame_queue.stats
                     logger.debug(
-                        "[%s] Feeder: %.1f FPS fed, queue drop_rate=%.1f%%",
-                        self.zone_id, fps, queue_stats['drop_rate'] * 100
+                        "[%s] Feeder: %.1f FPS fed, queue drop_rate=%.1f%%, annotated drained=%.0f/sec",
+                        self.zone_id, fps, queue_stats['drop_rate'] * 100,
+                        (annotated_frames_drained * fps) if fps > 0 else 0
                     )
                     last_log_time = now
                     frames_fed = 0

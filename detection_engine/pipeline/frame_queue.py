@@ -140,6 +140,8 @@ class AnnotatedFrameQueue:
             self._frame_data = frame_data
 
     def get(self) -> Optional[FrameData]:
-        """Get the latest annotated frame (non-blocking)."""
+        """Get the latest annotated frame (non-blocking, consume-on-read)."""
         with self._lock:
-            return self._frame_data
+            frame_data = self._frame_data
+            self._frame_data = None
+            return frame_data

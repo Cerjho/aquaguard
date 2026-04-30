@@ -31,6 +31,15 @@ LIMB_MOTION_STD_THRESHOLD = 0.015
 FACE_VISIBILITY_THRESHOLD = 0.4
 YOLO_DROWNING_CONF_BOOST = 0.6
 
+# ── CUDA / Inference Resiliency ──────────────────────────────────────────────
+CUDA_OOM_COOLDOWN_SECONDS = float(os.environ.get('CUDA_OOM_COOLDOWN_SECONDS', '5'))
+CUDA_UNKNOWN_ERROR_RESET_SECONDS = float(
+    os.environ.get('CUDA_UNKNOWN_ERROR_RESET_SECONDS', '30')
+)
+CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE = int(
+    os.environ.get('CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE', '3')
+)
+
 # ── MQTT ──────────────────────────────────────────────────────────────────────
 MQTT_BROKER = os.environ.get(
     'MQTT_BROKER_HOST',
@@ -161,6 +170,12 @@ def validate_runtime_settings():
         raise ValueError('CONSECUTIVE_FRAME_LOW_THRESHOLD must be in range (0, 1]')
     if not 0 <= LIMB_MOTION_STD_THRESHOLD <= 1:
         raise ValueError('LIMB_MOTION_STD_THRESHOLD must be in range [0, 1]')
+    if CUDA_OOM_COOLDOWN_SECONDS < 0:
+        raise ValueError('CUDA_OOM_COOLDOWN_SECONDS must be >= 0')
+    if CUDA_UNKNOWN_ERROR_RESET_SECONDS <= 0:
+        raise ValueError('CUDA_UNKNOWN_ERROR_RESET_SECONDS must be > 0')
+    if CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE < 1:
+        raise ValueError('CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE must be >= 1')
     if RECONNECT_MAX_CONSECUTIVE_FAILURES < 1:
         raise ValueError('RECONNECT_MAX_CONSECUTIVE_FAILURES must be >= 1')
     if not RECONNECT_BACKOFF_SECONDS or any(delay <= 0 for delay in RECONNECT_BACKOFF_SECONDS):

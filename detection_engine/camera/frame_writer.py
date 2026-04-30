@@ -91,6 +91,7 @@ class ContinuousFrameWriter:
         """Main loop - writes frames at target FPS regardless of detection speed."""
         last_log_time = time.time()
         frames_since_log = 0
+        consecutive_failures = 0
 
         while not self._stop_event.is_set():
             loop_start = time.time()
@@ -113,8 +114,22 @@ class ContinuousFrameWriter:
                     self._atomic_write_jpeg(self.stream_frame_path, frame)
                     self._write_count += 1
                     frames_since_log += 1
+                    consecutive_failures = 0
                 except Exception as exc:
-                    logger.warning("[%s] Frame write failed: %s", self.zone_id, exc)
+                    consecutive_failures += 1
+                    # Log first failure and then only every 30th to avoid
+                    # flooding logs when the filesystem is unavailable
+                    # (e.g. laptop sleep → Docker volume stale).
+                    if consecutive_failures <= 3 or consecutive_failures % 30 == 0:
+                        logger.warning(
+                            "[%s] Frame write failed (x%d): %s",
+                            self.zone_id, consecutive_failures, exc,
+                        )
+                    # Back off on persistent failures to let filesystem recover
+                    if consecutive_failures >= 3:
+                        backoff = min(1.0 * (2 ** (consecutive_failures // 30)), 5.0)
+                        self._stop_event.wait(backoff)
+                        continue
 
             # Log stats every 10 seconds
             now = time.time()

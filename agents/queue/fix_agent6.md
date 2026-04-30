@@ -55,3 +55,11 @@ Backend implementation:
 Contract doc:
 
 - `agents/status/agent2_webrtc_contract_ready.md`
+
+______________________________________________________________________
+
+## Additional request - detection engine model default
+
+- Update docker-compose.yml to set detection_engine env var
+   AQUAGUARD_MODEL default to aquaguard_yolov8s.onnx (currently .pt).
+- Keep AQUAGUARD_MODEL override support so operators can switch models.

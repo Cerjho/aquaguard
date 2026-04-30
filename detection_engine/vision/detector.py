@@ -1,5 +1,6 @@
 """YOLOv11s drowning detector — one instance per camera zone."""
 import logging
+import os
 import time
 from typing import List
 
@@ -8,6 +9,11 @@ import torch
 from ultralytics import YOLO
 from ultralytics.utils import LOGGER as ULTRALYTICS_LOGGER
 
+from config.settings import (
+    CUDA_OOM_COOLDOWN_SECONDS,
+    CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE,
+    CUDA_UNKNOWN_ERROR_RESET_SECONDS,
+)
 from detection_engine.models_data.detection import Detection
 
 logger = logging.getLogger(__name__)
@@ -61,10 +67,44 @@ class DrowningDetector:
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._cuda_oom_cooldown_until = 0.0
+        self._cuda_unknown_error_count = 0
+        self._cuda_unknown_error_window_start = 0.0
         logger.info("Loading YOLOv11s from %s on device=%s", model_path, self.device)
         self.model = YOLO(model_path, task='detect')
         # Warm up to ensure device is assigned
         logger.info("DrowningDetector ready on %s", self.device)
+
+    def _track_inference(self, frame: np.ndarray, device: str):
+        return self.model.track(
+            frame,
+            persist=True,
+            conf=0.4,
+            device=device,
+            tracker="bytetrack.yaml",
+            verbose=False,
+        )
+
+    def _record_cuda_unknown_error(self) -> bool:
+        now = time.monotonic()
+        if (
+            now - self._cuda_unknown_error_window_start
+        ) > CUDA_UNKNOWN_ERROR_RESET_SECONDS:
+            self._cuda_unknown_error_window_start = now
+            self._cuda_unknown_error_count = 0
+        self._cuda_unknown_error_count += 1
+        return self._cuda_unknown_error_count >= CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE
+
+    def _reset_cuda_unknown_error_state(self) -> None:
+        if self._cuda_unknown_error_count:
+            self._cuda_unknown_error_count = 0
+            self._cuda_unknown_error_window_start = 0.0
+
+    def _run_cpu_fallback(self, frame: np.ndarray):
+        try:
+            return self._track_inference(frame, "cpu")
+        except (RuntimeError, ValueError, TypeError, AttributeError) as exc:
+            logger.error("CPU fallback also failed: %s", exc)
+            return []
 
     def detect(self, frame: np.ndarray) -> List[Detection]:
         """Run tracking inference on a single frame.
@@ -81,30 +121,26 @@ class DrowningDetector:
         if self.device == "cuda" and now < cooldown_until:
             run_device = "cpu"
 
+        had_cuda_failure = False
+
         try:
-            results = self.model.track(
-                frame,
-                persist=True,
-                conf=0.4,
-                device=run_device,
-                tracker="bytetrack.yaml",
-                verbose=False,
-            )
+            results = self._track_inference(frame, run_device)
         except RuntimeError as exc:
-            if "out of memory" in str(exc).lower():
-                logger.error("CUDA OOM — falling back to CPU for this frame: %s", exc)
-                self._handle_cuda_oom()
-                try:
-                    results = self.model.track(
-                        frame,
-                        persist=True,
-                        conf=0.4,
-                        device="cpu",
-                        tracker="bytetrack.yaml",
-                        verbose=False,
+            message = str(exc).lower()
+            is_unknown_error = "unknown error" in message
+            if run_device == "cuda" and ("out of memory" in message or is_unknown_error):
+                had_cuda_failure = True
+                if is_unknown_error and self._record_cuda_unknown_error():
+                    logger.critical(
+                        "CUDA context appears corrupted after %d consecutive "
+                        "unknown errors. Forcing process restart.",
+                        self._cuda_unknown_error_count,
                     )
-                except (RuntimeError, ValueError, TypeError, AttributeError) as cpu_exc:
-                    logger.error("CPU fallback also failed: %s", cpu_exc)
+                    os._exit(1)
+                logger.error("CUDA failure - falling back to CPU for this frame: %s", exc)
+                self._handle_cuda_oom()
+                results = self._run_cpu_fallback(frame)
+                if results == []:
                     return []
             else:
                 logger.error("Inference error: %s", exc)
@@ -112,6 +148,9 @@ class DrowningDetector:
         except (RuntimeError, ValueError, TypeError, AttributeError) as exc:
             logger.error("Unexpected inference error: %s", exc)
             return []
+
+        if run_device == "cuda" and not had_cuda_failure:
+            self._reset_cuda_unknown_error_state()
 
         detections: List[Detection] = []
         for result in results:
@@ -150,4 +189,4 @@ class DrowningDetector:
         except RuntimeError as exc:
             logger.debug("torch.cuda.synchronize failed: %s", exc)
         # Prevent immediate repeated CUDA retries after OOM storm.
-        self._cuda_oom_cooldown_until = time.monotonic() + 5.0
+        self._cuda_oom_cooldown_until = time.monotonic() + CUDA_OOM_COOLDOWN_SECONDS

@@ -65,6 +65,11 @@ class DetectionEvent(db.Model):
             'alert_triggered',
             'detected_at',
         ),
+        db.Index(
+            'ix_detection_events_alert_detected_at',
+            'alert_triggered',
+            'detected_at',
+        ),
     )
 
     id               = db.Column(db.Integer, primary_key=True)

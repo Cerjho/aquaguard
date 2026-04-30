@@ -45,6 +45,7 @@ function CameraGrid({ reloadToken = 0 }) {
   const lastFocusedTriggerRef = useRef(null);
   const wasDocumentHiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false);
   const tokenRefreshInFlightRef = useRef(new Set());
+  const detectionOfflineTimerRef = useRef(null);
 
   const bumpStreamSession = useCallback(() => {
     setStreamSessionId(Date.now());
@@ -218,10 +219,32 @@ function CameraGrid({ reloadToken = 0 }) {
   }, [cameras, streamTokens, refreshSingleToken, isDocumentVisible, focusedCamera, activeStreamZoneIds]);
 
   useEffect(() => {
-    if (systemStatus?.detection_engine?.status) {
-      setDetectionEngineStatus(normalizeServiceStatus(systemStatus.detection_engine.status));
+    const nextStatus = systemStatus?.detection_engine?.status
+      ? normalizeServiceStatus(systemStatus.detection_engine.status)
+      : null;
+    if (!nextStatus) return;
+
+    if (nextStatus === 'online') {
+      // Go online immediately — clear any pending offline timer
+      if (detectionOfflineTimerRef.current) {
+        clearTimeout(detectionOfflineTimerRef.current);
+        detectionOfflineTimerRef.current = null;
+      }
+      setDetectionEngineStatus('online');
+    } else {
+      // Debounce offline: only apply after 10s of sustained offline signal
+      if (detectionOfflineTimerRef.current) return; // already waiting
+      detectionOfflineTimerRef.current = setTimeout(() => {
+        detectionOfflineTimerRef.current = null;
+        setDetectionEngineStatus(nextStatus);
+      }, 10000);
     }
   }, [systemStatus]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => {
+    if (detectionOfflineTimerRef.current) clearTimeout(detectionOfflineTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const runtimeMap = {};

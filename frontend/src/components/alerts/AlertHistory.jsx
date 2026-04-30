@@ -14,12 +14,6 @@ import { useDataCache } from '../../context/DataCacheContext.jsx';
 import PremiumLoader from '../layout/PremiumLoader.jsx';
 
 const PAGE_SIZE = 10;
-const ALERT_STATUS_VALUES = new Set(['unacknowledged', 'acknowledged']);
-const STATUS_OPTIONS = [
-  { value: '', label: 'Pending (All)', dotClass: 'bg-slate-400' },
-  { value: 'unacknowledged', label: 'Critical', dotClass: 'bg-rose-500' },
-  { value: 'acknowledged', label: 'Reviewed', dotClass: 'bg-blue-500' },
-];
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function formatDateInput(value) {
@@ -32,68 +26,6 @@ function formatDateInput(value) {
   return `${y}-${m}-${d}`;
 }
 
-function StatusDropdown({ value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef(null);
-  const selected = STATUS_OPTIONS.find((opt) => opt.value === value) || STATUS_OPTIONS[0];
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onOutside = (event) => {
-      if (wrapperRef.current?.contains(event.target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={wrapperRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:border-[#a3cef1]"
-        aria-label="Filter alerts by status"
-      >
-        <span className="inline-flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${selected.dotClass}`} />
-          {selected.label}
-        </span>
-        <svg className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.16 }}
-            className="absolute left-0 right-0 top-11 z-20 bg-white/95 backdrop-blur-xl shadow-lg rounded-2xl border border-slate-100 p-1.5"
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <button
-                key={option.value || 'all'}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-                className="w-full text-left rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${option.dotClass}`} />
-                  {option.label}
-                </span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 function CalendarInput({
   value,
@@ -252,15 +184,11 @@ function AlertHistory({ headerTabs }) {
     try {
       const filterState = appliedFilters || {};
       const minConfidence = toNumericFilter(filterState.min_confidence);
-      const normalizedStatus = ALERT_STATUS_VALUES.has(filterState.status)
-        ? filterState.status
-        : '';
       const res = await api.get('/api/v1/alerts', {
         params: {
           page: pageNum,
           limit: PAGE_SIZE,
           ...(filterState.zone_id ? { zone_id: filterState.zone_id } : {}),
-          ...(normalizedStatus ? { status: normalizedStatus } : {}),
           ...(minConfidence !== null ? { min_confidence: minConfidence } : {}),
           ...(isValidDateFilter(filterState.from) ? { from: filterState.from } : {}),
           ...(isValidDateFilter(filterState.to) ? { to: filterState.to } : {}),
@@ -334,26 +262,16 @@ function AlertHistory({ headerTabs }) {
     return `${(normalized * 100).toFixed(1)}%`;
   };
 
-  const statusBadge = (status) => {
-    const base = 'px-2.5 py-1 rounded-full text-xs font-semibold border';
-    if (status === 'acknowledged') {
-      return (
-        <span className={`${base} bg-blue-100 text-blue-700 border-blue-200`}>
-          Acknowledged
-        </span>
-      );
-    }
-    return (
-      <span className={`${base} bg-rose-100 text-rose-700 border-rose-200`}>
-        Unacknowledged
-      </span>
-    );
-  };
+  const alertBadge = () => (
+    <span className="px-2.5 py-1 rounded-full text-xs font-semibold border bg-rose-100 text-rose-700 border-rose-200">
+      Drowning Alert
+    </span>
+  );
 
   const getThreatLevel = (alert) => {
     if (alert?.threat_level) return String(alert.threat_level);
     if (alert?.severity) return String(alert.severity);
-    return alert?.status === 'acknowledged' ? 'Reviewed' : 'Critical';
+    return 'Critical';
   };
 
   const getIncidentKey = (alert) => (
@@ -422,7 +340,7 @@ function AlertHistory({ headerTabs }) {
               transition={{ duration: prefersReducedMotion ? 0.01 : 0.18 }}
               className="absolute z-20 right-6 top-[100%] mt-2 w-[calc(100%-3rem)] max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl p-5 border border-[#e7ecef]"
             >
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <input
                   aria-label="Filter alerts by zone ID"
                   value={draftFilters?.zone_id || ''}
@@ -430,12 +348,6 @@ function AlertHistory({ headerTabs }) {
                   placeholder="Zone ID"
                   className="input-field bg-white"
                 />
-                <div className="relative">
-                  <StatusDropdown
-                    value={draftFilters?.status || ''}
-                    onChange={(nextStatus) => setDraftFilters((prev) => ({ ...prev, status: nextStatus }))}
-                  />
-                </div>
                 <input
                   type="number"
                   aria-label="Filter alerts by minimum confidence"
@@ -483,7 +395,6 @@ function AlertHistory({ headerTabs }) {
                   onClick={() => {
                     const next = {
                       zone_id: draftFilters?.zone_id || '',
-                      status: draftFilters?.status || '',
                       min_confidence: draftFilters?.min_confidence || '',
                       from: draftFilters?.from ? formatDateInput(draftFilters.from) : '',
                       to: draftFilters?.to ? formatDateInput(draftFilters.to) : '',
@@ -530,9 +441,9 @@ function AlertHistory({ headerTabs }) {
                   <div className="md:col-span-3 text-sm text-slate-700">
                     Confidence: {formatConfidence(alert)}
                   </div>
-                  <div className="md:col-span-3">{statusBadge(alert.status)}</div>
+                  <div className="md:col-span-3">{alertBadge()}</div>
                   <div className="md:col-span-2 text-xs text-slate-500 text-left md:text-right">
-                    {alert.acknowledged_by_username || alert.acknowledged_by || '—'}
+                    {formatAlertTime(alert)}
                   </div>
                 </div>
               </button>
@@ -641,7 +552,7 @@ function AlertHistory({ headerTabs }) {
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
                       <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Status</p>
-                      <p className="text-sm font-bold text-slate-900 capitalize">{selectedIncident.status || 'Alert'}</p>
+                      <p className="text-sm font-bold text-rose-600">Drowning Alert</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
                       <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Confidence</p>
@@ -664,9 +575,10 @@ function AlertHistory({ headerTabs }) {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setSelectedIncident(null)}
                     className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5"
                   >
-                    {selectedIncident.status === 'acknowledged' ? 'Download Log' : 'Acknowledge'}
+                    Download Log
                   </button>
                 </div>
               </div>

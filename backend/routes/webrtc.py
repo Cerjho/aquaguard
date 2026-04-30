@@ -570,6 +570,11 @@ def _get_session_status(session_id, auth_type):
             session['fallback']['reason'] = 'forced_by_client'
             session['updated_at'] = _utc_now()
 
+        session['updated_at'] = _utc_now()
+        # Aggressive memory reaping: extend TTL by only 15 seconds on active poll
+        # to prevent orphaned RTCPeerConnections from leaking backend memory.
+        session['expires_at'] = _utc_now() + timedelta(seconds=15)
+
         payload = _session_payload(session)
 
     payload['auth_type'] = auth_type

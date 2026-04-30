@@ -124,6 +124,15 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
@@ -150,6 +159,15 @@ services:
       coturn:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   detection_engine:
     build:
@@ -184,13 +202,20 @@ services:
       resources:
         limits:
           memory: 4096M
+          memory: 2048M
         reservations:
           devices:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
 volumes:
   mysql_data:
   redis_data:
+

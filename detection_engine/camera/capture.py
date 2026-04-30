@@ -548,7 +548,10 @@ class CameraCapture:
             self._cap = cap
 
     def _validate_frame(self, frame: np.ndarray) -> Tuple[bool, str]:
-        """Validate frame data integrity with H.264 corruption detection.
+        """Validate frame data integrity (lightweight).
+
+        Uses a small center sample to avoid expensive full-frame scans
+        that would slow the capture thread and increase stream latency.
 
         Returns:
             (is_valid, reason)
@@ -566,34 +569,34 @@ class CameraCapture:
         if channels != 3:
             return False, "invalid_channels"
 
-        # Check if frame is completely black (all zeros) - likely corrupted
-        if np.max(frame) == 0:
+        # Sample a small center patch for corruption checks (~0.5% of frame)
+        # This avoids expensive full-frame np.max/np.std that tank FPS
+        cy, cx = height // 2, width // 2
+        patch = frame[cy - 50:cy + 50, cx - 50:cx + 50]
+
+        # Check if patch is completely black (all zeros) - likely corrupted
+        if np.max(patch) == 0:
             return False, "all_black_frame"
 
         # Check for extremely low variance (solid color or corrupt)
-        frame_std = np.std(frame)
-        if frame_std < 0.1:
+        if np.std(patch) < 0.1:
             return False, "no_variance"
 
         # H.264 decode errors often produce green/purple frames
-        # Check for dominant green channel (common H.264 corruption artifact)
-        if self._is_green_corrupted(frame):
+        if self._is_green_corrupted(patch):
             return False, "green_corruption"
 
         return True, "valid"
 
-    def _is_green_corrupted(self, frame: np.ndarray) -> bool:
-        """Detect green corruption common in H.264 decode errors."""
-        try:
-            # Sample center region for faster check
-            h, w = frame.shape[:2]
-            center = frame[h // 4:3 * h // 4, w // 4:3 * w // 4]
+    def _is_green_corrupted(self, patch: np.ndarray) -> bool:
+        """Detect green corruption common in H.264 decode errors.
 
-            # Check if green channel dominates abnormally
-            b, g, r = cv2.split(center)
-            g_mean = np.mean(g)
-            b_mean = np.mean(b)
-            r_mean = np.mean(r)
+        Operates on a pre-sampled patch for efficiency.
+        """
+        try:
+            b_mean = np.mean(patch[:, :, 0])
+            g_mean = np.mean(patch[:, :, 1])
+            r_mean = np.mean(patch[:, :, 2])
 
             # Green corruption: green >> red and green >> blue
             if g_mean > 200 and g_mean > b_mean * 2 and g_mean > r_mean * 2:

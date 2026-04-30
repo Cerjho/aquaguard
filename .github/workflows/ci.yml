@@ -50,7 +50,7 @@ jobs:
             detection_engine/requirements.txt
 
       - name: Install linters
-        run: pip install --no-cache-dir flake8==7.1.1
+        run: pip install flake8==7.1.1
 
       - name: Lint Python (backend)
         run: flake8 backend/ --exclude=backend/migrations/ --extend-ignore=W293,E501,F401,F541,F841

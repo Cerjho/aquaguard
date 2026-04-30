@@ -94,5 +94,5 @@ export const WEBRTC_STATUS_POLL_MAX_MS = Number(process.env.REACT_APP_WEBRTC_STA
 export const WEBRTC_STATUS_POLL_429_BACKOFF_FACTOR = Number(
 	process.env.REACT_APP_WEBRTC_STATUS_POLL_429_BACKOFF_FACTOR || 2
 );
-// Faster retry for better UX when navigating between pages
-export const WEBRTC_RETRY_INTERVAL_MS = Number(process.env.REACT_APP_WEBRTC_RETRY_INTERVAL_MS || 3000);
+// Faster retry for better UX on network changes and page navigation
+export const WEBRTC_RETRY_INTERVAL_MS = Number(process.env.REACT_APP_WEBRTC_RETRY_INTERVAL_MS || 1500);

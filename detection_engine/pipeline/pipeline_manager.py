@@ -134,10 +134,20 @@ class ZonePipeline:
         - Puts raw frames into raw_frame_queue (for detection)
         - Continuously drains annotated_frame_queue to feed frame writer
         - Ensures annotated frames are prioritized over raw frames for streaming
+        - Adaptively throttles to match detection worker throughput
         """
         logger.info("[%s] Camera feeder starting...", self.zone_id)
         frames_fed = 0
         last_log_time = time.time()
+
+        # Adaptive throttling — pace feeder to detection worker throughput
+        # to keep drop_rate ≤ 5%.  The sleep starts at 0 and grows only when
+        # the queue reports high drop rates.
+        throttle_sleep = 0.0
+        _MAX_THROTTLE = 0.050   # 50 ms ≈ cap feeder at ~20 FPS
+        _THROTTLE_STEP = 0.005  # 5 ms increments
+        _DROP_RATE_HIGH = 0.05  # above 5% → slow down
+        _DROP_RATE_LOW = 0.02   # below 2% → speed up
 
         while not self._stop_event.is_set():
             try:
@@ -163,36 +173,39 @@ class ZonePipeline:
                 # Feed to raw frame queue (for detection worker)
                 self.raw_frame_queue.put(frame, timestamp, metadata)
 
-                # CRITICAL FIX: Drain ALL available annotated frames FIRST.
-                # Detection worker runs slower (~10-15 FPS) than feeder (~30 FPS),
-                # so annotated frames accumulate in queue. Must drain continuously
-                # to prioritize annotated frames over raw frames on stream.
-                # Without this, raw frames overwrite pending annotations before
-                # they reach the frame writer, causing annotation loss on stream.
-                annotated_frames_drained = 0
-                while True:
-                    annotated_data = self.annotated_frame_queue.get()
-                    if annotated_data is None or annotated_data.annotated_frame is None:
-                        break
+                # Drain annotated frame from detection worker (consume-on-read)
+                annotated_data = self.annotated_frame_queue.get()
+                if annotated_data is not None and annotated_data.annotated_frame is not None:
                     self.frame_writer.update_annotated_frame(annotated_data.annotated_frame)
-                    annotated_frames_drained += 1
 
                 # Feed raw frame to frame writer (fallback for smooth streaming)
-                # Annotated frames are preferred via continuous drain above.
+                # Annotated frames are preferred via drain above.
                 self.frame_writer.update_raw_frame(frame)
 
                 frames_fed += 1
 
-                # Log stats every 10 seconds
+                # Adaptive throttle: slow the feeder when queue drops are high
+                if throttle_sleep > 0:
+                    time.sleep(throttle_sleep)
+
+                # Log stats and adjust throttle every 10 seconds
                 now = time.time()
                 if now - last_log_time >= 10.0:
                     fps = frames_fed / (now - last_log_time)
                     queue_stats = self.raw_frame_queue.stats
+                    current_drop = queue_stats['drop_rate']
                     logger.debug(
-                        "[%s] Feeder: %.1f FPS fed, queue drop_rate=%.1f%%, annotated drained=%.0f/sec",
-                        self.zone_id, fps, queue_stats['drop_rate'] * 100,
-                        (annotated_frames_drained * fps) if fps > 0 else 0
+                        "[%s] Feeder: %.1f FPS fed, queue drop_rate=%.1f%%, throttle=%.0fms",
+                        self.zone_id, fps, current_drop * 100,
+                        throttle_sleep * 1000,
                     )
+
+                    # Adjust throttle based on windowed drop rate
+                    if current_drop > _DROP_RATE_HIGH:
+                        throttle_sleep = min(throttle_sleep + _THROTTLE_STEP, _MAX_THROTTLE)
+                    elif current_drop < _DROP_RATE_LOW and throttle_sleep > 0:
+                        throttle_sleep = max(throttle_sleep - _THROTTLE_STEP, 0.0)
+
                     last_log_time = now
                     frames_fed = 0
 

@@ -8,6 +8,7 @@ This implements the "table" between workers in the Three-Lane Highway:
 """
 import logging
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 import numpy as np
@@ -44,10 +45,17 @@ class FrameQueue:
         self._lock = threading.Lock()
         self._new_frame_event = threading.Event()
 
-        # Stats
+        # Cumulative stats
         self._frames_received = 0
         self._frames_dropped = 0
         self._frames_processed = 0
+
+        # Windowed stats (rolling 30-second window)
+        self._window_received = 0
+        self._window_dropped = 0
+        self._window_processed = 0
+        self._window_start = time.monotonic()
+        self._window_duration = 30.0
 
     def put(self, frame: np.ndarray, timestamp: str, metadata: Optional[Dict] = None) -> None:
         """
@@ -57,8 +65,11 @@ class FrameQueue:
         Non-blocking — never waits.
         """
         with self._lock:
+            self._maybe_reset_window()
+
             if self._frame_data is not None:
-                self._frames_dropped += 1  # Previous frame wasn't processed
+                self._frames_dropped += 1
+                self._window_dropped += 1
 
             self._frame_data = FrameData(
                 frame=frame,
@@ -66,6 +77,7 @@ class FrameQueue:
                 metadata=metadata or {},
             )
             self._frames_received += 1
+            self._window_received += 1
             self._new_frame_event.set()
 
     def get(self, timeout: Optional[float] = None) -> Optional[FrameData]:
@@ -88,6 +100,7 @@ class FrameQueue:
 
             if frame_data is not None:
                 self._frames_processed += 1
+                self._window_processed += 1
 
             return frame_data
 
@@ -100,15 +113,33 @@ class FrameQueue:
         with self._lock:
             return self._frame_data
 
+    def _maybe_reset_window(self) -> None:
+        """Reset windowed counters if the window has elapsed. Caller holds lock."""
+        now = time.monotonic()
+        if now - self._window_start >= self._window_duration:
+            self._window_received = 0
+            self._window_dropped = 0
+            self._window_processed = 0
+            self._window_start = now
+
     @property
     def stats(self) -> Dict[str, int]:
-        """Get queue statistics."""
+        """Get queue statistics.
+
+        ``drop_rate`` reflects the last 30-second window so it responds
+        quickly to changes.  ``drop_rate_cumulative`` tracks all-time.
+        """
         with self._lock:
+            self._maybe_reset_window()
             return {
                 'frames_received': self._frames_received,
                 'frames_dropped': self._frames_dropped,
                 'frames_processed': self._frames_processed,
                 'drop_rate': (
+                    self._window_dropped / self._window_received
+                    if self._window_received > 0 else 0.0
+                ),
+                'drop_rate_cumulative': (
                     self._frames_dropped / self._frames_received
                     if self._frames_received > 0 else 0.0
                 ),

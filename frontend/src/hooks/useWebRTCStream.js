@@ -99,6 +99,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         pcRef.current.onicecandidate = null;
         pcRef.current.ontrack = null;
         pcRef.current.onconnectionstatechange = null;
+        pcRef.current.oniceconnectionstatechange = null;
         pcRef.current.close();
         pcRef.current = null;
       }
@@ -118,6 +119,37 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         retryScheduledRef.current = false;
         if (!stoppedRef.current) startWebRTC();
       }, WEBRTC_RETRY_INTERVAL_MS);
+    };
+
+    // ICE restart: re-use existing peer connection with fresh candidates.
+    // Much faster than a full teardown + renegotiation.
+    const attemptIceRestart = async () => {
+      const pc = pcRef.current;
+      if (!pc || !sessionIdRef.current) {
+        scheduleRetry();
+        return;
+      }
+      try {
+        setWebrtcState('reconnecting');
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        const response = await api.post('/api/v1/webrtc/offer', {
+          zone_id: zoneId,
+          session_id: sessionIdRef.current,
+          type: offer.type,
+          sdp: offer.sdp,
+          fallback_transport: 'mjpeg',
+        });
+        const data = response?.data?.data || response?.data || {};
+        const answerSdp = data.sdp;
+        if (!answerSdp) {
+          scheduleRetry();
+          return;
+        }
+        await pc.setRemoteDescription({ type: data.type || 'answer', sdp: answerSdp });
+      } catch {
+        scheduleRetry();
+      }
     };
 
     const pollStatus = async () => {
@@ -217,6 +249,16 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
           }
         };
 
+        // Detect ICE connectivity loss before full connection failure.
+        // "disconnected" is recoverable via ICE restart; "failed" is not.
+        pc.oniceconnectionstatechange = () => {
+          if (pc.iceConnectionState === 'disconnected') {
+            attemptIceRestart();
+          } else if (pc.iceConnectionState === 'failed') {
+            scheduleRetry();
+          }
+        };
+
         const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: false });
         await pc.setLocalDescription(offer);
         const offerResponse = await api.post('/api/v1/webrtc/offer', {
@@ -258,12 +300,25 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
 
     startWebRTC();
 
+    // Recover immediately when the browser detects network restoration.
+    const onOnline = () => {
+      if (stoppedRef.current) return;
+      const pc = pcRef.current;
+      if (pc && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+        attemptIceRestart();
+      } else if (!pc) {
+        scheduleRetry();
+      }
+    };
+    window.addEventListener('online', onOnline);
+
     return () => {
       stoppedRef.current = true;
       clearTimers();
       teardownPeer();
       sessionIdRef.current = null;
       negotiatedRef.current = false;
+      window.removeEventListener('online', onOnline);
     };
   }, [zoneId, shouldRenderStream, isActive]);
 

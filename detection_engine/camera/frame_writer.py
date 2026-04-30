@@ -36,6 +36,7 @@ class ContinuousFrameWriter:
 
         self._latest_raw_frame: Optional[np.ndarray] = None
         self._latest_annotated_frame: Optional[np.ndarray] = None
+        self._last_annotated_time: float = 0.0
         self._frame_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -56,6 +57,7 @@ class ContinuousFrameWriter:
         """Update annotated frame from detection (called at detection FPS)."""
         with self._frame_lock:
             self._latest_annotated_frame = frame.copy() if frame is not None else None
+            self._last_annotated_time = time.time()
 
     def start(self) -> None:
         """Start the continuous frame writer thread."""
@@ -97,15 +99,14 @@ class ContinuousFrameWriter:
             loop_start = time.time()
 
             # Get best available frame (prefer annotated, fall back to raw)
-            # Annotated frame is consumed on read so we don't keep
-            # re-serving a stale detection result while fresh raw
-            # frames are available.
+            # We keep serving the annotated frame for up to 1 second to prevent
+            # flickering, as detection FPS is typically lower than stream FPS.
             with self._frame_lock:
-                if self._latest_annotated_frame is not None:
+                if self._latest_annotated_frame is not None and (time.time() - self._last_annotated_time) < 1.0:
                     frame = self._latest_annotated_frame
-                    self._latest_annotated_frame = None
                 elif self._latest_raw_frame is not None:
                     frame = self._latest_raw_frame
+                    self._latest_annotated_frame = None # clear stale
                 else:
                     frame = None
 

@@ -35,8 +35,7 @@ class ContinuousFrameWriter:
         self.frame_interval = 1.0 / target_fps
 
         self._latest_raw_frame: Optional[np.ndarray] = None
-        self._latest_annotated_frame: Optional[np.ndarray] = None
-        self._last_annotated_time: float = 0.0
+
         self._frame_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -53,11 +52,6 @@ class ContinuousFrameWriter:
         with self._frame_lock:
             self._latest_raw_frame = frame.copy() if frame is not None else None
 
-    def update_annotated_frame(self, frame: np.ndarray) -> None:
-        """Update annotated frame from detection (called at detection FPS)."""
-        with self._frame_lock:
-            self._latest_annotated_frame = frame.copy() if frame is not None else None
-            self._last_annotated_time = time.time()
 
     def start(self) -> None:
         """Start the continuous frame writer thread."""
@@ -98,17 +92,9 @@ class ContinuousFrameWriter:
         while not self._stop_event.is_set():
             loop_start = time.time()
 
-            # Get best available frame (prefer annotated, fall back to raw)
-            # We keep serving the annotated frame for up to 1 second to prevent
-            # flickering, as detection FPS is typically lower than stream FPS.
+            # Get the latest composited frame
             with self._frame_lock:
-                if self._latest_annotated_frame is not None and (time.time() - self._last_annotated_time) < 1.0:
-                    frame = self._latest_annotated_frame
-                elif self._latest_raw_frame is not None:
-                    frame = self._latest_raw_frame
-                    self._latest_annotated_frame = None # clear stale
-                else:
-                    frame = None
+                frame = self._latest_raw_frame
 
             if frame is not None:
                 try:

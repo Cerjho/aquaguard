@@ -56,6 +56,8 @@ class ZonePipeline:
     ):
         self.zone_id = zone_id
         self.camera = camera
+        self.annotate_frame_fn = annotate_frame_fn
+        self.latest_detections = []
 
         # Create queues
         self.raw_frame_queue = FrameQueue(zone_id)
@@ -173,14 +175,20 @@ class ZonePipeline:
                 # Feed to raw frame queue (for detection worker)
                 self.raw_frame_queue.put(frame, timestamp, metadata)
 
-                # Drain annotated frame from detection worker (consume-on-read)
+                # Drain annotated frame from detection worker to update latest detections
                 annotated_data = self.annotated_frame_queue.get()
-                if annotated_data is not None and annotated_data.annotated_frame is not None:
-                    self.frame_writer.update_annotated_frame(annotated_data.annotated_frame)
+                if annotated_data is not None and getattr(annotated_data, 'detections', None) is not None:
+                    self.latest_detections = annotated_data.detections
 
-                # Feed raw frame to frame writer (fallback for smooth streaming)
-                # Annotated frames are preferred via drain above.
-                self.frame_writer.update_raw_frame(frame)
+                # Overlay the latest known detections onto the fresh raw frame
+                frame_out = frame.copy()
+                if self.latest_detections:
+                    frame_out = self.annotate_frame_fn(
+                        frame_out, self.latest_detections, self.zone_id, timestamp
+                    )
+
+                # Feed ONLY the fully composited frame to the frame writer
+                self.frame_writer.update_raw_frame(frame_out)
 
                 frames_fed += 1
 

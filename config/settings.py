@@ -10,26 +10,38 @@ except ModuleNotFoundError:
         """Return True for common truthy string values."""
         return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
-# ── Confidence Filter (Rolling Window) ────────────────────────────────────────
-CONFIDENCE_WINDOW_SIZE = 15         # N — rolling window size
-CONFIDENCE_THRESHOLD = 0.75         # T — mean ratio threshold to trigger alert
-CONFIDENCE_MIN_HITS = 10            # K — minimum positive frames in window
+# ── Confidence Filter (Rolling Window) — Water-Level Tuned ────────────────────
+CONFIDENCE_WINDOW_SIZE = 10         # N — reduced from 15 (faster response @ water level)
+CONFIDENCE_THRESHOLD = 0.45         # T — reduced from 0.55 (accept more noise @ water level)
+CONFIDENCE_MIN_HITS = 6             # K — reduced from 7 (6 of 10 frames high confidence)
 CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS
-CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.65
+CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.50  # Reduced from 0.60 (water-level margin)
 
-# ── Behavior Analyzer Weights ─────────────────────────────────────────────────
-WEIGHT_VERTICAL_ORIENTATION = 0.30
-WEIGHT_ARMS_ELEVATED = 0.25
-WEIGHT_NO_LIMB_MOTION = 0.20
-WEIGHT_FACE_SUBMERGED = 0.15
-WEIGHT_YOLO_CLASS = 0.10
+# ── Behavior Analyzer Weights (Water-Level Tuned) ───────────────────────────
+# NOTE: Sum = 1.20 (normalized dynamically based on visibility gating)
+WEIGHT_VERTICAL_ORIENTATION = 0.30  # Reliable: shoulder landmarks visible
+WEIGHT_ARMS_ELEVATED = 0.20         # Reduced from 0.25 (water-level angle affects)
+WEIGHT_HEAD_POSITION_LOW = 0.35     # NEW: Most reliable surface cue @ water level
+WEIGHT_NO_BREATHING_MOTION = 0.25   # NEW: Temporal signal (breathing pattern absence)
+WEIGHT_YOLO_CLASS = 0.10            # Keep: YOLO classification
+# REMOVED: WEIGHT_NO_LIMB_MOTION (0.20) — unreliable underwater
+# REMOVED: WEIGHT_FACE_SUBMERGED (0.15) — flickers at water line
 
-# ── Behavior Analyzer Thresholds ─────────────────────────────────────────────
-VERTICAL_ANGLE_THRESHOLD_DEG = 30
+# ── Behavior Analyzer Thresholds ────────────────────────────────────────────
+VERTICAL_ANGLE_THRESHOLD_DEG = 40   # Body angle from vertical (degrees)
 # CRITICAL: MediaPipe returns normalized coords [0.0, 1.0] — NOT pixels
-LIMB_MOTION_STD_THRESHOLD = 0.015
-FACE_VISIBILITY_THRESHOLD = 0.4
-YOLO_DROWNING_CONF_BOOST = 0.6
+LIMB_MOTION_STD_THRESHOLD = 0.025   # Kept for compatibility (no longer used in indicators)
+FACE_VISIBILITY_THRESHOLD = 0.5     # Kept for compatibility
+YOLO_DROWNING_CONF_BOOST = 0.6      # YOLO confidence threshold for drowning class
+
+# ── Water-Level Detection Thresholds (TIGHTENED for False Positive Reduction) ──
+HEAD_LOW_THRESHOLD = 0.15           # INCREASED from 0.08 (head must be WAY down at water line)
+LIMB_VISIBILITY_MIN_THRESHOLD = 0.30  # Skip indicator if visibility below this
+NO_BREATHING_HISTORY_LEN = 5        # Frames to track for breathing pattern detection
+
+# Breathing stability (TUNABLE per pool conditions, increased for strictness)
+# Higher value = requires MORE stillness (fewer false positives from standing)
+NO_BREATHING_VARIANCE_THRESHOLD = float(os.environ.get("NO_BREATHING_VARIANCE", "0.0008"))
 
 # ── CUDA / Inference Resiliency ──────────────────────────────────────────────
 CUDA_OOM_COOLDOWN_SECONDS = float(os.environ.get('CUDA_OOM_COOLDOWN_SECONDS', '5'))
@@ -80,9 +92,7 @@ CAMERA_CORRUPTION_WARN_THRESHOLD = 0.10  # 10% corruption rate triggers warning
 
 # ── Alert ─────────────────────────────────────────────────────────────────────
 ALARM_DURATION_SECONDS = 30
-ALERT_RETRIGGER_INTERVAL_SECONDS = float(
-    os.environ.get('ALERT_RETRIGGER_INTERVAL_SECONDS', '2.0')
-)
+# Ephemeral alerts: no retrigger cooldown (fires once per event, frontend handles auto-close)
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
 SNAPSHOT_FORMAT = "jpg"

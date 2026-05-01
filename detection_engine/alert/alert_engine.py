@@ -1,4 +1,4 @@
-"""Alert engine — dispatches confirmed drowning alerts via MQTT, API, and logger."""
+"""Alert engine — dispatches confirmed drowning alerts via MQTT, API, and logger (ephemeral system)."""
 import atexit
 import base64
 from concurrent.futures import ThreadPoolExecutor
@@ -31,6 +31,8 @@ class BoundedThreadPoolExecutor(ThreadPoolExecutor):
 
 class AlertEngine:
     """Dispatches drowning alerts concurrently via MQTT, REST API, and logger.
+
+    EPHEMERAL ALERTS: No retrigger cooldown. Frontend manages 3-sec auto-close.
 
     CRITICAL: snapshot_dir must be an absolute path resolved by main.py using
     os.path.abspath(__file__) — never passed as a relative path.
@@ -171,12 +173,14 @@ class AlertEngine:
         class_label: str | None = None,
         behavior_flags: Any | None = None,
     ) -> bool:
-        """Compatibility gate for pipeline callback alert dispatch decisions.
+        """Validate alert fields and allow dispatch (ephemeral system, no cooldown).
 
-        The confidence filter already applies rolling-window and interval control,
-        so this gate currently returns True to allow sustained drowning re-alerts.
+        Defensive assertions to catch programming errors early.
         """
-        _ = (zone_id, track_id, final_confidence, class_label, behavior_flags)
+        assert zone_id is not None and str(zone_id).strip(), "Alert: invalid zone_id"
+        assert track_id is not None and str(track_id).strip(), "Alert: invalid track_id"
+        assert 0.0 <= final_confidence <= 1.0, f"Alert: confidence out of range {final_confidence}"
+        _ = (class_label, behavior_flags)
         return True
 
     def dispatch_alert(

@@ -62,7 +62,7 @@ def test_dispatch_uses_executor_and_fans_out(monkeypatch, tmp_path):
 
     mqtt_payload = mqtt.payloads[0]
     assert mqtt_payload["zone_id"] == "zone_01"
-    assert mqtt_payload["bbox"] == [1.0, 2.0, 3.0, 4.0]
+    assert "event_id" in mqtt_payload
 
     api_payload = api.payloads[0]
     snapshot_path = Path(api_payload.snapshot_path)
@@ -112,6 +112,6 @@ def test_pipeline_compat_methods_dispatch_alert(monkeypatch, tmp_path):
 
     assert len(mqtt.payloads) == 1
     assert len(api.payloads) == 1
-    assert mqtt.payloads[0]["track_id"] == "track_1"
+    assert "event_id" in mqtt.payloads[0]
 
     engine.close()

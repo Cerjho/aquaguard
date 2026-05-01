@@ -14,8 +14,8 @@ class TestDetectionWorkerThreadPoolExecutor:
 
     def test_initialization_creates_executor_with_two_workers(self):
         """ThreadPoolExecutor should be initialized with max_workers=2."""
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         with patch("detection_engine.pipeline.detection_worker.ThreadPoolExecutor") as mock_executor_cls:
             mock_executor = MagicMock()
@@ -42,8 +42,8 @@ class TestDetectionWorkerThreadPoolExecutor:
 
     def test_executor_is_shutdown_on_stop(self):
         """stop() should call executor.shutdown(wait=True)."""
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         with patch("detection_engine.pipeline.detection_worker.ThreadPoolExecutor") as mock_executor_cls:
             mock_executor = MagicMock()
@@ -82,8 +82,8 @@ class TestDetectionWorkerParallelAnalysis:
         from detection_engine.models_data.detection import Detection
         import numpy as np
         
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         # Mock detector to return 3 detections
         mock_detector = MagicMock()
@@ -142,8 +142,8 @@ class TestDetectionWorkerParallelAnalysis:
         from detection_engine.models_data.landmark import Landmark
         import numpy as np
         
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         # Create N detections
         detections = [
@@ -196,8 +196,8 @@ class TestDetectionWorkerParallelAnalysis:
         from concurrent.futures import TimeoutError
         import numpy as np
         
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         detection = Detection("track_1", "drowning", 0.9, (10, 10, 100, 100))
         
@@ -233,10 +233,10 @@ class TestDetectionWorkerParallelAnalysis:
         # because it timed out
         # (Behavior depends on implementation; may be 0 or None)
 
-    def test_executor_life cycle_start_and_stop(self):
+    def test_executor_lifecycle_start_and_stop(self):
         """Executor should be created on start and cleaned up on stop."""
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         worker = DetectionWorker(
             zone_id="test_zone",
@@ -264,8 +264,8 @@ class TestDetectionWorkerParallelAnalysis:
         from detection_engine.models_data.detection import Detection
         import numpy as np
         
-        input_queue = FrameQueue(maxsize=1)
-        output_queue = AnnotatedFrameQueue(maxsize=1)
+        input_queue = FrameQueue(zone_id="test_zone")
+        output_queue = AnnotatedFrameQueue(zone_id="test_zone")
         
         detection = Detection("track_1", "drowning", 0.9, (10, 10, 100, 100))
         

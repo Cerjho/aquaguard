@@ -127,7 +127,7 @@ class TestFrameWriterRaceCondition:
         frame1[:] = 200
         
         # Assert: stored frame is unchanged (we own a separate buffer)
-        assert np.array_equal(stored_snapshot, 100), \
+        assert np.all(stored_snapshot == 100), \
             "Buffer was overwritten by input modification (aliasing issue)"
 
     def test_concurrent_update_and_read_locks_correctly(self):

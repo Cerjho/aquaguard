@@ -198,7 +198,7 @@ def _annotate_live_frame(frame, detections, zone_id: str, frame_timestamp: str):
             cv2.LINE_AA,
         )
 
-    footer = f"AquaGuard | {zone_id} | detections={len(detections)}"
+    footer = f"AquaGuard | {zone_id} | detections={len(detections)} | {frame_timestamp}"
     cv2.putText(
         annotated,
         footer,

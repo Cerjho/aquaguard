@@ -1,0 +1,59 @@
+# ==============================================================================
+# AquaGuard SPLIT DEPLOYMENT — Machine A (GPU laptop)
+# ==============================================================================
+# Runs ONLY the detection engine + camera.
+# Backend, frontend, and DB run on teammate's machine.
+#
+# Usage:
+#   1. Edit AQUAGUARD_API_URL below → teammate's IP
+#   2. Edit MQTT_BROKER_HOST below → teammate's IP
+#   3. docker compose -f docker-compose.detection.yml up -d
+#
+# RAM needed: ~4.5 GB (vs ~8 GB for the full stack)
+# ==============================================================================
+
+services:
+
+  detection_engine:
+    build:
+      context: ./detection_engine
+    container_name: aquaguard-detection
+    init: true
+    environment:
+      # ── Point to teammate's machine ──────────────────────────────────────
+      # CHANGE THIS to your teammate's IP address (run: ipconfig | findstr IPv4)
+      - AQUAGUARD_API_URL=http://${TEAMMATE_IP:-192.168.1.22}:5000
+      - MQTT_BROKER_HOST=${TEAMMATE_IP:-192.168.1.22}
+      - MQTT_BROKER_PORT=1883
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-change-me-internal-api-key-min-32-chars}
+      # ── Detection tuning ────────────────────────────────────────────────
+      - RTSP_TRANSPORT=${RTSP_TRANSPORT:-udp}
+      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov8s.pt}
+      - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-10}
+      - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-5}
+      - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-10}
+      - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE:-1}
+      # ── Suppress noisy third-party logs ─────────────────────────────────
+      - TF_CPP_MIN_LOG_LEVEL=3
+      - GLOG_minloglevel=3
+      - GLOG_logtostderr=0
+      - ABSL_LOG_LEVEL=3
+    volumes:
+      - ./detection_engine/models:/app/detection_engine/models:ro
+      - ./config:/app/config:ro
+      - ./backend/snapshots:/app/backend/snapshots
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped

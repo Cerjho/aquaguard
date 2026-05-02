@@ -12,10 +12,10 @@ except ModuleNotFoundError:
 
 # ── Confidence Filter (Rolling Window) — Water-Level Tuned ────────────────────
 CONFIDENCE_WINDOW_SIZE = 10         # N — reduced from 15 (faster response @ water level)
-CONFIDENCE_THRESHOLD = 0.45         # T — reduced from 0.55 (accept more noise @ water level)
+CONFIDENCE_THRESHOLD = 0.70         # T — raised from 0.60 (aggressive FP reduction for on-land scenarios)
 CONFIDENCE_MIN_HITS = 6             # K — reduced from 7 (6 of 10 frames high confidence)
 CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS
-CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.50  # Reduced from 0.60 (water-level margin)
+CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.75  # Raised from 0.65 (each frame must score higher to count as hit)
 
 # ── Behavior Analyzer Weights (Water-Level Tuned) ───────────────────────────
 # NOTE: Sum = 1.20 (normalized dynamically based on visibility gating)
@@ -35,13 +35,55 @@ FACE_VISIBILITY_THRESHOLD = 0.5     # Kept for compatibility
 YOLO_DROWNING_CONF_BOOST = 0.6      # YOLO confidence threshold for drowning class
 
 # ── Water-Level Detection Thresholds (TIGHTENED for False Positive Reduction) ──
-HEAD_LOW_THRESHOLD = 0.15           # INCREASED from 0.08 (head must be WAY down at water line)
+HEAD_LOW_THRESHOLD = 0.08           # TIGHTENED from 0.15 (only triggers when head is nearly at shoulder level, not just looking down)
 LIMB_VISIBILITY_MIN_THRESHOLD = 0.30  # Skip indicator if visibility below this
 NO_BREATHING_HISTORY_LEN = 5        # Frames to track for breathing pattern detection
+NO_BREATHING_HISTORY_FRAMES = 10    # Extended window for no-breathing detection (≥3 required)
 
 # Breathing stability (TUNABLE per pool conditions, increased for strictness)
 # Higher value = requires MORE stillness (fewer false positives from standing)
-NO_BREATHING_VARIANCE_THRESHOLD = float(os.environ.get("NO_BREATHING_VARIANCE", "0.0008"))
+NO_BREATHING_VARIANCE_THRESHOLD = float(os.environ.get("NO_BREATHING_VARIANCE", "0.001"))
+
+# ── Water ROI Gate ────────────────────────────────────────────────────────────
+# Polygon defining the pool water surface in FULL FRAME pixel coordinates.
+# Persons whose bounding-box base falls outside this polygon are scored 0.0.
+# Set to None to disable the gate (all detections scored normally).
+WATER_ROI_ENABLED = True
+WATER_ROI = None  # Override: list of [x,y] vertices, e.g. [[100,200],[1180,200],[1180,700],[100,700]]
+
+# ── Water ROI Auto-Detection ──────────────────────────────────────────────────
+# When WATER_ROI is None and WATER_ROI_ENABLED is True, auto-detect the pool
+# water surface from the camera frame using HSV color segmentation.
+# Re-detects every startup AND periodically (handles camera repositioning).
+WATER_ROI_AUTO_DETECT = True
+WATER_ROI_MIN_AREA_RATIO = 0.05     # Min fraction of frame area for valid water region
+WATER_ROI_CALIBRATION_FRAMES = 5    # Grab N frames and use the best detection
+WATER_ROI_RECALIBRATE_INTERVAL = 300  # Re-detect every N seconds (0 = disable periodic recalibration)
+
+# ── YOLO Inference ────────────────────────────────────────────────────────────
+YOLO_CONFIDENCE_THRESHOLD = 0.4     # Minimum detection confidence for model.track()
+YOLO_IMGSZ = 1280                   # Input resolution (larger = better mid-range detection)
+YOLO_MIN_BBOX_AREA = 400            # Min bbox area in px² (only filters person_out_of_water class)
+
+# ── Water-Presence Validation (Camera-Position Independent) ───────────────────
+# Layer 1: YOLO hard gate — suppress scoring for "person_out_of_water" detections
+SUPPRESS_OUT_OF_WATER_CLASS = True
+
+# Layer 2: Ankle soft signal — penalize score when full-body standing posture detected
+ANKLE_GATE_ENABLED = True
+ANKLE_VISIBILITY_MIN = 0.5          # Both ankles must be this visible to trigger
+ANKLE_HIP_MARGIN = 0.15             # Ankles must be this far below hips (normalized ROI coords)
+ANKLE_OUT_OF_WATER_PENALTY = 0.15   # Score multiplier when person appears on dry land (harsher penalty)
+
+# Layer 3: Full-body-visible hard gate — if full skeleton (knees+ankles) is clearly
+# visible, the person is on land (swimmers have submerged lower body)
+FULL_BODY_VISIBLE_GATE_ENABLED = True
+FULL_BODY_VISIBILITY_MIN = 0.5      # Min visibility for knee+ankle landmarks to trigger gate
+
+# Layer 4: Swimming class upright suppression — if YOLO says "swimming" but body
+# is in upright posture, suppress (swimmers are horizontal, not standing)
+SWIMMING_UPRIGHT_SUPPRESSION = True
+SWIMMING_UPRIGHT_ANGLE_MAX = 35     # Max degrees from vertical to count as "upright"
 
 # ── CUDA / Inference Resiliency ──────────────────────────────────────────────
 CUDA_OOM_COOLDOWN_SECONDS = float(os.environ.get('CUDA_OOM_COOLDOWN_SECONDS', '5'))
@@ -92,7 +134,7 @@ CAMERA_CORRUPTION_WARN_THRESHOLD = 0.10  # 10% corruption rate triggers warning
 
 # ── Alert ─────────────────────────────────────────────────────────────────────
 ALARM_DURATION_SECONDS = 30
-# Ephemeral alerts: no retrigger cooldown (fires once per event, frontend handles auto-close)
+ALERT_COOLDOWN_SECONDS = 30         # Per-track cooldown: suppress duplicate alerts within this window
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
 SNAPSHOT_FORMAT = "jpg"

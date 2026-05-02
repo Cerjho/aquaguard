@@ -22,10 +22,11 @@ def _socketio_allowed_origins():
 socketio = SocketIO(
     async_mode='threading',
     cors_allowed_origins=_socketio_allowed_origins(),
-    # CRITICAL: Extend ping timeouts to prevent disconnections during heavy load
-    # Default ping_timeout is 20s, ping_interval is 25s - too short for life-safety system
-    ping_timeout=60,      # Time to wait for pong before considering connection dead
-    ping_interval=25,     # How often to send ping frames
+    ping_timeout=60,
+    ping_interval=25,
+    engineio_logger=False,
+    logger=False,
+    max_http_buffer_size=1048576,
 )
 bcrypt   = Bcrypt()
 migrate  = Migrate()
@@ -34,7 +35,7 @@ DEFAULT_RATE_LIMITS = os.getenv(
     'FLASK_DEFAULT_RATE_LIMITS',
     '2000 per day,300 per hour',
 )
-RATE_LIMIT_STORAGE_URI = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
+RATE_LIMIT_STORAGE_URI = os.getenv('RATELIMIT_STORAGE_URI', 'redis://redis:6379/1')
 limiter  = Limiter(
     key_func=get_remote_address,
     storage_uri=RATE_LIMIT_STORAGE_URI,
@@ -43,4 +44,5 @@ limiter  = Limiter(
         for limit in DEFAULT_RATE_LIMITS.split(',')
         if limit.strip()
     ],
+    storage_options={'socket_connect_timeout': 5},
 )

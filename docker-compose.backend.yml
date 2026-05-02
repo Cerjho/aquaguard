@@ -1,0 +1,168 @@
+# ==============================================================================
+# AquaGuard SPLIT DEPLOYMENT — Machine B (Teammate's laptop, no GPU needed)
+# ==============================================================================
+# Runs backend, frontend, database, Redis, and MQTT broker.
+# Detection engine runs on the GPU machine separately.
+#
+# Usage:
+#   1. Copy the entire AquaGuard project to teammate's machine
+#   2. Edit CORS_ALLOWED_ORIGINS → allow connections from both machines
+#   3. docker compose -f docker-compose.backend.yml up -d
+#
+# RAM needed: ~3 GB (no GPU required)
+# ==============================================================================
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: aquaguard-db
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-aquaguard}
+      - MYSQL_USER=${MYSQL_USER:-aquaguard}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-aquaguardpass}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: aquaguard-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: aquaguard-mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 1883 -t aquaguard/healthcheck -m ping >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: aquaguard-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - APP_ENV=production
+      - ALLOW_UNSAFE_WERKZEUG=1
+      - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://aquaguard:aquaguardpass@mysql:3306/aquaguard}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-me}
+      # Allow connections from both machines + any local IP
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://192.168.1.0:3000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-redis://redis:6379/1}
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-change-me-internal-api-key-min-32-chars}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-aquaguard2026}
+      - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD:-lifeguard2026}
+    volumes:
+      - ./backend/snapshots:/app/snapshots
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # CHANGE THIS to this machine's own IP so phones/browsers can reach it
+        REACT_APP_API_URL: http://${MY_IP:-192.168.1.22}:5000
+        REACT_APP_WS_URL: http://${MY_IP:-192.168.1.22}:5000
+        REACT_APP_WEBRTC_STUN_URLS: stun:stun.l.google.com:19302
+        REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY: all
+        REACT_APP_WEBRTC_FORCE_RELAY: "false"
+        REACT_APP_WEBRTC_ENABLE: "true"
+    container_name: aquaguard-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mysql_data:
+  redis_data:

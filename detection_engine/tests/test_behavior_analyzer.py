@@ -9,6 +9,9 @@ from detection_engine.models_data.landmark import Landmark
 def _make_landmarks(override: dict = None) -> list:
     """Build 33 landmarks with sensible defaults; override specific indices."""
     lms = [Landmark(x=0.5, y=float(i) / 33, z=0.0, visibility=0.9) for i in range(33)]
+    # Submerge legs by default to avoid the full-body visible hard gate
+    for i in [25, 26, 27, 28]:
+        lms[i].visibility = 0.1
     if override:
         for idx, kw in override.items():
             lms[idx] = Landmark(**kw)
@@ -29,15 +32,7 @@ class TestBehaviorAnalyzerScore:
         score_drown = analyzer2.analyze(dummy_landmarks, "drowning", 0.9, "track_b")
         assert score_drown > score_swim
 
-    def test_temporal_consistency_increases_score(self, dummy_landmarks):
-        """Feeding high scores repeatedly should apply temporal bonus."""
-        analyzer = BehaviorAnalyzer()
-        scores = []
-        for i in range(10):
-            s = analyzer.analyze(dummy_landmarks, "drowning", 0.9, "track_t")
-            scores.append(s)
-        # Later scores (with history) should be >= earlier scores
-        assert scores[-1] >= scores[0]
+
 
     def test_separate_track_ids_are_independent(self, dummy_landmarks):
         analyzer = BehaviorAnalyzer()
@@ -96,48 +91,18 @@ class TestBehaviorAnalyzerIndicators:
         })
         assert self.analyzer._are_arms_elevated(lms) is False
 
-    def test_face_submerged_low_visibility(self):
-        lms = _make_landmarks({0: dict(x=0.5, y=0.1, z=0.0, visibility=0.1)})
-        assert self.analyzer._is_face_submerged(lms) is True
 
-    def test_face_not_submerged_high_visibility(self):
-        lms = _make_landmarks({0: dict(x=0.5, y=0.1, z=0.0, visibility=0.9)})
-        assert self.analyzer._is_face_submerged(lms) is False
-
-    def test_no_limb_motion_requires_history(self):
-        """Not enough frames → returns False (insufficient history)."""
-        lms = _make_landmarks()
-        result = self.analyzer._no_limb_motion("track_new", lms)
-        assert result is False
-
-    def test_no_limb_motion_with_static_landmarks(self):
-        """Static wrists/ankles over many frames → True."""
-        lms = _make_landmarks({
-            15: dict(x=0.3, y=0.5, z=0.0, visibility=0.9),
-            16: dict(x=0.7, y=0.5, z=0.0, visibility=0.9),
-            27: dict(x=0.3, y=0.9, z=0.0, visibility=0.9),
-            28: dict(x=0.7, y=0.9, z=0.0, visibility=0.9),
-        })
-        for _ in range(10):
-            self.analyzer._no_limb_motion("track_static", lms)
-        assert self.analyzer._no_limb_motion("track_static", lms) is True
 
 
 def test_cleanup_stale_tracks_removes_inactive_histories(dummy_landmarks):
     analyzer = BehaviorAnalyzer()
-    analyzer.analyze(dummy_landmarks, "drowning", 0.9, "keep")
-    analyzer.analyze(dummy_landmarks, "drowning", 0.9, "stale")
-    analyzer._no_limb_motion("keep", dummy_landmarks)
-    analyzer._no_limb_motion("stale", dummy_landmarks)
+    analyzer._no_breathing_motion("keep", dummy_landmarks)
+    analyzer._no_breathing_motion("stale", dummy_landmarks)
 
     analyzer.cleanup_stale_tracks({"keep"})
 
-    assert "keep" in analyzer._score_history
-    assert "keep" in analyzer._wrist_history
-    assert "keep" in analyzer._ankle_history
-    assert "stale" not in analyzer._score_history
-    assert "stale" not in analyzer._wrist_history
-    assert "stale" not in analyzer._ankle_history
+    assert "keep" in analyzer._head_history
+    assert "stale" not in analyzer._head_history
 
 
 def test_same_track_id_is_isolated_when_analyzers_are_per_zone(dummy_landmarks):

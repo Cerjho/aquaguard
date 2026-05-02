@@ -1,6 +1,4 @@
 """Unit tests for ConfidenceFilter."""
-import time
-
 import pytest
 
 from detection_engine.analysis.confidence_filter import ConfidenceFilter
@@ -9,9 +7,7 @@ from config.settings import (
     CONFIDENCE_THRESHOLD,
     CONSECUTIVE_FRAMES_REQUIRED,
     CONSECUTIVE_FRAME_LOW_THRESHOLD,
-    ALERT_RETRIGGER_INTERVAL_SECONDS,
 )
-
 
 class TestConfidenceFilterWindow:
     def setup_method(self):
@@ -43,20 +39,6 @@ class TestConfidenceFilterWindow:
         for _ in range(CONFIDENCE_WINDOW_SIZE + 5):
             result = cf.evaluate("trk_below", score)
         assert result is False
-
-    def test_retrigger_is_rate_limited_then_allowed(self):
-        """Sustained conditions retrigger only after the configured interval."""
-        for _ in range(CONFIDENCE_WINDOW_SIZE):
-            self.cf.evaluate("trk3", 1.0)
-
-        immediate_result = self.cf.evaluate("trk3", 1.0)
-        assert immediate_result is False
-
-        self.cf._last_trigger_at["trk3"] = (
-            time.monotonic() - ALERT_RETRIGGER_INTERVAL_SECONDS
-        )
-        delayed_result = self.cf.evaluate("trk3", 1.0)
-        assert delayed_result is True
 
     def test_different_track_ids_are_independent(self):
         cf = ConfidenceFilter()

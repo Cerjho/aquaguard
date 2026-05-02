@@ -13,6 +13,9 @@ from config.settings import (
     CUDA_OOM_COOLDOWN_SECONDS,
     CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE,
     CUDA_UNKNOWN_ERROR_RESET_SECONDS,
+    YOLO_CONFIDENCE_THRESHOLD,
+    YOLO_IMGSZ,
+    YOLO_MIN_BBOX_AREA,
 )
 from detection_engine.models_data.detection import Detection
 
@@ -78,7 +81,8 @@ class DrowningDetector:
         return self.model.track(
             frame,
             persist=True,
-            conf=0.4,
+            conf=YOLO_CONFIDENCE_THRESHOLD,
+            imgsz=YOLO_IMGSZ,
             device=device,
             tracker="bytetrack.yaml",
             verbose=False,
@@ -166,6 +170,13 @@ class DrowningDetector:
                 conf = float(boxes.conf[i].item())
                 xyxy = boxes.xyxy[i].tolist()
                 label = CLASS_MAP.get(cls_idx, "unknown")
+
+                # FIX 6: Skip tiny person_out_of_water bboxes (noise at distance)
+                # Drowning and swimming detections are never filtered by size.
+                bbox_area = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
+                if label == "person_out_of_water" and bbox_area < YOLO_MIN_BBOX_AREA:
+                    continue
+
                 detections.append(
                     Detection(
                         track_id=tid,

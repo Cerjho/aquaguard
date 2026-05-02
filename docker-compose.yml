@@ -3,7 +3,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: aquaguard-db
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=mysql_native_password --max-connections=100 --max_allowed_packet=16M --innodb_buffer_pool_size=256M
     ports:
       - "3306:3306"
     environment:
@@ -14,7 +14,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -30,11 +30,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: aquaguard-redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru" ]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,7 +55,7 @@ services:
     volumes:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 1883 -t aquaguard/healthcheck -m ping >/dev/null 2>&1"]
+      test: [ "CMD-SHELL", "mosquitto_pub -h localhost -p 1883 -t aquaguard/healthcheck -m ping >/dev/null 2>&1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -88,7 +88,7 @@ services:
       - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/udp"
       - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/tcp"
     healthcheck:
-      test: ["CMD", "turnutils_stunclient", "localhost"]
+      test: [ "CMD", "turnutils_stunclient", "localhost" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -121,12 +121,12 @@ services:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
       - WEBRTC_SESSION_TTL_SECONDS=${WEBRTC_SESSION_TTL_SECONDS:-300}
-      - WEBRTC_STUN_URLS=${WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
-      - WEBRTC_TURN_URL=${WEBRTC_TURN_URL:-turn:aquaguard.local:3478?transport=udp}
-      - WEBRTC_TURN_USERNAME=${WEBRTC_TURN_USERNAME:-aquaguard}
-      - WEBRTC_TURN_CREDENTIAL=${WEBRTC_TURN_CREDENTIAL:-aquaguardpass}
-      - WEBRTC_ICE_TRANSPORT_POLICY=${WEBRTC_ICE_TRANSPORT_POLICY:-all}
-      - WEBRTC_FORCE_RELAY=${WEBRTC_FORCE_RELAY:-false}
+      - WEBRTC_STUN_URLS=${WEBRTC_STUN_URLS}
+      - WEBRTC_TURN_URL=${WEBRTC_TURN_URL}
+      - WEBRTC_TURN_USERNAME=${WEBRTC_TURN_USERNAME}
+      - WEBRTC_TURN_CREDENTIAL=${WEBRTC_TURN_CREDENTIAL}
+      - WEBRTC_ICE_TRANSPORT_POLICY=${WEBRTC_ICE_TRANSPORT_POLICY}
+      - WEBRTC_FORCE_RELAY=${WEBRTC_FORCE_RELAY}
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
       - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-aquaguard2026}
       - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD:-lifeguard2026}
@@ -142,7 +142,7 @@ services:
       coturn:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -151,6 +151,7 @@ services:
       resources:
         limits:
           memory: 1024M
+          cpus: '1.5'
         reservations:
           memory: 512M
     restart: unless-stopped
@@ -164,15 +165,15 @@ services:
     build:
       context: ./frontend
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
-        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-}
-        REACT_APP_WEBRTC_STUN_URLS: ${REACT_APP_WEBRTC_STUN_URLS:-stun:stun.l.google.com:19302}
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL}
+        REACT_APP_WEBRTC_STUN_URLS: ${REACT_APP_WEBRTC_STUN_URLS}
         REACT_APP_WEBRTC_TURN_URL: ""
         REACT_APP_WEBRTC_TURN_USERNAME: ""
         REACT_APP_WEBRTC_TURN_CREDENTIAL: ""
-        REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY: ${REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY:-all}
-        REACT_APP_WEBRTC_FORCE_RELAY: ${REACT_APP_WEBRTC_FORCE_RELAY:-false}
-        REACT_APP_WEBRTC_ENABLE: ${REACT_APP_WEBRTC_ENABLE:-true}
+        REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY: ${REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY}
+        REACT_APP_WEBRTC_FORCE_RELAY: ${REACT_APP_WEBRTC_FORCE_RELAY}
+        REACT_APP_WEBRTC_ENABLE: ${REACT_APP_WEBRTC_ENABLE}
     container_name: aquaguard-frontend
     ports:
       - "3000:80"
@@ -184,9 +185,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 384M
+          cpus: '1'
         reservations:
-          memory: 128M
+          memory: 256M
+          cpus: '0.5'
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -204,12 +207,12 @@ services:
       - MQTT_BROKER_PORT=1883
       - AQUAGUARD_API_URL=http://backend:5000
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
-      - RTSP_TRANSPORT=${RTSP_TRANSPORT:-udp}
+      - RTSP_TRANSPORT=${RTSP_TRANSPORT:-tcp}
       - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov8s.pt}
-      - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-10}
-      - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-5}
-      - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-10}
-      - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE:-1}
+      - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-15}
+      - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-10}
+      - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-20}
+      - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE:-8}
       - TF_CPP_MIN_LOG_LEVEL=3
       - GLOG_minloglevel=3
       - GLOG_logtostderr=0
@@ -226,12 +229,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4096M
+          memory: 5120M
+          cpus: '3'
         reservations:
+          memory: 4096M
+          cpus: '2.5'
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
     logging:
       driver: "json-file"
       options:
@@ -242,4 +248,3 @@ services:
 volumes:
   mysql_data:
   redis_data:
-

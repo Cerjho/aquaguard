@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 
 from detection_engine.models_data.alert_payload import AlertPayload
+from config.settings import ALERT_COOLDOWN_SECONDS
 
 if TYPE_CHECKING:
     from detection_engine.alert.mqtt_client import MQTTClient
@@ -54,6 +55,7 @@ class AlertEngine:
             max_queue_size=100,
         )
         self._closed = False
+        self._last_alert_time: dict[str, float] = {}  # track_id → monotonic time
         atexit.register(self.close)
 
         # Start background cleanup thread for snapshots
@@ -173,15 +175,43 @@ class AlertEngine:
         class_label: str | None = None,
         behavior_flags: Any | None = None,
     ) -> bool:
-        """Validate alert fields and allow dispatch (ephemeral system, no cooldown).
+        """Check per-track cooldown and validate fields before allowing dispatch.
 
-        Defensive assertions to catch programming errors early.
+        Returns False if the same track_id was alerted within ALERT_COOLDOWN_SECONDS.
         """
         assert zone_id is not None and str(zone_id).strip(), "Alert: invalid zone_id"
         assert track_id is not None and str(track_id).strip(), "Alert: invalid track_id"
         assert 0.0 <= final_confidence <= 1.0, f"Alert: confidence out of range {final_confidence}"
         _ = (class_label, behavior_flags)
+
+        # Per-track cooldown: suppress duplicate alerts within the window
+        now = time.monotonic()
+        tid_key = str(track_id)
+        last_time = self._last_alert_time.get(tid_key)
+        if last_time is not None and (now - last_time) < ALERT_COOLDOWN_SECONDS:
+            logger.debug(
+                "Alert suppressed for track %s (cooldown %.1fs remaining)",
+                tid_key,
+                ALERT_COOLDOWN_SECONDS - (now - last_time),
+            )
+            return False
+
+        # Cleanup stale entries older than 5 minutes to prevent memory growth
+        self._cleanup_stale_alerts(now, stale_threshold=300.0)
         return True
+
+    def _record_alert_time(self, track_id: str) -> None:
+        """Record the dispatch time for per-track cooldown."""
+        self._last_alert_time[str(track_id)] = time.monotonic()
+
+    def _cleanup_stale_alerts(self, now: float, stale_threshold: float = 300.0) -> None:
+        """Remove cooldown entries older than stale_threshold seconds."""
+        stale_ids = [
+            tid for tid, ts in self._last_alert_time.items()
+            if (now - ts) > stale_threshold
+        ]
+        for tid in stale_ids:
+            self._last_alert_time.pop(tid, None)
 
     def dispatch_alert(
         self,
@@ -196,6 +226,7 @@ class AlertEngine:
     ) -> None:
         """Compatibility wrapper used by the multi-threaded pipeline callback."""
         score = float(final_confidence) if final_confidence is not None else 0.0
+        self._record_alert_time(track_id)
         self.dispatch(
             zone_id=zone_id,
             track_id=str(track_id),

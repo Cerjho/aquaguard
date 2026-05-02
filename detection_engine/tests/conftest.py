@@ -21,5 +21,6 @@ def dummy_landmarks():
         # Body roughly upright: shoulders at y≈0.3, hips at y≈0.6
         x = 0.5
         y = 0.3 + (i / 33) * 0.4
-        landmarks.append(Landmark(x=x, y=y, z=0.0, visibility=0.9))
+        visibility = 0.1 if i in [25, 26, 27, 28] else 0.9
+        landmarks.append(Landmark(x=x, y=y, z=0.0, visibility=visibility))
     return landmarks

@@ -78,6 +78,11 @@ from config.settings import (
     LIVE_SNAPSHOT_JPEG_QUALITY,
     LIVE_ARTIFACT_REPLACE_RETRIES,
     LIVE_ARTIFACT_RETRY_DELAY_SECONDS,
+    WATER_ROI,
+    WATER_ROI_ENABLED,
+    WATER_ROI_AUTO_DETECT,
+    WATER_ROI_CALIBRATION_FRAMES,
+    WATER_ROI_RECALIBRATE_INTERVAL,
     validate_runtime_settings,
 )
 from config.secrets import get_secret
@@ -461,6 +466,84 @@ def _process_zone_frame(
     return True
 
 
+def _auto_detect_water_roi(registry, behavior_analyzers, live_dir: str) -> None:
+    """Auto-detect water ROI for each camera zone at startup.
+
+    Grabs calibration frames from each camera, runs HSV-based water surface
+    detection, and injects the detected polygon into each BehaviorAnalyzer.
+
+    Safe to call multiple times (periodic re-calibration).
+    """
+    if not WATER_ROI_AUTO_DETECT:
+        return
+    if not WATER_ROI_ENABLED:
+        return
+    if WATER_ROI is not None:
+        logger.info("Water ROI manually configured — skipping auto-detection")
+        return
+
+    from detection_engine.vision.water_roi_detector import (
+        detect_water_roi,
+        detect_water_roi_multi_frame,
+    )
+
+    logger.info("=" * 60)
+    logger.info("WATER ROI AUTO-DETECTION starting...")
+    logger.info("=" * 60)
+
+    for zone_id, camera in registry.cameras.items():
+        logger.info("[%s] Grabbing %d calibration frames...", zone_id, WATER_ROI_CALIBRATION_FRAMES)
+
+        frames = []
+        for i in range(WATER_ROI_CALIBRATION_FRAMES):
+            frame, _meta = camera.read()
+            if frame is not None:
+                frames.append(frame)
+            else:
+                # Wait a bit for the camera to produce a frame
+                time.sleep(0.5)
+                frame, _meta = camera.read()
+                if frame is not None:
+                    frames.append(frame)
+
+            # Small delay between grabs to get different frames
+            time.sleep(0.2)
+
+        if not frames:
+            logger.warning(
+                "[%s] No frames captured for water ROI calibration — "
+                "ROI gate will be disabled for this zone",
+                zone_id,
+            )
+            continue
+
+        debug_path = os.path.join(live_dir, f"{zone_id}_water_roi_debug.jpg")
+
+        if len(frames) >= 3:
+            polygon = detect_water_roi_multi_frame(frames, debug_save_path=debug_path)
+        else:
+            polygon = detect_water_roi(frames[0], debug_save_path=debug_path)
+
+        if polygon is not None:
+            analyzer = behavior_analyzers.get(zone_id)
+            if analyzer is not None:
+                analyzer.set_water_roi(polygon)
+                logger.info(
+                    "[%s] Water ROI auto-detected and applied (%d vertices)",
+                    zone_id, len(polygon),
+                )
+            else:
+                logger.warning("[%s] No BehaviorAnalyzer found for zone", zone_id)
+        else:
+            logger.warning(
+                "[%s] Water ROI auto-detection found no water region — "
+                "gate disabled. Check debug image: %s",
+                zone_id, debug_path,
+            )
+
+    logger.info("Water ROI auto-detection complete")
+
+
 def main():
     """
     AquaGuard detection engine main loop — Multi-threaded Three-Lane Highway.
@@ -537,6 +620,10 @@ def main():
         for zone_id in registry.cameras.keys()
     }
 
+    # NOTE: Water ROI auto-detection is deferred until AFTER cameras are
+    # started (see below).  Running it here would fail because the camera
+    # capture threads have not been launched yet — no frames available.
+
     # ── Alert dispatch ────────────────────────────────────────────────────────
     mqtt_client = MQTTClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
     alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=_SNAPSHOT_DIR)
@@ -574,7 +661,7 @@ def main():
 
         for det in filtered_detections:
             # Get behavior score from detection (set by detection_worker)
-            behavior_score = getattr(det, 'behavior_flags', None)
+            behavior_score = det.behavior_score or None
             if behavior_score is None:
                 continue
 
@@ -593,7 +680,7 @@ def main():
                 track_id=det.track_id,
                 final_confidence=float(behavior_score),
                 class_label=det.class_label,
-                behavior_flags=det.behavior_flags,
+                behavior_flags=det.behavior_score,
             )
 
             if should_alert:
@@ -653,8 +740,28 @@ def main():
 
     logger.info("Created %d multi-threaded pipelines (Three-Lane Highway)", len(registry.cameras))
 
-    # ── Start all workers ─────────────────────────────────────────────────────
+    # ── Start cameras first (capture threads need to be running for ROI) ────
     registry.start_all()  # Start camera capture threads
+
+    # ── Water ROI auto-detection (MUST run after cameras are online) ──────────
+    # Wait for cameras to connect and produce frames before grabbing
+    # calibration images.  Without this delay, ROI calibration fails
+    # silently and disables the water-presence gate — a critical
+    # anti-false-alarm layer.
+    _CAMERA_WARMUP_SECONDS = 5
+    logger.info(
+        "Waiting %ds for cameras to connect before Water ROI calibration...",
+        _CAMERA_WARMUP_SECONDS,
+    )
+    time.sleep(_CAMERA_WARMUP_SECONDS)
+
+    _auto_detect_water_roi(
+        registry=registry,
+        behavior_analyzers=behavior_analyzers,
+        live_dir=_LIVE_DIR,
+    )
+
+    # ── Start detection pipeline (after ROI is configured) ────────────────────
     pipeline_manager.start_all()  # Start detection workers + frame writers
 
     logger.info("=" * 60)
@@ -666,6 +773,7 @@ def main():
     logger.info("=" * 60)
 
     # ── Main loop — just monitor, workers do the actual work ──────────────────
+    last_roi_recalibrate = time.time()
     try:
         while True:
             # Log pipeline stats every 30 seconds
@@ -679,6 +787,22 @@ def main():
                     queue_stats.get('drop_rate', 0) * 100,
                     queue_stats.get('frames_processed', 0),
                 )
+
+            # Periodic water ROI re-calibration (handles camera repositioning)
+            if (
+                WATER_ROI_RECALIBRATE_INTERVAL > 0
+                and WATER_ROI_AUTO_DETECT
+                and WATER_ROI_ENABLED
+                and WATER_ROI is None
+                and (time.time() - last_roi_recalibrate) >= WATER_ROI_RECALIBRATE_INTERVAL
+            ):
+                logger.info("Periodic water ROI re-calibration starting...")
+                _auto_detect_water_roi(
+                    registry=registry,
+                    behavior_analyzers=behavior_analyzers,
+                    live_dir=_LIVE_DIR,
+                )
+                last_roi_recalibrate = time.time()
 
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt received — shutting down ...")

@@ -1,151 +1,143 @@
-"""Pose estimator — MediaPipe pose landmark extraction with ROI cropping."""
+"""Pose estimator — YOLO-Pose GPU landmark extraction."""
 import logging
-import os
-import time
-from contextlib import contextmanager
 from typing import List, Optional, Tuple
 
-import cv2
 import numpy as np
-import mediapipe as mp
+import torch
+from ultralytics import YOLO
 
 from detection_engine.models_data.landmark import Landmark
 
 logger = logging.getLogger(__name__)
-_NATIVE_INIT_LOG_FLUSH_DELAY_SECONDS = 2.5
-_NATIVE_PROCESS_LOG_FLUSH_DELAY_SECONDS = 0.35
 
-
-@contextmanager
-def _silence_native_stdio():
-    """Temporarily redirect process stdout/stderr to os.devnull.
-
-    MediaPipe/TFLite native layers can write directly to file descriptors,
-    bypassing Python logging and warnings filters.
-    """
-    devnull_fd = os.open(os.devnull, os.O_WRONLY)
-    stdout_fd = os.dup(1)
-    stderr_fd = os.dup(2)
-    try:
-        os.dup2(devnull_fd, 1)
-        os.dup2(devnull_fd, 2)
-        yield
-    finally:
-        os.dup2(stdout_fd, 1)
-        os.dup2(stderr_fd, 2)
-        os.close(stdout_fd)
-        os.close(stderr_fd)
-        os.close(devnull_fd)
-
-
-def _create_pose_runner():
-    """Construct MediaPipe pose while suppressing known native init noise."""
-    with _silence_native_stdio():
-        pose_runner = mp.solutions.pose.Pose(
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
-        time.sleep(_NATIVE_INIT_LOG_FLUSH_DELAY_SECONDS)
-        return pose_runner
-
-
-def _run_pose_process_silenced(pose_runner, roi_rgb):
-    """Run the first MediaPipe process call with stdout/stderr muted."""
-    with _silence_native_stdio():
-        result = pose_runner.process(roi_rgb)
-        time.sleep(_NATIVE_PROCESS_LOG_FLUSH_DELAY_SECONDS)
-        return result
-
+MAP_YOLO_TO_MP = {
+    0: 0,   # Nose
+    5: 11,  # Left Shoulder
+    6: 12,  # Right Shoulder
+    9: 15,  # Left Wrist
+    10: 16, # Right Wrist
+    11: 23, # Left Hip
+    12: 24, # Right Hip
+    13: 25, # Left Knee
+    14: 26, # Right Knee
+    15: 27, # Left Ankle
+    16: 28  # Right Ankle
+}
 
 class PoseEstimator:
-    """Extracts MediaPipe pose landmarks from a cropped bounding box ROI.
+    """Extracts pose landmarks using YOLO-Pose on the GPU.
 
-    Landmark coordinates are NORMALIZED to [0.0, 1.0] — never treat them as pixels.
-    
-    FIX #2: Native Memory Leak Management
-    - MediaPipe C++ TFLite runtime accumulates native memory over time
-    - Periodically recreate pose runner to flush leaked memory
-    - Threshold reduced from 100,000 frames → 5,000 frames (5 min @ 10 FPS)
-    - Prevents page faults and memory pressure after sustained operation
+    Landmark coordinates are normalized to [0.0, 1.0] relative to the matched bbox
+    to perfectly emulate MediaPipe's output format for the BehaviorAnalyzer.
     """
 
-    def __init__(self):
-        self._pose = _create_pose_runner()
-        self._suppress_first_process_noise = True
-        self._frame_count = 0
+    def __init__(self, model_path: str = "detection_engine/models/yolov8n-pose.pt"):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info("Loading YOLO-Pose from %s on device=%s", model_path, self.device)
+        self.model = YOLO(model_path, task='pose')
+        # Warmup
+        dummy_frame = np.zeros((640, 640, 3), dtype=np.uint8)
+        self.model.predict(dummy_frame, device=self.device, verbose=False)
+        logger.info("PoseEstimator ready on %s", self.device)
 
-    def estimate(
+    def predict_frame(self, frame: np.ndarray):
+        """Run YOLO-Pose on the full frame.
+        
+        Returns the ultralytics Results object containing all poses.
+        """
+        # verbose=False to suppress print output per frame
+        return self.model.predict(frame, device=self.device, verbose=False)
+
+    def estimate_from_results(
         self,
-        frame: np.ndarray,
-        bbox: Tuple[float, float, float, float],
+        pose_results: list,
+        bbox: Tuple[float, float, float, float]
     ) -> Optional[List[Landmark]]:
-        """Crop ROI from frame and run MediaPipe pose estimation.
+        """Find the matching pose from the full-frame results and return normalized landmarks.
 
         Args:
-            frame: Full BGR frame from camera.
-            bbox:  (x1, y1, x2, y2) bounding box in pixel coordinates.
+            pose_results: The list returned by `predict_frame`.
+            bbox: The target (x1, y1, x2, y2) bounding box to match against.
 
         Returns:
             List of 33 Landmark objects with normalized [0,1] coords,
-            or None if pose could not be estimated.
+            or None if no matching pose was found.
         """
-        h, w = frame.shape[:2]
-        x1, y1, x2, y2 = bbox
-
-        # FIX #2: Prevent native memory leak by periodically recreating the MediaPipe C++ graph
-        # BEFORE (100,000 frames): Leak accumulated for 166+ minutes at 10 FPS
-        # AFTER (5,000 frames): Flush every ~8 minutes at 10 FPS (well before 7-min session degradation)
-        # This prevents ~40-80 MB native memory accumulation → OS page faults → system stall
-        self._frame_count += 1
-        if self._frame_count > 5000:
-            logger.info(
-                "Flushing MediaPipe native memory after %d frames (every ~8.3 min @ 10 FPS)",
-                self._frame_count,
-            )
-            try:
-                self._pose.close()
-            except Exception as exc:
-                logger.debug("Failed to close old pose runner: %s", exc)
-            self._pose = _create_pose_runner()
-            self._frame_count = 0
-            self._suppress_first_process_noise = True
-
-        # Clamp bbox to frame boundaries
-        x1 = max(0, int(x1))
-        y1 = max(0, int(y1))
-        x2 = min(w, int(x2))
-        y2 = min(h, int(y2))
-
-        if x2 <= x1 or y2 <= y1:
-            logger.warning("Invalid bbox after clamping: %s", bbox)
+        if not pose_results or len(pose_results) == 0:
             return None
 
-        roi = frame[y1:y2, x1:x2]
-        roi_rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-
-        try:
-            use_silenced_process = bool(
-                getattr(self, "_suppress_first_process_noise", False)
-            )
-            self._suppress_first_process_noise = False
-            if use_silenced_process:
-                results = _run_pose_process_silenced(self._pose, roi_rgb)
-            else:
-                results = self._pose.process(roi_rgb)
-        except (RuntimeError, ValueError, cv2.error) as exc:
-            logger.error("MediaPipe pose.process failed: %s", exc)
+        result = pose_results[0]
+        if result.boxes is None or result.keypoints is None or len(result.boxes) == 0:
             return None
 
-        if results.pose_landmarks is None:
+        best_iou = 0.0
+        best_idx = -1
+        
+        # Find the pose box with the highest IoU to our tracked bbox
+        boxes = result.boxes.xyxy.cpu().numpy()
+        for i, b in enumerate(boxes):
+            match_score = self._calculate_match_score(bbox, b)
+            if match_score > best_iou:
+                best_iou = match_score
+                best_idx = i
+
+        if best_idx == -1 or best_iou < 0.1:
             return None
 
-        landmarks = [
-            Landmark(
-                x=lm.x,
-                y=lm.y,
-                z=lm.z,
-                visibility=lm.visibility,
+        # Extract the keypoints for the matched person
+        # keypoints.data shape is (num_det, 17, 3) -> [x, y, conf]
+        kp = result.keypoints.data.cpu().numpy()[best_idx]
+        
+        # Use the matched pose box to normalize the coordinates, NOT the tracked bbox.
+        # This prevents aspect ratio distortion when the tracked bbox is tiny (e.g. head only).
+        matched_box = boxes[best_idx]
+        target_x1, target_y1, target_x2, target_y2 = matched_box
+        target_w = max(1e-5, float(target_x2 - target_x1))
+        target_h = max(1e-5, float(target_y2 - target_y1))
+
+        # Build the 33-landmark array expected by BehaviorAnalyzer
+        landmarks = []
+        for i in range(33):
+            landmarks.append(Landmark(x=0.0, y=0.0, z=0.0, visibility=0.0))
+
+        for yolo_idx, mp_idx in MAP_YOLO_TO_MP.items():
+            px, py, conf = kp[yolo_idx]
+            
+            # Normalize coordinates relative to the tracked bbox to match MediaPipe
+            norm_x = (px - target_x1) / target_w
+            norm_y = (py - target_y1) / target_h
+            
+            landmarks[mp_idx] = Landmark(
+                x=float(norm_x),
+                y=float(norm_y),
+                z=0.0,
+                visibility=float(conf)
             )
-            for lm in results.pose_landmarks.landmark
-        ]
+
         return landmarks
+
+    def _calculate_match_score(self, boxA, boxB) -> float:
+        """Calculate Intersection over Minimum Area (IoM).
+        
+        This is crucial because the finetuned YOLO often predicts tiny bounding boxes
+        (just the head/shoulders of a swimmer), while YOLO-Pose predicts full-body boxes.
+        Standard IoU would be extremely low (~0.05) causing pose matches to fail.
+        IoM ensures that if the head box is inside the full body box, it matches.
+        """
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[2], boxB[2])
+        yB = min(boxA[3], boxB[3])
+
+        interArea = max(0.0, float(xB - xA)) * max(0.0, float(yB - yA))
+        if interArea == 0.0:
+            return 0.0
+
+        boxAArea = float(boxA[2] - boxA[0]) * float(boxA[3] - boxA[1])
+        boxBArea = float(boxB[2] - boxB[0]) * float(boxB[3] - boxB[1])
+        
+        minArea = min(boxAArea, boxBArea)
+        if minArea == 0.0:
+            return 0.0
+            
+        return interArea / minArea

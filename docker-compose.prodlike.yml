@@ -2,7 +2,7 @@ services:
   backend:
     environment:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
-      - JWT_COOKIE_SECURE=true
+      - JWT_COOKIE_SECURE=false
 
   frontend:
     build:

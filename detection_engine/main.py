@@ -78,6 +78,8 @@ from config.settings import (
     LIVE_SNAPSHOT_JPEG_QUALITY,
     LIVE_ARTIFACT_REPLACE_RETRIES,
     LIVE_ARTIFACT_RETRY_DELAY_SECONDS,
+    DETECTION_GPU_MONITOR_ENABLED,
+    DETECTION_GPU_MONITOR_INTERVAL_SECONDS,
     WATER_ROI,
     WATER_ROI_ENABLED,
     WATER_ROI_AUTO_DETECT,
@@ -567,9 +569,21 @@ def main():
     from detection_engine.alert.mqtt_client import MQTTClient
     from detection_engine.alert.api_client import APIClient
     from detection_engine.alert.alert_engine import AlertEngine
+    from detection_engine.gpu_monitor import start_gpu_monitor, stop_gpu_monitor
+    from detection_engine.memory_manager import get_gpu_memory_manager
     from detection_engine.pipeline.pipeline_manager import PipelineManager
 
     validate_runtime_settings()
+    gpu_memory_manager = get_gpu_memory_manager()
+    gpu_memory_manager.initialize()
+    gpu_monitor_stop_event = None
+    gpu_monitor_thread = None
+    if DETECTION_GPU_MONITOR_ENABLED:
+        gpu_monitor_stop_event, gpu_monitor_thread = start_gpu_monitor(
+            interval_seconds=DETECTION_GPU_MONITOR_INTERVAL_SECONDS,
+            gpu_memory_manager=gpu_memory_manager,
+        )
+
     _LIVE_DIR = os.path.join(_BASE_DIR, "backend", "snapshots", "live")
     os.makedirs(_LIVE_DIR, exist_ok=True)
 
@@ -725,6 +739,7 @@ def main():
         annotate_frame_fn=_annotate_live_frame,
         detection_callback=_on_detection,
         target_fps=30,
+        gpu_memory_manager=gpu_memory_manager,
     )
 
     # Create pipeline for each camera zone
@@ -810,6 +825,8 @@ def main():
         # Stop in reverse order
         pipeline_manager.stop_all()
         registry.stop_all()
+        stop_gpu_monitor(gpu_monitor_stop_event, gpu_monitor_thread)
+        gpu_memory_manager.cleanup()
         try:
             mqtt_client.close()
         except (OSError, RuntimeError, ValueError) as exc:

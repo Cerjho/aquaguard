@@ -410,6 +410,17 @@ class CameraCapture:
                 # Verify we can actually read a frame before declaring success
                 ret, frame = cap.read()
                 if ret and frame is not None:
+                    # FIX: Run full validation after reconnect (catches subtle H.264 corruption)
+                    is_valid, reason = self._validate_frame(frame)
+                    if not is_valid:
+                        logger.warning(
+                            "[%s] First frame after reconnect is corrupted: %s",
+                            self.zone_id,
+                            reason,
+                        )
+                        self._release_capture()
+                        continue  # Try next reconnect attempt
+                    
                     self._consecutive_failures = 0
                     self._last_frame_time = time.time()
                     self._health_tracker.connected()
@@ -552,6 +563,8 @@ class CameraCapture:
 
         Uses a small center sample to avoid expensive full-frame scans
         that would slow the capture thread and increase stream latency.
+        
+        Also detects NaN/Inf values that cause GPU CUDA errors during inference.
 
         Returns:
             (is_valid, reason)
@@ -585,6 +598,13 @@ class CameraCapture:
         # H.264 decode errors often produce green/purple frames
         if self._is_green_corrupted(patch):
             return False, "green_corruption"
+        
+        # FIX: Check for NaN/Inf values that crash GPU during inference
+        # These can occur after RTSP reconnects
+        if np.isnan(frame).any():
+            return False, "frame_contains_nan"
+        if np.isinf(frame).any():
+            return False, "frame_contains_inf"
 
         return True, "valid"
 
@@ -594,11 +614,13 @@ class CameraCapture:
         Operates on a pre-sampled patch for efficiency.
         """
         try:
-            b_mean = np.mean(patch[:, :, 0])
-            g_mean = np.mean(patch[:, :, 1])
-            r_mean = np.mean(patch[:, :, 2])
+            # Handle both uint8 (0-255) and float (0.0-1.0) frames
+            b_mean = float(np.mean(patch[:, :, 0]))
+            g_mean = float(np.mean(patch[:, :, 1]))
+            r_mean = float(np.mean(patch[:, :, 2]))
 
             # Green corruption: green >> red and green >> blue
+            # Thresholds work for uint8 range; scale for float if needed
             if g_mean > 200 and g_mean > b_mean * 2 and g_mean > r_mean * 2:
                 return True
 
@@ -606,7 +628,7 @@ class CameraCapture:
             if r_mean > 150 and b_mean > 150 and g_mean < 50:
                 return True
 
-        except (cv2.error, ValueError):
+        except (cv2.error, ValueError, TypeError, OverflowError):
             pass
 
         return False

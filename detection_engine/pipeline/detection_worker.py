@@ -13,13 +13,16 @@ threading.local(), so parallel pose analysis is safe.
 import logging
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
+
+import numpy as np
 
 from detection_engine.pipeline.frame_queue import (
     AnnotatedFrameQueue,
     FrameData,
     FrameQueue,
 )
+from detection_engine.memory_manager import get_gpu_memory_manager
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +52,7 @@ class DetectionWorker:
         annotate_frame_fn: Callable,  # Function to draw boxes on frame
         detection_callback: Optional[Callable[[str, Any, list], None]] = None,
         pose_analysis_workers: int = 2,
+        gpu_memory_manager=None,
     ):
         """
         Initialize detection worker.
@@ -77,6 +81,7 @@ class DetectionWorker:
         self.confidence_filter = confidence_filter
         self.annotate_frame_fn = annotate_frame_fn
         self.detection_callback = detection_callback
+        self.gpu_memory_manager = gpu_memory_manager or get_gpu_memory_manager()
 
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -86,6 +91,7 @@ class DetectionWorker:
         self._total_detections = 0
         self._detection_time_sum = 0.0
         self._last_log_time = time.time()
+        self._frames_skipped_corrupted = 0
 
     def start(self) -> None:
         """Start the detection worker thread."""
@@ -94,6 +100,7 @@ class DetectionWorker:
             return
 
         self._stop_event.clear()
+        self.gpu_memory_manager.initialize()
         self._thread = threading.Thread(
             target=self._detection_loop,
             name=f"detection-worker-{self.zone_id}",
@@ -111,9 +118,10 @@ class DetectionWorker:
         if self._thread is not None:
             self._thread.join(timeout=3.0)
         logger.info(
-            "[%s] Detection worker stopped (%d frames processed)",
+            "[%s] Detection worker stopped (%d frames processed, %d corrupted skipped)",
             self.zone_id,
             self._frames_processed,
+            self._frames_skipped_corrupted,
         )
 
     def _detection_loop(self) -> None:
@@ -143,11 +151,12 @@ class DetectionWorker:
                     fps = self._frames_processed / (now - self._last_log_time)
                     queue_stats = self.input_queue.stats
                     logger.debug(
-                        "[%s] Detection: %.1f FPS, avg %.0fms, drop_rate=%.1f%%",
+                        "[%s] Detection: %.1f FPS, avg %.0fms, drop_rate=%.1f%%, corrupted_skipped=%d",
                         self.zone_id,
                         fps,
                         avg_time * 1000,
                         queue_stats['drop_rate'] * 100,
+                        self._frames_skipped_corrupted,
                     )
                     self._last_log_time = now
                     self._frames_processed = 0
@@ -158,22 +167,74 @@ class DetectionWorker:
                 # Don't crash — continue processing
                 time.sleep(0.1)
 
+    def _validate_frame(self, frame: np.ndarray) -> Tuple[bool, str]:
+        """
+        Validate frame data before GPU inference.
+        
+        Catches: NaN, Inf, wrong shape, wrong dtype, empty frames.
+        This prevents corrupted frames (from RTSP reconnects) from
+        crashing the GPU with "CUDA unknown error".
+        
+        Returns: (is_valid, reason)
+        """
+        if frame is None:
+            return False, "frame_is_none"
+        if frame.size == 0:
+            return False, "empty_frame"
+        if len(frame.shape) != 3:
+            return False, f"invalid_dimensions_{len(frame.shape)}"
+        
+        height, width, channels = frame.shape
+        if height < 10 or width < 10:
+            return False, "frame_too_small"
+        if channels != 3:
+            return False, f"invalid_channels_{channels}"
+        
+        # Check for NaN values (corrupted from RTSP or memory issues)
+        # This is a common result of H.264 decode failures
+        if np.isnan(frame).any():
+            return False, "frame_contains_nan"
+        
+        # Check for Inf values (corrupted floating-point data)
+        if np.isinf(frame).any():
+            return False, "frame_contains_inf"
+        
+        # Check for completely black frames (likely corrupted)
+        if np.max(frame) == 0:
+            return False, "all_black_frame"
+
+        # Check for extremely low variance (solid color or corrupt)
+        if np.std(frame) < 0.1:
+            return False, "no_variance"
+        
+        return True, "valid"
+
     def _process_frame(self, frame_data: FrameData) -> None:
         """
         Process a single frame through the detection pipeline.
 
         Flow:
-        1. YOLO detection (GPU, ~50-100ms, main detection thread)
-        2. Parallel pose+behavior analysis via ThreadPool (thread-safe:
+        1. VALIDATE frame data (catch corrupted frames from RTSP reconnects)
+        2. YOLO detection (GPU, ~50-100ms, main detection thread)
+        3. Parallel pose+behavior analysis via ThreadPool (thread-safe:
            each worker has its own PoseEstimator via threading.local)
-        3. Collect results and annotate frame
-        4. Enqueue for streaming
-        5. Clear GPU cache to prevent memory accumulation
+        4. Collect results and annotate frame
+        5. Enqueue for streaming
+        6. Clear GPU cache to prevent memory accumulation
         """
-        import torch
-        
         frame = frame_data.frame
         timestamp = frame_data.timestamp
+
+        # Step 0: VALIDATE frame before GPU inference (FIX: catches corrupted frames)
+        is_valid, reason = self._validate_frame(frame)
+        if not is_valid:
+            logger.debug(
+                "[%s] Skipping corrupted frame: %s",
+                self.zone_id,
+                reason,
+            )
+            self._frames_skipped_corrupted += 1
+            return  # Skip this frame, don't crash GPU
 
         # Step 1: YOLO detection (GPU inference)
         detections = self.detector.detect(frame)
@@ -211,11 +272,8 @@ class DetectionWorker:
 
         self._total_detections += len(filtered_detections)
         
-        # Step 8: Clear GPU memory cache to prevent accumulation of orphaned allocations
-        # This prevents the 870MB GPU memory leak observed with continuous inference
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.reset_peak_memory_stats()
+        # Step 8: Bounded CUDA cache trimming to control long-run VRAM growth.
+        self.gpu_memory_manager.record_inference_complete()
 
     def _analyze_detection(self, pose_results: list, detection) -> Optional[float]:
         """
@@ -259,5 +317,6 @@ class DetectionWorker:
         return {
             'frames_processed': self._frames_processed,
             'total_detections': self._total_detections,
+            'frames_skipped_corrupted': self._frames_skipped_corrupted,
             'is_running': self._thread is not None and self._thread.is_alive(),
         }

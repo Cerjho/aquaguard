@@ -87,3 +87,4 @@ agents/status/*.json
 
 # Rehearsal / defense evidence (personal artifacts, not project docs)
 docs/rehearsal_evidence/
+tmp

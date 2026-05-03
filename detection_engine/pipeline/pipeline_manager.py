@@ -53,6 +53,7 @@ class ZonePipeline:
         annotate_frame_fn: Callable,
         detection_callback: Optional[Callable] = None,
         target_fps: int = 30,
+        gpu_memory_manager=None,
     ):
         self.zone_id = zone_id
         self.camera = camera
@@ -77,6 +78,7 @@ class ZonePipeline:
             confidence_filter=confidence_filter,
             annotate_frame_fn=annotate_frame_fn,
             detection_callback=detection_callback,
+            gpu_memory_manager=gpu_memory_manager,
         )
 
         # Camera feeder thread (Worker 1 bridge)
@@ -250,11 +252,13 @@ class PipelineManager:
         annotate_frame_fn: Callable,
         detection_callback: Optional[Callable] = None,
         target_fps: int = 30,
+        gpu_memory_manager=None,
     ):
         self.live_dir = live_dir
         self.annotate_frame_fn = annotate_frame_fn
         self.detection_callback = detection_callback
         self.target_fps = target_fps
+        self.gpu_memory_manager = gpu_memory_manager
 
         self.pipelines: Dict[str, ZonePipeline] = {}
         self._lock = threading.Lock()
@@ -285,6 +289,7 @@ class PipelineManager:
                 annotate_frame_fn=self.annotate_frame_fn,
                 detection_callback=self.detection_callback,
                 target_fps=self.target_fps,
+                gpu_memory_manager=self.gpu_memory_manager,
             )
             self.pipelines[zone_id] = pipeline
             logger.info("Created pipeline for zone: %s", zone_id)

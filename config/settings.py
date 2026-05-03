@@ -90,8 +90,22 @@ CUDA_OOM_COOLDOWN_SECONDS = float(os.environ.get('CUDA_OOM_COOLDOWN_SECONDS', '5
 CUDA_UNKNOWN_ERROR_RESET_SECONDS = float(
     os.environ.get('CUDA_UNKNOWN_ERROR_RESET_SECONDS', '30')
 )
+# FIX: Increased from 3 to 10 to allow more recovery time for corrupted frames
+# (3 was too aggressive and forced restart on isolated H.264 decode errors)
 CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE = int(
-    os.environ.get('CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE', '3')
+    os.environ.get('CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE', '10')
+)
+DETECTION_GPU_MEMORY_FRACTION = float(
+    os.environ.get('DETECTION_GPU_MEMORY_FRACTION', '0.75')
+)
+DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES = int(
+    os.environ.get('DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES', '15')
+)
+DETECTION_GPU_MONITOR_ENABLED = is_truthy(
+    os.environ.get('DETECTION_GPU_MONITOR_ENABLED', '1')
+)
+DETECTION_GPU_MONITOR_INTERVAL_SECONDS = int(
+    os.environ.get('DETECTION_GPU_MONITOR_INTERVAL_SECONDS', '30')
 )
 
 # ── MQTT ──────────────────────────────────────────────────────────────────────
@@ -228,6 +242,16 @@ def validate_runtime_settings():
         raise ValueError('CUDA_UNKNOWN_ERROR_RESET_SECONDS must be > 0')
     if CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE < 1:
         raise ValueError('CUDA_UNKNOWN_ERROR_MAX_CONSECUTIVE must be >= 1')
+    if not 0 < DETECTION_GPU_MEMORY_FRACTION <= 1:
+        raise ValueError('DETECTION_GPU_MEMORY_FRACTION must be in range (0, 1]')
+    if DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES < 1:
+        raise ValueError(
+            'DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES must be >= 1'
+        )
+    if DETECTION_GPU_MONITOR_INTERVAL_SECONDS < 1:
+        raise ValueError(
+            'DETECTION_GPU_MONITOR_INTERVAL_SECONDS must be >= 1'
+        )
     if RECONNECT_MAX_CONSECUTIVE_FAILURES < 1:
         raise ValueError('RECONNECT_MAX_CONSECUTIVE_FAILURES must be >= 1')
     if not RECONNECT_BACKOFF_SECONDS or any(delay <= 0 for delay in RECONNECT_BACKOFF_SECONDS):

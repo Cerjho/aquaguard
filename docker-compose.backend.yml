@@ -17,7 +17,13 @@ services:
   mysql:
     image: mysql:8.0
     container_name: aquaguard-db
-    command: --default-authentication-plugin=mysql_native_password
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --max-connections=50
+      --max_allowed_packet=16M
+      --table-open-cache=500
+      --innodb-buffer-pool-size=200M
+      --innodb-log-buffer-size=8M
     ports:
       - "3306:3306"
     environment:
@@ -44,7 +50,16 @@ services:
   redis:
     image: redis:7-alpine
     container_name: aquaguard-redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
     volumes:
       - redis_data:/data
     healthcheck:

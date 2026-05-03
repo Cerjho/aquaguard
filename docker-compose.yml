@@ -3,7 +3,13 @@ services:
   mysql:
     image: mysql:8.0
     container_name: aquaguard-db
-    command: --default-authentication-plugin=mysql_native_password --max-connections=100 --max_allowed_packet=16M --innodb_buffer_pool_size=256M
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --max-connections=50
+      --max_allowed_packet=16M
+      --table-open-cache=500
+      --innodb-buffer-pool-size=200M
+      --innodb-log-buffer-size=8M
     ports:
       - "3306:3306"
     environment:
@@ -208,11 +214,17 @@ services:
       - AQUAGUARD_API_URL=http://backend:5000
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
       - RTSP_TRANSPORT=${RTSP_TRANSPORT:-tcp}
-      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov8s.pt}
+      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov11s.pt}
       - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-15}
       - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-10}
       - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-20}
       - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE:-8}
+      - DETECTION_GPU_MEMORY_FRACTION=${DETECTION_GPU_MEMORY_FRACTION:-0.75}
+      - DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES=${DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES:-15}
+      - DETECTION_GPU_MONITOR_ENABLED=${DETECTION_GPU_MONITOR_ENABLED:-1}
+      - DETECTION_GPU_MONITOR_INTERVAL_SECONDS=${DETECTION_GPU_MONITOR_INTERVAL_SECONDS:-30}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       - TF_CPP_MIN_LOG_LEVEL=3
       - GLOG_minloglevel=3
       - GLOG_logtostderr=0

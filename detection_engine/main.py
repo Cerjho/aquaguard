@@ -85,6 +85,8 @@ from config.settings import (
     WATER_ROI_AUTO_DETECT,
     WATER_ROI_CALIBRATION_FRAMES,
     WATER_ROI_RECALIBRATE_INTERVAL,
+    WATER_ROI_FALLBACK_ENABLED,
+    WATER_ROI_FALLBACK_TOP_RATIO,
     validate_runtime_settings,
 )
 from config.secrets import get_secret
@@ -537,11 +539,47 @@ def _auto_detect_water_roi(registry, behavior_analyzers, live_dir: str) -> None:
             else:
                 logger.warning("[%s] No BehaviorAnalyzer found for zone", zone_id)
         else:
-            logger.warning(
-                "[%s] Water ROI auto-detection found no water region — "
-                "gate disabled. Check debug image: %s",
-                zone_id, debug_path,
-            )
+            # FIX R3: HSV auto-detection failed.  Instead of leaving the ROI
+            # gate disabled (which allows pool-deck persons to score normally),
+            # synthesise a fallback polygon that covers the bottom portion of
+            # the frame.  Pool cameras are typically mounted above the water;
+            # the water surface occupies the lower section of the frame.
+            fallback_applied = False
+            if WATER_ROI_FALLBACK_ENABLED and frames:
+                try:
+                    ref_frame = frames[0]
+                    h, w = ref_frame.shape[:2]
+                    top_y = int(h * WATER_ROI_FALLBACK_TOP_RATIO)
+                    fallback_polygon = [
+                        [0, top_y], [w, top_y], [w, h], [0, h]
+                    ]
+                    analyzer = behavior_analyzers.get(zone_id)
+                    if analyzer is not None:
+                        analyzer.set_water_roi(fallback_polygon)
+                        logger.warning(
+                            "[%s] Water ROI auto-detection failed — "
+                            "fallback ROI applied: bottom %.0f%% of frame "
+                            "(top_y=%d, frame=%dx%d). "
+                            "Check debug image: %s",
+                            zone_id,
+                            (1.0 - WATER_ROI_FALLBACK_TOP_RATIO) * 100,
+                            top_y, w, h,
+                            debug_path,
+                        )
+                        fallback_applied = True
+                except (AttributeError, ValueError, cv2.error) as fb_exc:
+                    logger.error(
+                        "[%s] Fallback ROI construction failed: %s",
+                        zone_id, fb_exc,
+                    )
+
+            if not fallback_applied:
+                logger.warning(
+                    "[%s] Water ROI auto-detection found no water region and "
+                    "fallback is disabled — ROI gate disabled for this zone. "
+                    "Check debug image: %s",
+                    zone_id, debug_path,
+                )
 
     logger.info("Water ROI auto-detection complete")
 

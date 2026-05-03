@@ -102,15 +102,18 @@ class AlertEngine:
     ) -> None:
         """Save snapshot and dispatch alert payload to all three channels.
 
+        FIX R4: _record_alert_time() is now called here so the per-track
+        cooldown is always applied, regardless of whether dispatch() is called
+        directly or via dispatch_alert().  Previously the recording only
+        happened inside dispatch_alert(), leaving the legacy _process_zone_frame
+        path unprotected against alert storms.
+
         Three daemon threads are launched simultaneously for MQTT, API,
         and logger so that a slow channel does not delay the others.
-
-        Args:
-            zone_id:  Camera zone identifier.
-            track_id: ByteTrack person identifier.
-            score:    Final drowning confidence score [0.0, 1.0].
-            frame:    Latest BGR frame at time of alert.
         """
+        # Always record dispatch time FIRST so cooldown is applied even if
+        # something below raises an exception.
+        self._record_alert_time(track_id)
         event_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -224,9 +227,12 @@ class AlertEngine:
         pose_confidence: float | None = None,
         final_confidence: float | None = None,
     ) -> None:
-        """Compatibility wrapper used by the multi-threaded pipeline callback."""
+        """Compatibility wrapper used by the multi-threaded pipeline callback.
+
+        _record_alert_time() is now handled inside dispatch() so it is not
+        called here to avoid a double-record.
+        """
         score = float(final_confidence) if final_confidence is not None else 0.0
-        self._record_alert_time(track_id)
         self.dispatch(
             zone_id=zone_id,
             track_id=str(track_id),

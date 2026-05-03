@@ -227,7 +227,7 @@ if ($generatedGuardSeed) {
 $env:FLASK_APP = "wsgi.py"
 $env:FLASK_ENV = "development"
 $env:APP_ENV = "development"
-$env:CORS_ALLOWED_ORIGINS = "http://localhost:3000"
+$env:CORS_ALLOWED_ORIGINS = "*"
 Push-Location "$ROOT\backend"
 try {
     $ErrorActionPreference = 'Stop'
@@ -355,6 +355,7 @@ if (-not $SkipFrontend) {
             param($root)
             $env:REACT_APP_API_URL="http://localhost:5000"
             $env:REACT_APP_WS_URL="http://localhost:5000"
+            $env:HOST="0.0.0.0"
             Set-Location "$root\frontend"
             npm start
         }

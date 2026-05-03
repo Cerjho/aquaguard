@@ -23,6 +23,8 @@ from config.settings import (
     WATER_ROI,
     WATER_ROI_ENABLED,
     SUPPRESS_OUT_OF_WATER_CLASS,
+    PERSON_OOW_AMBIGUOUS_PENALTY,
+    POSE_ABSENT_MAX_SCORE,
     ANKLE_GATE_ENABLED,
     ANKLE_VISIBILITY_MIN,
     ANKLE_HIP_MARGIN,
@@ -112,74 +114,113 @@ class BehaviorAnalyzer:
         """
         has_landmarks = isinstance(landmarks, list) and len(landmarks) == 33
 
-        # ── Layer 1: YOLO hard gate ─ suppress person_out_of_water ────────────
-        if SUPPRESS_OUT_OF_WATER_CLASS and yolo_class == "person_out_of_water":
-            logger.debug(
-                "Track %s suppressed — YOLO class: person_out_of_water",
-                track_id,
+        # ── Pre-compute spatial context (reused by multiple layers) ───────────
+        # Water ROI check — True means inside water OR gate is disabled.
+        _in_water_roi = True
+        _roi_cx = _roi_cy = 0.0
+        if bbox is not None and self._water_roi_contour is not None:
+            _roi_cx = (bbox[0] + bbox[2]) / 2.0
+            _roi_cy = bbox[3]  # bottom edge = person's feet
+            _in_water_roi = (
+                cv2.pointPolygonTest(
+                    self._water_roi_contour, (_roi_cx, _roi_cy), False
+                ) >= 0
             )
-            return 0.0
+
+        # Full-body-visible check — computed once, shared between layers.
+        _full_body_on_land = (
+            has_landmarks and self._is_full_body_visible(landmarks, track_id)
+        )
+
+        # ── Layer 1A: YOLO person_out_of_water — context-aware suppression ────
+        # FIX R1: The old logic hard-zeroed on the YOLO label alone, causing a
+        # silent miss when YOLO misclassifies a drowning swimmer as out-of-water.
+        # New logic: only hard-suppress when spatial evidence corroborates the
+        # label; otherwise apply a soft penalty and let pose indicators decide.
+        _oow_ambiguous = False
+        if SUPPRESS_OUT_OF_WATER_CLASS and yolo_class == "person_out_of_water":
+            if _full_body_on_land:
+                # Full skeleton visible → confirmed on dry land.
+                logger.debug(
+                    "Track %s suppressed — OOW class confirmed by full-body visible",
+                    track_id,
+                )
+                return 0.0
+            if not _in_water_roi:
+                # Person's base is outside the pool polygon → confirmed on land.
+                logger.debug(
+                    "Track %s suppressed — OOW class confirmed by water ROI (base=%.0f,%.0f)",
+                    track_id, _roi_cx, _roi_cy,
+                )
+                return 0.0
+            # Ambiguous: YOLO says out-of-water but location is inside the pool
+            # zone and lower body is not clearly visible (could be submerged).
+            # Fall through; a penalty is applied after scoring.
+            _oow_ambiguous = True
+            logger.debug(
+                "Track %s: OOW class is ambiguous (inside ROI, no full-body) "
+                "— scoring with %.0f%% penalty",
+                track_id, PERSON_OOW_AMBIGUOUS_PENALTY * 100,
+            )
 
         if has_landmarks:
-            # ── Layer 1b: Swimming + upright suppression ─────────────────────────
-            # If YOLO says "swimming" but body is in upright standing posture,
-            # that's a misclassification — swimmers are horizontal, not standing.
+            # ── Layer 1B: Swimming + upright suppression ─────────────────────
             if self._is_swimming_but_upright(landmarks, yolo_class, track_id):
                 return 0.0
 
-            # ── Layer 1c: Full-body-visible hard gate ────────────────────────────
-            # If MediaPipe can clearly see knees AND ankles, the person's lower body
-            # is NOT submerged — they are on land, not in water.
-            if self._is_full_body_visible(landmarks, track_id):
-                return 0.0
-
-        # ── Layer 2: Water ROI gate ─ reject persons outside the pool polygon ─
-        water_roi_check = True  # True = inside water (or gate disabled)
-        if bbox is not None and self._water_roi_contour is not None:
-            # Center-bottom of bounding box (person's base/feet)
-            cx = (bbox[0] + bbox[2]) / 2.0
-            cy = bbox[3]  # bottom edge
-            inside = cv2.pointPolygonTest(
-                self._water_roi_contour, (cx, cy), False
-            ) >= 0
-            if not inside:
-                water_roi_check = False
+            # ── Layer 1C: Full-body-visible hard gate ────────────────────────
+            # Skip when _oow_ambiguous is True — already evaluated in Layer 1A.
+            if not _oow_ambiguous and _full_body_on_land:
                 logger.debug(
-                    "Track %s: outside water ROI (base=%.0f,%.0f) → score=0.0",
-                    track_id, cx, cy,
+                    "Track %s suppressed — full body visible on land", track_id
                 )
                 return 0.0
 
+        # ── Layer 2: Water ROI gate ───────────────────────────────────────────
+        if not _in_water_roi:
+            logger.debug(
+                "Track %s: outside water ROI (base=%.0f,%.0f) → score=0.0",
+                track_id, _roi_cx, _roi_cy,
+            )
+            return 0.0
+
         # ── Evaluate all 5 indicators ─────────────────────────────────────────
-        # Build dict of (weight, value) pairs; None means gated out
         indicators = {}
 
         # Indicator 1: Vertical orientation
         if has_landmarks:
-            vert_val = self._is_vertical_orientation(landmarks)
-            indicators['vertical'] = (WEIGHT_VERTICAL_ORIENTATION, float(vert_val))
+            indicators['vertical'] = (
+                WEIGHT_VERTICAL_ORIENTATION,
+                float(self._is_vertical_orientation(landmarks)),
+            )
         else:
             indicators['vertical'] = (WEIGHT_VERTICAL_ORIENTATION, None)
 
         # Indicator 2: Arms elevated
         if has_landmarks and landmarks[15].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD and \
            landmarks[16].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD:
-            arms_val = self._are_arms_elevated(landmarks)
-            indicators['arms_elevated'] = (WEIGHT_ARMS_ELEVATED, float(arms_val))
+            indicators['arms_elevated'] = (
+                WEIGHT_ARMS_ELEVATED,
+                float(self._are_arms_elevated(landmarks)),
+            )
         else:
             indicators['arms_elevated'] = (WEIGHT_ARMS_ELEVATED, None)
 
-        # Indicator 3: Head position low (NEW)
+        # Indicator 3: Head position low
         if has_landmarks:
-            head_val = self._is_head_position_low(landmarks)
-            indicators['head_low'] = (WEIGHT_HEAD_POSITION_LOW, float(head_val))
+            indicators['head_low'] = (
+                WEIGHT_HEAD_POSITION_LOW,
+                float(self._is_head_position_low(landmarks)),
+            )
         else:
             indicators['head_low'] = (WEIGHT_HEAD_POSITION_LOW, None)
 
-        # Indicator 4: No breathing motion (NEW)
+        # Indicator 4: No breathing motion
         if has_landmarks:
-            breath_val = self._no_breathing_motion(track_id, landmarks)
-            indicators['no_breathing'] = (WEIGHT_NO_BREATHING_MOTION, float(breath_val))
+            indicators['no_breathing'] = (
+                WEIGHT_NO_BREATHING_MOTION,
+                float(self._no_breathing_motion(track_id, landmarks)),
+            )
         else:
             indicators['no_breathing'] = (WEIGHT_NO_BREATHING_MOTION, None)
 
@@ -196,11 +237,16 @@ class BehaviorAnalyzer:
             final_score *= ANKLE_OUT_OF_WATER_PENALTY
             ankle_penalty_applied = True
 
+        # ── Layer 1A followup: OOW ambiguity penalty ─────────────────────────
+        if _oow_ambiguous:
+            final_score *= PERSON_OOW_AMBIGUOUS_PENALTY
+
         logger.debug(
-            "Track %s: water_roi=%s vertical=%s arms=%s head_low=%s "
-            "breathing=%s yolo=%.2f ankle_penalty=%s → score=%.3f",
+            "Track %s: in_roi=%s oow_ambiguous=%s vertical=%s arms=%s "
+            "head_low=%s breathing=%s yolo=%.2f ankle_penalty=%s → score=%.3f",
             track_id,
-            water_roi_check,
+            _in_water_roi,
+            _oow_ambiguous,
             "None" if indicators['vertical'][1] is None else f"{indicators['vertical'][1]:.2f}",
             "None" if indicators['arms_elevated'][1] is None else f"{indicators['arms_elevated'][1]:.2f}",
             "None" if indicators['head_low'][1] is None else f"{indicators['head_low'][1]:.2f}",
@@ -409,26 +455,47 @@ class BehaviorAnalyzer:
         If arms underwater (visibility < threshold), their indicator is None.
         Denominator shrinks accordingly to prevent penalty.
 
+        FIX R2: When pose estimation returned no landmarks, all pose-based
+        indicators are None and only the YOLO class indicator remains.  Allowing
+        a YOLO-only score of 1.0 to propagate to the ConfidenceFilter is unsafe
+        (a single misclassified frame could sustain the window).  The score is
+        capped at POSE_ABSENT_MAX_SCORE (default 0.50) in that case — safely
+        below the CONFIDENCE_THRESHOLD (0.70).
+
         Args:
             indicators: dict of {name: (weight, value_or_None)}
 
         Returns:
             Normalized score in [0.0, 1.0]
         """
+        _POSE_INDICATORS = frozenset({'vertical', 'arms_elevated', 'head_low', 'no_breathing'})
+
         total_weight = 0.0
         weighted_sum = 0.0
+        has_pose_evidence = False
 
         for name, (weight, value) in indicators.items():
             if value is not None:
                 total_weight += weight
                 weighted_sum += weight * value
+                if name in _POSE_INDICATORS:
+                    has_pose_evidence = True
 
         if total_weight == 0.0:
             return 0.0
 
-        # Normalize to [0, 1] using only active indicators
-        normalized_score = weighted_sum / total_weight
-        return min(1.0, normalized_score)
+        normalized_score = min(1.0, weighted_sum / total_weight)
+
+        # Cap score when pose is absent so YOLO alone cannot fire an alert.
+        if not has_pose_evidence:
+            if normalized_score > POSE_ABSENT_MAX_SCORE:
+                logger.debug(
+                    "Score capped %.3f → %.3f (pose absent — YOLO-only evidence)",
+                    normalized_score, POSE_ABSENT_MAX_SCORE,
+                )
+                normalized_score = POSE_ABSENT_MAX_SCORE
+
+        return normalized_score
 
     def cleanup_stale_tracks(self, active_track_ids: Iterable[str]) -> None:
         """Drop per-track history for IDs not present in the current frame."""

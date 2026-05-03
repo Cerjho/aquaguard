@@ -55,6 +55,15 @@ export function resolveRuntimeAwareUrl(envUrl, runtimeOrigin, runtimeHostname) {
       runtimeHostname
     )
   ) {
+    const parsedEnvUrl = parseUrl(normalizedEnvUrl);
+    const parsedRuntimeUrl = parseUrl(normalizedRuntimeOrigin);
+    
+    if (parsedEnvUrl && parsedRuntimeUrl) {
+      // Reconstruct URL using runtime hostname but envUrl's port/protocol
+      // This ensures mobile phones on 192.168.x.x hit the backend on port 5000, not 3000
+      const portPart = parsedEnvUrl.port ? `:${parsedEnvUrl.port}` : '';
+      return `${parsedRuntimeUrl.protocol}//${parsedRuntimeUrl.hostname}${portPart}`;
+    }
     return normalizedRuntimeOrigin;
   }
 

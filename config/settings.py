@@ -59,6 +59,10 @@ WATER_ROI_AUTO_DETECT = True
 WATER_ROI_MIN_AREA_RATIO = 0.05     # Min fraction of frame area for valid water region
 WATER_ROI_CALIBRATION_FRAMES = 5    # Grab N frames and use the best detection
 WATER_ROI_RECALIBRATE_INTERVAL = 300  # Re-detect every N seconds (0 = disable periodic recalibration)
+# Fallback ROI: when HSV auto-detection finds no water region, synthesise a polygon
+# covering the bottom portion of the frame so the ROI gate is never fully disabled.
+WATER_ROI_FALLBACK_ENABLED = is_truthy(os.environ.get("WATER_ROI_FALLBACK_ENABLED", "1"))
+WATER_ROI_FALLBACK_TOP_RATIO = float(os.environ.get("WATER_ROI_FALLBACK_TOP_RATIO", "0.30"))  # top edge at 30% → bottom 70% used
 
 # ── YOLO Inference ────────────────────────────────────────────────────────────
 YOLO_CONFIDENCE_THRESHOLD = 0.4     # Minimum detection confidence for model.track()
@@ -68,12 +72,22 @@ YOLO_MIN_BBOX_AREA = 400            # Min bbox area in px² (only filters person
 # ── Water-Presence Validation (Camera-Position Independent) ───────────────────
 # Layer 1: YOLO hard gate — suppress scoring for "person_out_of_water" detections
 SUPPRESS_OUT_OF_WATER_CLASS = True
+# When YOLO says person_out_of_water but spatial evidence is ambiguous (person
+# appears to be inside the water ROI and no full-body-visible gate fires),
+# multiply the final score by this factor instead of hard-zeroing it.
+# Set to 0.0 to restore the original hard-suppress behaviour.
+PERSON_OOW_AMBIGUOUS_PENALTY = float(os.environ.get("PERSON_OOW_AMBIGUOUS_PENALTY", "0.50"))
 
 # Layer 2: Ankle soft signal — penalize score when full-body standing posture detected
 ANKLE_GATE_ENABLED = True
 ANKLE_VISIBILITY_MIN = 0.5          # Both ankles must be this visible to trigger
 ANKLE_HIP_MARGIN = 0.15             # Ankles must be this far below hips (normalized ROI coords)
 ANKLE_OUT_OF_WATER_PENALTY = 0.15   # Score multiplier when person appears on dry land (harsher penalty)
+
+# Pose-absent score cap: when MediaPipe / YOLO-Pose returns no landmarks, only the
+# YOLO class indicator is available. Allowing a YOLO-only score of 1.0 to pass the
+# confidence filter is too risky. Cap it so YOLO evidence alone can never trigger.
+POSE_ABSENT_MAX_SCORE = float(os.environ.get("POSE_ABSENT_MAX_SCORE", "0.50"))
 
 # Layer 3: Full-body-visible hard gate — if full skeleton (knees+ankles) is clearly
 # visible, the person is on land (swimmers have submerged lower body)

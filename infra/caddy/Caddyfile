@@ -1,6 +1,4 @@
-https://aquaguard.local {
-    # Uses Caddy's internal CA. Clients must trust this root CA (e.g., via `caddy trust`)
-    # or bypass browser warnings for local development.
+:443, :80 {
     tls internal
 
     @api path /api/* /socket.io/* /snapshots/live/*
@@ -17,8 +15,4 @@ https://aquaguard.local {
             dial_timeout 5s
         }
     }
-}
-
-http://aquaguard.local {
-    redir https://aquaguard.local{uri} 308
 }

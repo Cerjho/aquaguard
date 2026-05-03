@@ -230,7 +230,10 @@ def _is_sqlite_database(database_url):
 
 
 def _parse_cors_origins(raw_origins):
-    return [origin.strip() for origin in str(raw_origins).split(',') if origin.strip()]
+    origins = [origin.strip() for origin in str(raw_origins).split(',') if origin.strip()]
+    if len(origins) == 1 and origins[0] == '*':
+        return '*'
+    return origins
 
 
 def _is_localhost_origin(origin):

@@ -183,10 +183,10 @@ function CameraGrid({ reloadToken = 0 }) {
   const gridColsClass = useMemo(() => {
     const total = cameras.length;
     if (total <= 1) return 'grid-cols-1';
-    if (total === 2) return 'grid-cols-2';
-    if (total <= 4) return 'grid-cols-2';
-    if (total <= 6) return 'grid-cols-3';
-    return 'grid-cols-3';
+    if (total === 2) return 'grid-cols-1 sm:grid-cols-2';
+    if (total <= 4) return 'grid-cols-1 sm:grid-cols-2';
+    if (total <= 6) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+    return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
   }, [cameras.length]);
 
   const streamCandidateCameras = useMemo(
@@ -340,7 +340,7 @@ function CameraGrid({ reloadToken = 0 }) {
           <div className="skeleton h-4 w-36" />
           <div className="skeleton h-4 w-20" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="glass-subtle rounded-xl p-3 border border-white/10">
               <div className="skeleton aspect-video w-full rounded-lg" />
@@ -504,7 +504,7 @@ function CameraGrid({ reloadToken = 0 }) {
               initial={false}
               animate={{ x: isDetailsOpen ? 0 : '110%' }}
               transition={{ duration: prefersReducedMotion ? 0.01 : 0.35, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute top-0 right-0 h-full w-72 sm:w-80 z-20 bg-white/10 backdrop-blur-2xl border-l border-white/10 p-6 flex flex-col gap-5 overflow-y-auto"
+              className="absolute top-0 right-0 h-full w-full sm:w-80 z-20 bg-white/10 backdrop-blur-2xl border-l border-white/10 p-5 sm:p-6 flex flex-col gap-5 overflow-y-auto"
             >
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-widest text-white/50 font-semibold">Camera Details</p>
@@ -649,9 +649,9 @@ function CameraGrid({ reloadToken = 0 }) {
             <div
               className={`flex-1 min-h-0 grid ${
                 cameras.length === 1 ? 'grid-cols-1' :
-                cameras.length === 2 ? 'grid-cols-2' :
-                cameras.length <= 4 ? 'grid-cols-2' :
-                'grid-cols-3'
+                cameras.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+                cameras.length <= 4 ? 'grid-cols-1 sm:grid-cols-2' :
+                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
               }`}
               style={{ gridAutoRows: '1fr' }}
             >

@@ -382,7 +382,7 @@ function LoginPage() {
               </div>
             </section>
 
-            <section ref={formPanelRef} className="flex flex-col justify-center rounded-[1.5rem] bg-white px-8 py-10 lg:px-16">
+            <section ref={formPanelRef} className="flex flex-col justify-center rounded-[1.5rem] bg-white px-5 sm:px-8 py-10 lg:px-16">
               <div className="mb-8 flex flex-col items-center text-center">
                 <div data-intro-item className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -392,7 +392,7 @@ function LoginPage() {
                 </div>
                 <h1
                   data-intro-item
-                  className="mt-5 text-[34px] font-extrabold tracking-tight text-slate-900"
+                  className="mt-5 text-[22px] sm:text-[34px] font-extrabold tracking-tight text-slate-900 whitespace-nowrap"
                   onMouseMove={handleHeroMouseMove}
                   onMouseLeave={handleHeroMouseLeave}
                 >

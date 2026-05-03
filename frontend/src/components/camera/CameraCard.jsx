@@ -193,6 +193,7 @@ function CameraCard({
       className={`group relative overflow-hidden cursor-pointer transition-all duration-500 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-300/70 border rounded-2xl shadow-md bg-white ${
         hasActiveAlert ? 'ring-2 ring-rose-400 border-rose-200 shadow-rose-200/60 shadow-lg' : 'border-slate-200 hover:shadow-lg hover:shadow-slate-200/70'
       }`}
+      style={{ touchAction: 'manipulation' }}
       aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
       whileHover={!hasActiveAlert ? { scale: 1.02, y: -4 } : {}}
       whileTap={{ scale: 0.98 }}
@@ -270,8 +271,9 @@ function CameraCard({
                 setShowTelemetryMenu((prev) => !prev);
               }}
               className={`inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 hover:bg-white shadow-sm transition-opacity duration-200 ${
-                showTelemetryMenu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                showTelemetryMenu ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
               }`}
+              style={{ touchAction: 'manipulation', minHeight: '44px', minWidth: '44px' }}
               aria-label="Open camera telemetry"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

@@ -22,7 +22,7 @@ function AnalyticsPage() {
       <div className="flex items-center gap-3">
         <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Analytics</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Analytics</h2>
           <p className="text-sm text-slate-600 mt-1">
             Detection frequency, alert trends, and zone summaries
           </p>

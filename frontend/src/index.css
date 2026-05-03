@@ -61,6 +61,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
 }
 
 html:focus-within {
@@ -75,6 +77,8 @@ body {
   background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 60%, #e7ecef 100%);
   min-height: 100vh;
   color: var(--color-text-secondary);
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 #root {
@@ -293,6 +297,15 @@ code {
     outline: none;
     box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9), 0 0 0 4px rgba(6, 182, 212, 0.7);
   }
+  /* Mobile bottom nav safe area (iOS home bar) */
+  .mobile-bottom-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* Prevent iOS Safari auto-zoom on form inputs */
+  input, select, textarea {
+    font-size: max(16px, 1rem);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -333,6 +346,11 @@ code {
   .text-gradient-danger {
     @apply bg-gradient-to-r from-rose-300 to-rose-500;
     @apply bg-clip-text text-transparent;
+  }
+
+  /* Eliminate 300ms tap delay on interactive elements */
+  .touch-manipulation {
+    touch-action: manipulation;
   }
 }
 

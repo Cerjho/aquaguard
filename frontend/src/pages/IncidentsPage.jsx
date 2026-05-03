@@ -37,7 +37,7 @@ function IncidentsPage() {
   }, [location.state]);
 
   const headerTabs = (
-    <div className="flex gap-8 h-full" role="tablist" aria-label="Incident views">
+    <div className="flex gap-4 sm:gap-8 h-full" role="tablist" aria-label="Incident views">
       {TABS.map((tab) => (
         <button
           key={tab.id}
@@ -76,7 +76,7 @@ function IncidentsPage() {
       <div className="flex items-center gap-3">
         <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Incidents</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Incidents</h2>
           <p className="text-sm text-slate-600 mt-1">
             Historical alerts and detection events
           </p>

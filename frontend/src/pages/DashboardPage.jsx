@@ -47,7 +47,7 @@ function DashboardPage() {
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
           <div>
-            <h2 className="text-3xl font-semibold text-slate-900 tracking-tight">Dashboard</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Dashboard</h2>
             <p className="text-sm text-slate-600 mt-1">
               Real-time pool monitoring and alert overview
             </p>
@@ -56,10 +56,10 @@ function DashboardPage() {
       </motion.div>
 
       {/* Main grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Camera feeds — takes 2/3 width on xl */}
         <motion.div 
-          className="xl:col-span-2 space-y-4"
+          className="lg:col-span-2 space-y-4"
           variants={itemVariants}
         >
           <CameraGrid reloadToken={location.key} />

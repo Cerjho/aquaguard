@@ -16,6 +16,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from './context/AuthContext.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
+import MobileBottomNav from './components/layout/MobileBottomNav.jsx';
 import FullScreenLoader from './components/layout/FullScreenLoader.jsx';
 
 import LoginPage from './pages/LoginPage.jsx';
@@ -63,16 +64,25 @@ function PrivateLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex min-h-screen bg-slate-50">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <main id="main-content" className="flex-1 overflow-y-auto p-6" tabIndex={-1}>
+      {/* Sidebar — hidden on mobile, visible from md breakpoint */}
+      <div className="hidden md:flex">
+        <Sidebar />
+      </div>
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <main
+          id="main-content"
+          className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 md:pb-6"
+          tabIndex={-1}
+        >
           <AnimatedOutlet />
         </main>
       </div>
+      {/* Mobile bottom navigation — hidden on md+ */}
+      <MobileBottomNav />
     </div>
   );
 }

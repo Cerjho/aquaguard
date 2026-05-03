@@ -462,14 +462,16 @@ function AlertHistory({ headerTabs }) {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              style={{ touchAction: 'manipulation', minHeight: '44px' }}
             >
               ← Prev
             </button>
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              style={{ touchAction: 'manipulation', minHeight: '44px' }}
             >
               Next →
             </button>

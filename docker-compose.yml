@@ -13,14 +13,14 @@ services:
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-aquaguard}
-      - MYSQL_USER=${MYSQL_USER:-aquaguard}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-aquaguardpass}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-aquaguardrootpass}" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -82,17 +82,17 @@ services:
       - --log-file=stdout
       - --fingerprint
       - --lt-cred-mech
-      - --realm=${TURN_REALM:-aquaguard.local}
-      - --user=${TURN_USERNAME:-aquaguard}:${TURN_PASSWORD:-aquaguardpass}
-      - --external-ip=${TURN_EXTERNAL_IP:-127.0.0.1}
+      - --realm=${TURN_REALM}
+      - --user=${TURN_USERNAME}:${TURN_PASSWORD}
+      - --external-ip=${TURN_EXTERNAL_IP}
       - --listening-ip=0.0.0.0
-      - --min-port=${TURN_RELAY_MIN_PORT:-49152}
-      - --max-port=${TURN_RELAY_MAX_PORT:-49200}
+      - --min-port=${TURN_RELAY_MIN_PORT}
+      - --max-port=${TURN_RELAY_MAX_PORT}
     ports:
       - "3478:3478"
       - "3478:3478/udp"
-      - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/udp"
-      - "${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}:${TURN_RELAY_MIN_PORT:-49152}-${TURN_RELAY_MAX_PORT:-49200}/tcp"
+      - "${TURN_RELAY_MIN_PORT}-${TURN_RELAY_MAX_PORT}:${TURN_RELAY_MIN_PORT}-${TURN_RELAY_MAX_PORT}/udp"
+      - "${TURN_RELAY_MIN_PORT}-${TURN_RELAY_MAX_PORT}:${TURN_RELAY_MIN_PORT}-${TURN_RELAY_MAX_PORT}/tcp"
     healthcheck:
       test: [ "CMD", "turnutils_stunclient", "localhost" ]
       interval: 10s
@@ -118,24 +118,24 @@ services:
       - FLASK_ENV=production
       - APP_ENV=production
       - ALLOW_UNSAFE_WERKZEUG=1
-      - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://aquaguard:aquaguardpass@mysql:3306/aquaguard}
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-me}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-redis://redis:6379/1}
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - REDIS_URL=${REDIS_URL}
+      - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI}
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
-      - WEBRTC_SESSION_TTL_SECONDS=${WEBRTC_SESSION_TTL_SECONDS:-300}
+      - WEBRTC_SESSION_TTL_SECONDS=${WEBRTC_SESSION_TTL_SECONDS}
       - WEBRTC_STUN_URLS=${WEBRTC_STUN_URLS}
       - WEBRTC_TURN_URL=${WEBRTC_TURN_URL}
       - WEBRTC_TURN_USERNAME=${WEBRTC_TURN_USERNAME}
       - WEBRTC_TURN_CREDENTIAL=${WEBRTC_TURN_CREDENTIAL}
       - WEBRTC_ICE_TRANSPORT_POLICY=${WEBRTC_ICE_TRANSPORT_POLICY}
       - WEBRTC_FORCE_RELAY=${WEBRTC_FORCE_RELAY}
-      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
-      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-aquaguard2026}
-      - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD:-lifeguard2026}
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY}
+      - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD}
+      - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD}
     volumes:
       - ./backend/snapshots:/app/snapshots
     depends_on:
@@ -212,19 +212,19 @@ services:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
       - AQUAGUARD_API_URL=http://backend:5000
-      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY:-dev-internal-api-key-change-me-32chars}
-      - RTSP_TRANSPORT=${RTSP_TRANSPORT:-tcp}
-      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL:-aquaguard_yolov11s.pt}
-      - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT:-15}
-      - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT:-10}
-      - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD:-20}
-      - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE:-8}
-      - DETECTION_GPU_MEMORY_FRACTION=${DETECTION_GPU_MEMORY_FRACTION:-0.75}
-      - DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES=${DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES:-15}
-      - DETECTION_GPU_MONITOR_ENABLED=${DETECTION_GPU_MONITOR_ENABLED:-1}
-      - DETECTION_GPU_MONITOR_INTERVAL_SECONDS=${DETECTION_GPU_MONITOR_INTERVAL_SECONDS:-30}
-      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
-      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+      - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY}
+      - RTSP_TRANSPORT=${RTSP_TRANSPORT}
+      - AQUAGUARD_MODEL=${AQUAGUARD_MODEL}
+      - RTSP_CONNECT_TIMEOUT=${RTSP_CONNECT_TIMEOUT}
+      - RTSP_READ_TIMEOUT=${RTSP_READ_TIMEOUT}
+      - RTSP_STALL_THRESHOLD=${RTSP_STALL_THRESHOLD}
+      - RTSP_BUFFER_SIZE=${RTSP_BUFFER_SIZE}
+      - DETECTION_GPU_MEMORY_FRACTION=${DETECTION_GPU_MEMORY_FRACTION}
+      - DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES=${DETECTION_GPU_CACHE_CLEAR_INTERVAL_FRAMES}
+      - DETECTION_GPU_MONITOR_ENABLED=${DETECTION_GPU_MONITOR_ENABLED}
+      - DETECTION_GPU_MONITOR_INTERVAL_SECONDS=${DETECTION_GPU_MONITOR_INTERVAL_SECONDS}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES}
       - TF_CPP_MIN_LOG_LEVEL=3
       - GLOG_minloglevel=3
       - GLOG_logtostderr=0

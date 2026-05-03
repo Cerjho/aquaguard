@@ -1,4 +1,4 @@
-https://aquaguard.local {
+https://aquaguard.local, https:// {
     tls internal
 
     @api path /api/* /socket.io/* /snapshots/live/*
@@ -17,23 +17,6 @@ https://aquaguard.local {
     }
 }
 
-http://aquaguard.local {
-    redir https://aquaguard.local{uri} 308
-}
-
 http:// {
-    @api path /api/* /socket.io/* /snapshots/live/*
-    reverse_proxy @api backend:5000 {
-        header_up Host {host}
-        transport http {
-            dial_timeout 5s
-        }
-    }
-
-    reverse_proxy frontend:80 {
-        header_up Host {host}
-        transport http {
-            dial_timeout 5s
-        }
-    }
+    redir https://{host}{uri} 308
 }

@@ -19,7 +19,13 @@ LOGGER = logging.getLogger(__name__)
 # ── Optional runtime dependencies ─────────────────────────────────────────────
 
 try:
-    from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+    from aiortc import (
+        RTCPeerConnection,
+        RTCSessionDescription,
+        RTCConfiguration,
+        RTCIceServer,
+        VideoStreamTrack,
+    )
     from aiortc.sdp import candidate_from_sdp
     from av import VideoFrame
 
@@ -28,6 +34,8 @@ try:
 except ImportError as exc:
     RTCPeerConnection = None
     RTCSessionDescription = None
+    RTCConfiguration = None
+    RTCIceServer = None
     VideoStreamTrack = None
     candidate_from_sdp = None
     VideoFrame = None

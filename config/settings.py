@@ -11,27 +11,55 @@ except ModuleNotFoundError:
         return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 # ── Confidence Filter (Rolling Window) — Water-Level Tuned ────────────────────
-CONFIDENCE_WINDOW_SIZE = 10         # N — reduced from 15 (faster response @ water level)
-CONFIDENCE_THRESHOLD = 0.70         # T — raised from 0.60 (aggressive FP reduction for on-land scenarios)
-CONFIDENCE_MIN_HITS = 6             # K — reduced from 7 (6 of 10 frames high confidence)
+CONFIDENCE_WINDOW_SIZE = int(
+    os.environ.get("CONFIDENCE_WINDOW_SIZE", "8")
+)  # N default=10 (faster response @ water level)
+CONFIDENCE_THRESHOLD = float(
+    os.environ.get("CONFIDENCE_THRESHOLD", "0.70")
+)  # T default=0.70 (aggressive FP reduction for on-land scenarios)
+CONFIDENCE_MIN_HITS = int(
+    os.environ.get("CONFIDENCE_MIN_HITS", "6")
+)  # K default=6 (6 of 10 frames high confidence)
 CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS
-CONSECUTIVE_FRAME_LOW_THRESHOLD = 0.75  # Raised from 0.65 (each frame must score higher to count as hit)
+CONSECUTIVE_FRAME_LOW_THRESHOLD = float(
+    os.environ.get("CONSECUTIVE_FRAME_LOW_THRESHOLD", "0.60")
+)  # Default raised from 0.65 (each frame must score higher to count as hit)
 
 # ── Behavior Analyzer Weights (Water-Level Tuned) ───────────────────────────
-# NOTE: Sum = 1.20 (normalized dynamically based on visibility gating)
+# NOTE: Sum = 1.55 (normalized dynamically based on visibility gating)
 WEIGHT_VERTICAL_ORIENTATION = 0.30  # Reliable: shoulder landmarks visible
 WEIGHT_ARMS_ELEVATED = 0.20         # Reduced from 0.25 (water-level angle affects)
 WEIGHT_HEAD_POSITION_LOW = 0.35     # NEW: Most reliable surface cue @ water level
 WEIGHT_NO_BREATHING_MOTION = 0.25   # NEW: Temporal signal (breathing pattern absence)
+WEIGHT_NO_LIMB_MOTION = 0.10        # Low-weight stillness signal when limbs visible
+WEIGHT_FACE_SUBMERGED = 0.10        # Low-weight visibility cue at water line
+WEIGHT_SPLASHING = 0.15             # Rapid limb motion (consecutive splashing)
 WEIGHT_YOLO_CLASS = 0.10            # Keep: YOLO classification
-# REMOVED: WEIGHT_NO_LIMB_MOTION (0.20) — unreliable underwater
-# REMOVED: WEIGHT_FACE_SUBMERGED (0.15) — flickers at water line
 
 # ── Behavior Analyzer Thresholds ────────────────────────────────────────────
 VERTICAL_ANGLE_THRESHOLD_DEG = 40   # Body angle from vertical (degrees)
 # CRITICAL: MediaPipe returns normalized coords [0.0, 1.0] — NOT pixels
-LIMB_MOTION_STD_THRESHOLD = 0.025   # Kept for compatibility (no longer used in indicators)
-FACE_VISIBILITY_THRESHOLD = 0.5     # Kept for compatibility
+LIMB_MOTION_HISTORY_FRAMES = int(
+    os.environ.get("LIMB_MOTION_HISTORY_FRAMES", "10")
+)
+LIMB_MOTION_MIN_HISTORY_FRAMES = int(
+    os.environ.get("LIMB_MOTION_MIN_HISTORY_FRAMES", "3")
+)
+LIMB_MOTION_STD_THRESHOLD = float(
+    os.environ.get("LIMB_MOTION_STD_THRESHOLD", "0.025")
+)  # Normalized standard deviation threshold
+FACE_VISIBILITY_THRESHOLD = float(
+    os.environ.get("FACE_VISIBILITY_THRESHOLD", "0.5")
+)  # Lower visibility implies submersion
+SPLASHING_HISTORY_FRAMES = int(
+    os.environ.get("SPLASHING_HISTORY_FRAMES", "6")
+)
+SPLASHING_DELTA_THRESHOLD = float(
+    os.environ.get("SPLASHING_DELTA_THRESHOLD", "0.05")
+)
+SPLASHING_MIN_CONSECUTIVE = int(
+    os.environ.get("SPLASHING_MIN_CONSECUTIVE", "3")
+)
 YOLO_DROWNING_CONF_BOOST = 0.6      # YOLO confidence threshold for drowning class
 
 # ── Water-Level Detection Thresholds (TIGHTENED for False Positive Reduction) ──
@@ -48,14 +76,14 @@ NO_BREATHING_VARIANCE_THRESHOLD = float(os.environ.get("NO_BREATHING_VARIANCE", 
 # Polygon defining the pool water surface in FULL FRAME pixel coordinates.
 # Persons whose bounding-box base falls outside this polygon are scored 0.0.
 # Set to None to disable the gate (all detections scored normally).
-WATER_ROI_ENABLED = True
+WATER_ROI_ENABLED = is_truthy(os.environ.get("WATER_ROI_ENABLED", "1"))
 WATER_ROI = None  # Override: list of [x,y] vertices, e.g. [[100,200],[1180,200],[1180,700],[100,700]]
 
 # ── Water ROI Auto-Detection ──────────────────────────────────────────────────
 # When WATER_ROI is None and WATER_ROI_ENABLED is True, auto-detect the pool
 # water surface from the camera frame using HSV color segmentation.
 # Re-detects every startup AND periodically (handles camera repositioning).
-WATER_ROI_AUTO_DETECT = True
+WATER_ROI_AUTO_DETECT = is_truthy(os.environ.get("WATER_ROI_AUTO_DETECT", "1"))
 WATER_ROI_MIN_AREA_RATIO = 0.05     # Min fraction of frame area for valid water region
 WATER_ROI_CALIBRATION_FRAMES = 5    # Grab N frames and use the best detection
 WATER_ROI_RECALIBRATE_INTERVAL = 300  # Re-detect every N seconds (0 = disable periodic recalibration)
@@ -71,7 +99,9 @@ YOLO_MIN_BBOX_AREA = 400            # Min bbox area in px² (only filters person
 
 # ── Water-Presence Validation (Camera-Position Independent) ───────────────────
 # Layer 1: YOLO hard gate — suppress scoring for "person_out_of_water" detections
-SUPPRESS_OUT_OF_WATER_CLASS = True
+SUPPRESS_OUT_OF_WATER_CLASS = is_truthy(
+    os.environ.get("SUPPRESS_OUT_OF_WATER_CLASS", "1")
+)
 # When YOLO says person_out_of_water but spatial evidence is ambiguous (person
 # appears to be inside the water ROI and no full-body-visible gate fires),
 # multiply the final score by this factor instead of hard-zeroing it.
@@ -79,7 +109,7 @@ SUPPRESS_OUT_OF_WATER_CLASS = True
 PERSON_OOW_AMBIGUOUS_PENALTY = float(os.environ.get("PERSON_OOW_AMBIGUOUS_PENALTY", "0.50"))
 
 # Layer 2: Ankle soft signal — penalize score when full-body standing posture detected
-ANKLE_GATE_ENABLED = True
+ANKLE_GATE_ENABLED = is_truthy(os.environ.get("ANKLE_GATE_ENABLED", "1"))
 ANKLE_VISIBILITY_MIN = 0.5          # Both ankles must be this visible to trigger
 ANKLE_HIP_MARGIN = 0.15             # Ankles must be this far below hips (normalized ROI coords)
 ANKLE_OUT_OF_WATER_PENALTY = 0.15   # Score multiplier when person appears on dry land (harsher penalty)
@@ -91,12 +121,16 @@ POSE_ABSENT_MAX_SCORE = float(os.environ.get("POSE_ABSENT_MAX_SCORE", "0.50"))
 
 # Layer 3: Full-body-visible hard gate — if full skeleton (knees+ankles) is clearly
 # visible, the person is on land (swimmers have submerged lower body)
-FULL_BODY_VISIBLE_GATE_ENABLED = True
+FULL_BODY_VISIBLE_GATE_ENABLED = is_truthy(
+    os.environ.get("FULL_BODY_VISIBLE_GATE_ENABLED", "1")
+)
 FULL_BODY_VISIBILITY_MIN = 0.5      # Min visibility for knee+ankle landmarks to trigger gate
 
 # Layer 4: Swimming class upright suppression — if YOLO says "swimming" but body
 # is in upright posture, suppress (swimmers are horizontal, not standing)
-SWIMMING_UPRIGHT_SUPPRESSION = True
+SWIMMING_UPRIGHT_SUPPRESSION = is_truthy(
+    os.environ.get("SWIMMING_UPRIGHT_SUPPRESSION", "1")
+)
 SWIMMING_UPRIGHT_ANGLE_MAX = 35     # Max degrees from vertical to count as "upright"
 
 # ── CUDA / Inference Resiliency ──────────────────────────────────────────────
@@ -163,6 +197,9 @@ CAMERA_CORRUPTION_WARN_THRESHOLD = 0.10  # 10% corruption rate triggers warning
 # ── Alert ─────────────────────────────────────────────────────────────────────
 ALARM_DURATION_SECONDS = 30
 ALERT_COOLDOWN_SECONDS = 30         # Per-track cooldown: suppress duplicate alerts within this window
+ALERT_ACTIVE_MQTT_INTERVAL_SECONDS = float(
+    os.environ.get('ALERT_ACTIVE_MQTT_INTERVAL_SECONDS', '2.0')
+)
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
 SNAPSHOT_FORMAT = "jpg"
@@ -284,6 +321,8 @@ def validate_runtime_settings():
         raise ValueError(
             'MQTT_STARTUP_CONNECT_RETRY_DELAYS_SECONDS must contain positive values'
         )
+    if ALERT_ACTIVE_MQTT_INTERVAL_SECONDS <= 0:
+        raise ValueError('ALERT_ACTIVE_MQTT_INTERVAL_SECONDS must be > 0')
     if RTSP_TRANSPORT not in ('tcp', 'udp'):
         raise ValueError('RTSP_TRANSPORT must be "tcp" or "udp"')
     if RTSP_CONNECT_TIMEOUT_SECONDS < 1:
@@ -308,7 +347,11 @@ def validate_runtime_settings():
         origins = _parse_cors_origins(cors_allowed_origins)
         if not origins:
             raise ValueError('CORS_ALLOWED_ORIGINS is required in production')
-        if any(_is_localhost_origin(origin) for origin in origins):
+        is_wildcard_origins = origins == '*'
+        if (
+            not is_wildcard_origins
+            and any(_is_localhost_origin(origin) for origin in origins)
+        ):
             raise ValueError(
                 'CORS_ALLOWED_ORIGINS must not include localhost in production'
             )

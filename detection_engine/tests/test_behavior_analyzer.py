@@ -2,6 +2,7 @@
 import numpy as np
 import pytest
 
+from config.settings import LIMB_MOTION_MIN_HISTORY_FRAMES, SPLASHING_MIN_CONSECUTIVE
 from detection_engine.analysis.behavior_analyzer import BehaviorAnalyzer
 from detection_engine.models_data.landmark import Landmark
 
@@ -91,6 +92,45 @@ class TestBehaviorAnalyzerIndicators:
         })
         assert self.analyzer._are_arms_elevated(lms) is False
 
+    def test_face_submerged_when_visibility_low(self):
+        lms = _make_landmarks({
+            0: dict(x=0.5, y=0.2, z=0.0, visibility=0.1),
+        })
+        assert self.analyzer._is_face_submerged(lms) is True
+
+    def test_no_limb_motion_detects_still_limbs(self):
+        lms = _make_landmarks({
+            15: dict(x=0.4, y=0.3, z=0.0, visibility=0.9),
+            16: dict(x=0.6, y=0.3, z=0.0, visibility=0.9),
+            27: dict(x=0.4, y=0.9, z=0.0, visibility=0.9),
+            28: dict(x=0.6, y=0.9, z=0.0, visibility=0.9),
+        })
+        result = None
+        for _ in range(LIMB_MOTION_MIN_HISTORY_FRAMES):
+            result = self.analyzer._no_limb_motion("track_limb", lms)
+        assert result is True
+
+    def test_consecutive_splashing_detected(self):
+        lms_low = _make_landmarks({
+            15: dict(x=0.4, y=0.3, z=0.0, visibility=0.9),
+            16: dict(x=0.6, y=0.3, z=0.0, visibility=0.9),
+            27: dict(x=0.4, y=0.8, z=0.0, visibility=0.9),
+            28: dict(x=0.6, y=0.8, z=0.0, visibility=0.9),
+        })
+        lms_high = _make_landmarks({
+            15: dict(x=0.4, y=0.6, z=0.0, visibility=0.9),
+            16: dict(x=0.6, y=0.6, z=0.0, visibility=0.9),
+            27: dict(x=0.4, y=0.95, z=0.0, visibility=0.9),
+            28: dict(x=0.6, y=0.95, z=0.0, visibility=0.9),
+        })
+
+        result = None
+        for idx in range(SPLASHING_MIN_CONSECUTIVE + 1):
+            frame = lms_low if idx % 2 == 0 else lms_high
+            result = self.analyzer._is_consecutive_splashing("track_splash", frame)
+
+        assert result is True
+
 
 
 
@@ -98,11 +138,25 @@ def test_cleanup_stale_tracks_removes_inactive_histories(dummy_landmarks):
     analyzer = BehaviorAnalyzer()
     analyzer._no_breathing_motion("keep", dummy_landmarks)
     analyzer._no_breathing_motion("stale", dummy_landmarks)
+    limb_landmarks = _make_landmarks({
+        15: dict(x=0.4, y=0.3, z=0.0, visibility=0.9),
+        16: dict(x=0.6, y=0.3, z=0.0, visibility=0.9),
+        27: dict(x=0.4, y=0.9, z=0.0, visibility=0.9),
+        28: dict(x=0.6, y=0.9, z=0.0, visibility=0.9),
+    })
+    analyzer._no_limb_motion("keep", limb_landmarks)
+    analyzer._no_limb_motion("stale", limb_landmarks)
+    analyzer._is_consecutive_splashing("keep", limb_landmarks)
+    analyzer._is_consecutive_splashing("stale", limb_landmarks)
 
     analyzer.cleanup_stale_tracks({"keep"})
 
     assert "keep" in analyzer._head_history
     assert "stale" not in analyzer._head_history
+    assert "keep" in analyzer._limb_history
+    assert "stale" not in analyzer._limb_history
+    assert "keep" in analyzer._splash_last_positions
+    assert "stale" not in analyzer._splash_last_positions
 
 
 def test_same_track_id_is_isolated_when_analyzers_are_per_zone(dummy_landmarks):

@@ -126,6 +126,117 @@ def test_webrtc_ice_config_contract(client, admin_token):
     assert 'force_relay' in payload
 
 
+def test_webrtc_ice_config_uses_udp_turn_only_when_available(
+    client, admin_token, monkeypatch
+):
+    monkeypatch.setitem(
+        client.application.config,
+        'WEBRTC_TURN_URL',
+        'turn:192.168.110.200:3478?transport=udp,turn:192.168.110.200:3478?transport=tcp',
+    )
+    monkeypatch.setitem(client.application.config, 'WEBRTC_TURN_USERNAME', 'aquaguard')
+    monkeypatch.setitem(client.application.config, 'WEBRTC_TURN_CREDENTIAL', 'aquaguardpass')
+
+    resp = client.get('/api/v1/webrtc/ice-config', headers=_auth_headers(admin_token))
+    assert resp.status_code == 200
+    payload = resp.get_json()['data']
+
+    turn_urls = next(
+        (
+            server.get('urls')
+            for server in payload['ice_servers']
+            if str(server.get('urls')).startswith('turn:')
+            or (
+                isinstance(server.get('urls'), list)
+                and any(str(url).startswith('turn:') for url in server['urls'])
+            )
+        ),
+        None,
+    )
+    assert turn_urls is not None
+    normalized_turn_urls = turn_urls if isinstance(turn_urls, list) else [turn_urls]
+    assert len(normalized_turn_urls) == 1
+    assert 'transport=udp' in str(normalized_turn_urls[0]).lower()
+
+
+def test_webrtc_ice_config_sanitizes_invalid_transport_policy(
+    client, admin_token, monkeypatch
+):
+    monkeypatch.setitem(client.application.config, 'WEBRTC_ICE_TRANSPORT_POLICY', 'invalid')
+
+    resp = client.get('/api/v1/webrtc/ice-config', headers=_auth_headers(admin_token))
+    assert resp.status_code == 200
+    payload = resp.get_json()['data']
+    assert payload['ice_transport_policy'] == 'all'
+
+
+def test_webrtc_ice_config_drops_tcp_turn_when_udp_exists(
+    client, admin_token, monkeypatch
+):
+    monkeypatch.setitem(
+        client.application.config,
+        'WEBRTC_TURN_URL',
+        'turn:192.168.110.200:3478?transport=tcp,turn:192.168.110.200:3478?transport=udp',
+    )
+    monkeypatch.setitem(client.application.config, 'WEBRTC_TURN_USERNAME', 'aquaguard')
+    monkeypatch.setitem(client.application.config, 'WEBRTC_TURN_CREDENTIAL', 'aquaguardpass')
+
+    resp = client.get('/api/v1/webrtc/ice-config', headers=_auth_headers(admin_token))
+    assert resp.status_code == 200
+    payload = resp.get_json()['data']
+
+    turn_urls = next(
+        (
+            server.get('urls')
+            for server in payload['ice_servers']
+            if str(server.get('urls')).startswith('turn:')
+            or (
+                isinstance(server.get('urls'), list)
+                and any(str(url).startswith('turn:') for url in server['urls'])
+            )
+        ),
+        None,
+    )
+    assert turn_urls is not None
+    normalized_turn_urls = turn_urls if isinstance(turn_urls, list) else [turn_urls]
+    assert len(normalized_turn_urls) == 1
+    assert 'transport=udp' in str(normalized_turn_urls[0]).lower()
+
+
+def test_create_peer_connection_applies_ice_runtime_config(app, monkeypatch):
+    captured = {}
+
+    class FakeRTCIceServer:
+        def __init__(self, **kwargs):
+            self.payload = kwargs
+
+    class FakeRTCConfiguration:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    def fake_peer_connection(config=None):
+        captured['config'] = config
+        return {'config': config}
+
+    monkeypatch.setattr(webrtc_routes, 'RTCIceServer', FakeRTCIceServer)
+    monkeypatch.setattr(webrtc_routes, 'RTCConfiguration', FakeRTCConfiguration)
+    monkeypatch.setattr(webrtc_routes, 'RTCPeerConnection', fake_peer_connection)
+
+    with app.app_context():
+        app.config['WEBRTC_STUN_URLS'] = 'stun:stun.l.google.com:19302'
+        app.config['WEBRTC_TURN_URL'] = 'turn:192.168.110.200:3478?transport=udp'
+        app.config['WEBRTC_TURN_USERNAME'] = 'aquaguard'
+        app.config['WEBRTC_TURN_CREDENTIAL'] = 'aquaguardpass'
+        app.config['WEBRTC_ICE_TRANSPORT_POLICY'] = 'relay'
+        pc = webrtc_routes._create_peer_connection()
+
+    assert pc is not None
+    config = captured.get('config')
+    assert config is not None
+    assert config.kwargs['iceTransportPolicy'] == 'relay'
+    assert len(config.kwargs['iceServers']) == 2
+
+
 def test_webrtc_offer_rejects_invalid_session_id(client, admin_token):
     resp = client.post('/api/v1/webrtc/offer',
                        headers=_auth_headers(admin_token),

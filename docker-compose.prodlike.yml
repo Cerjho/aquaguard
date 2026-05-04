@@ -1,15 +1,15 @@
 services:
   backend:
     environment:
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - JWT_COOKIE_SECURE=false
 
   frontend:
     build:
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-/}
-        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-/}
-        REACT_APP_WEBRTC_TURN_URL: ${REACT_APP_WEBRTC_TURN_URL:-turn:aquaguard.local:3478?transport=udp}
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL}
+        REACT_APP_WEBRTC_TURN_URL: ${REACT_APP_WEBRTC_TURN_URL}
 
   edge:
     image: caddy:2.8-alpine

@@ -9,6 +9,11 @@ function normalizeUrl(value) {
   return value.trim().replace(/\/+$/, '');
 }
 
+function isLoopbackHost(hostname) {
+  const normalized = String(hostname || '').toLowerCase();
+  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1';
+}
+
 function parseUrl(value) {
   if (!value) return null;
   try {
@@ -32,6 +37,18 @@ export function shouldUseRuntimeOrigin(envUrl, runtimeOrigin, runtimeHostname) {
 
   // If build-time host and runtime host differ, prefer runtime same-origin.
   if (runtimeHost && envHost && runtimeHost !== envHost) return true;
+
+  // For LAN access, prefer same-origin when both hosts match but ports differ
+  // (e.g. frontend on :3000 proxied to backend internally), except localhost dev.
+  if (
+    runtimeHost &&
+    envHost &&
+    runtimeHost === envHost &&
+    !isLoopbackHost(runtimeHost) &&
+    parsedRuntimeUrl.port !== parsedEnvUrl.port
+  ) {
+    return true;
+  }
 
   if (
     parsedRuntimeUrl.protocol === 'https:' &&
@@ -59,11 +76,19 @@ export function resolveRuntimeAwareUrl(envUrl, runtimeOrigin, runtimeHostname) {
     const parsedRuntimeUrl = parseUrl(normalizedRuntimeOrigin);
     
     if (parsedEnvUrl && parsedRuntimeUrl) {
-      // Reconstruct URL using runtime hostname but envUrl's port/protocol
-      // This ensures mobile phones on 192.168.x.x hit the backend on port 5000, not 3000 in local dev
+      if (
+        parsedEnvUrl.hostname.toLowerCase() === parsedRuntimeUrl.hostname.toLowerCase()
+        && parsedEnvUrl.port !== parsedRuntimeUrl.port
+        && !isLoopbackHost(parsedRuntimeUrl.hostname)
+      ) {
+        return normalizedRuntimeOrigin;
+      }
+
+      // Reconstruct URL using runtime hostname while preserving a usable port in dev.
       let portPart = '';
       if (process.env.NODE_ENV !== 'production') {
-        portPart = parsedEnvUrl.port ? `:${parsedEnvUrl.port}` : '';
+        const preferredPort = parsedEnvUrl.port || parsedRuntimeUrl.port;
+        portPart = preferredPort ? `:${preferredPort}` : '';
       }
       return `${parsedRuntimeUrl.protocol}//${parsedRuntimeUrl.hostname}${portPart}`;
     }

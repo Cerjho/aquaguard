@@ -62,6 +62,7 @@ def test_dispatch_uses_executor_and_fans_out(monkeypatch, tmp_path):
 
     mqtt_payload = mqtt.payloads[0]
     assert mqtt_payload["zone_id"] == "zone_01"
+    assert mqtt_payload["track_id"] == "trk_1"
     assert "event_id" in mqtt_payload
 
     api_payload = api.payloads[0]
@@ -113,5 +114,40 @@ def test_pipeline_compat_methods_dispatch_alert(monkeypatch, tmp_path):
     assert len(mqtt.payloads) == 1
     assert len(api.payloads) == 1
     assert "event_id" in mqtt.payloads[0]
+
+    engine.close()
+
+
+def test_dispatch_active_hardware_alert_is_rate_limited(monkeypatch, tmp_path):
+    executor = _ImmediateExecutor()
+    monkeypatch.setattr(
+        "detection_engine.alert.alert_engine.BoundedThreadPoolExecutor",
+        lambda *args, **kwargs: executor,
+    )
+    monkeypatch.setattr(
+        "detection_engine.alert.alert_engine.ALERT_ACTIVE_MQTT_INTERVAL_SECONDS",
+        2.0,
+    )
+
+    monotonic_values = iter([10.0, 10.0, 11.0, 13.2, 13.2])
+    monkeypatch.setattr(
+        "detection_engine.alert.alert_engine.time.monotonic",
+        lambda: next(monotonic_values),
+    )
+
+    mqtt = _DummyMQTT()
+    engine = AlertEngine(mqtt, _DummyAPI(), str(tmp_path))
+
+    first = engine.dispatch_active_hardware_alert("zone_a", "track_1")
+    second = engine.dispatch_active_hardware_alert("zone_a", "track_1")
+    third = engine.dispatch_active_hardware_alert("zone_a", "track_1")
+
+    assert first is True
+    assert second is False
+    assert third is True
+    assert len(mqtt.payloads) == 2
+    assert all(payload["zone_id"] == "zone_a" for payload in mqtt.payloads)
+    assert all(payload["track_id"] == "track_1" for payload in mqtt.payloads)
+    assert all(payload["message_type"] == "alert_keepalive" for payload in mqtt.payloads)
 
     engine.close()

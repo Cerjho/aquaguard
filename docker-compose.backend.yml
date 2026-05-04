@@ -111,8 +111,10 @@ services:
       - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://aquaguard:aquaguardpass@mysql:3306/aquaguard}
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-me}
-      # Allow connections from both machines + any local IP
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://192.168.1.0:3000}
+      # LAN-safe defaults for cookie auth over HTTP; set JWT_COOKIE_SECURE=true for HTTPS.
+      - JWT_COOKIE_SECURE=${JWT_COOKIE_SECURE:-false}
+      - JWT_COOKIE_SAMESITE=${JWT_COOKIE_SAMESITE:-Lax}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI:-redis://redis:6379/1}
       - MQTT_BROKER_HOST=mosquitto
@@ -152,9 +154,9 @@ services:
     build:
       context: ./frontend
       args:
-        # CHANGE THIS to this machine's own IP so phones/browsers can reach it
-        REACT_APP_API_URL: http://${MY_IP:-192.168.1.22}:5000
-        REACT_APP_WS_URL: http://${MY_IP:-192.168.1.22}:5000
+        # Keep empty to use runtime same-origin via frontend nginx proxy.
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-}
         REACT_APP_WEBRTC_STUN_URLS: stun:stun.l.google.com:19302
         REACT_APP_WEBRTC_ICE_TRANSPORT_POLICY: all
         REACT_APP_WEBRTC_FORCE_RELAY: "false"

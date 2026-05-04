@@ -103,6 +103,10 @@ REACT_APP_WS_URL=http://localhost:5000
 
 ```
 
+For LAN Docker deployments, prefer same-origin routing through the frontend
+container (no hardcoded backend IP in frontend build args) and keep
+`JWT_COOKIE_SECURE=false` when serving over plain HTTP.
+
 Place the model weights file manually at
 `detection_engine/models/aquaguard_yolov11s.pt` before running the detection
 engine.

@@ -427,7 +427,7 @@ def _process_zone_frame(
     for det in detections:
         landmarks = pose_estimator.estimate(frame, det.bbox)
         if landmarks is None:
-            logger.info(
+            logger.debug(
                 "Zone %s track %s: pose estimation failed (no landmarks)",
                 zone_id,
                 det.track_id,
@@ -442,7 +442,7 @@ def _process_zone_frame(
         )
 
         should_alert = confidence_filter.evaluate(det.track_id, score)
-        logger.info(
+        logger.debug(
             "Zone %s track %s: class=%s yolo=%.3f score=%.3f alert=%s",
             zone_id,
             det.track_id,
@@ -747,6 +747,11 @@ def main():
                     final_confidence=float(behavior_score),
                 )
                 logger.info("Zone %s track %s: alert dispatched", zone_id, det.track_id)
+            else:
+                alert_engine.dispatch_active_hardware_alert(
+                    zone_id=zone_id,
+                    track_id=str(det.track_id),
+                )
 
         behavior_analyzer.cleanup_stale_tracks(active_track_ids)
         confidence_filter.cleanup_stale_tracks(active_track_ids)

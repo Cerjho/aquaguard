@@ -80,7 +80,12 @@ def create_app():
         if env_name == 'production':
             raise RuntimeError('CORS_ALLOWED_ORIGINS is required in production')
         allowed_origins = ['http://localhost:3000']
-    if env_name == 'production' and any(_is_localhost_origin(origin) for origin in allowed_origins):
+    is_wildcard_origins = allowed_origins == '*'
+    if (
+        env_name == 'production'
+        and not is_wildcard_origins
+        and any(_is_localhost_origin(origin) for origin in allowed_origins)
+    ):
         raise RuntimeError('CORS_ALLOWED_ORIGINS must not include localhost in production')
 
     cors.init_app(

@@ -98,3 +98,12 @@ def test_validate_runtime_settings_accepts_valid_production_configuration(monkey
     monkeypatch.setenv("RATELIMIT_STORAGE_URI", "redis://redis:6379/1")
 
     validate_runtime_settings()
+
+
+def test_validate_runtime_settings_accepts_wildcard_cors_in_production(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "mysql+pymysql://user:pass@db:3306/aquaguard")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "*")
+    monkeypatch.setenv("RATELIMIT_STORAGE_URI", "redis://redis:6379/1")
+
+    validate_runtime_settings()

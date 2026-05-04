@@ -1,4 +1,4 @@
-"""Behavior analyzer — water-level drowning detection with 5 indicators + dynamic normalization."""
+"""Behavior analyzer — water-level drowning detection with 8 indicators + dynamic normalization."""
 import logging
 from collections import deque
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -13,9 +13,19 @@ from config.settings import (
     WEIGHT_ARMS_ELEVATED,
     WEIGHT_HEAD_POSITION_LOW,
     WEIGHT_NO_BREATHING_MOTION,
+    WEIGHT_NO_LIMB_MOTION,
+    WEIGHT_FACE_SUBMERGED,
+    WEIGHT_SPLASHING,
     WEIGHT_YOLO_CLASS,
     VERTICAL_ANGLE_THRESHOLD_DEG,
     HEAD_LOW_THRESHOLD,
+    LIMB_MOTION_HISTORY_FRAMES,
+    LIMB_MOTION_MIN_HISTORY_FRAMES,
+    LIMB_MOTION_STD_THRESHOLD,
+    FACE_VISIBILITY_THRESHOLD,
+    SPLASHING_HISTORY_FRAMES,
+    SPLASHING_DELTA_THRESHOLD,
+    SPLASHING_MIN_CONSECUTIVE,
     LIMB_VISIBILITY_MIN_THRESHOLD,
     NO_BREATHING_HISTORY_FRAMES,
     NO_BREATHING_VARIANCE_THRESHOLD,
@@ -41,12 +51,15 @@ logger = logging.getLogger(__name__)
 class BehaviorAnalyzer:
     """Scores each tracked person for drowning behavior (0.0–1.0).
 
-    Water-level tuned with 5 indicators:
+    Water-level tuned with 8 indicators:
     1. Vertical orientation (body upright)
     2. Arms elevated (panic response)
     3. Head position low (head stuck at water line)  ← NEW
     4. No breathing motion (no head bobbing)         ← NEW
-    5. YOLO class ("drowning" classification)
+    5. No limb motion (low wrist/ankle variance)
+    6. Face submerged (low face visibility)
+    7. Consecutive splashing (rapid limb motion)
+    8. YOLO class ("drowning" classification)
 
     All scores normalized dynamically based on visibility gating.
     """
@@ -54,6 +67,11 @@ class BehaviorAnalyzer:
     def __init__(self):
         # Per-track head position history for breathing detection
         self._head_history: Dict[str, deque] = {}
+        # Per-track limb position history for stillness detection
+        self._limb_history: Dict[str, deque] = {}
+        # Per-track deltas for consecutive splashing detection
+        self._splash_delta_history: Dict[str, deque] = {}
+        self._splash_last_positions: Dict[str, tuple] = {}
 
         # Precompute water ROI contour for cv2.pointPolygonTest()
         self._water_roi_contour = None
@@ -184,7 +202,7 @@ class BehaviorAnalyzer:
             )
             return 0.0
 
-        # ── Evaluate all 5 indicators ─────────────────────────────────────────
+        # ── Evaluate all 8 indicators ─────────────────────────────────────────
         indicators = {}
 
         # Indicator 1: Vertical orientation
@@ -224,7 +242,36 @@ class BehaviorAnalyzer:
         else:
             indicators['no_breathing'] = (WEIGHT_NO_BREATHING_MOTION, None)
 
-        # Indicator 5: YOLO class
+        # Indicator 5: No limb motion
+        if has_landmarks:
+            limb_still = self._no_limb_motion(track_id, landmarks)
+            indicators['no_limb_motion'] = (
+                WEIGHT_NO_LIMB_MOTION,
+                None if limb_still is None else float(limb_still),
+            )
+        else:
+            indicators['no_limb_motion'] = (WEIGHT_NO_LIMB_MOTION, None)
+
+        # Indicator 6: Face submerged
+        if has_landmarks:
+            indicators['face_submerged'] = (
+                WEIGHT_FACE_SUBMERGED,
+                float(self._is_face_submerged(landmarks)),
+            )
+        else:
+            indicators['face_submerged'] = (WEIGHT_FACE_SUBMERGED, None)
+
+        # Indicator 7: Consecutive splashing
+        if has_landmarks:
+            splashing = self._is_consecutive_splashing(track_id, landmarks)
+            indicators['splashing'] = (
+                WEIGHT_SPLASHING,
+                None if splashing is None else float(splashing),
+            )
+        else:
+            indicators['splashing'] = (WEIGHT_SPLASHING, None)
+
+        # Indicator 8: YOLO class
         yolo_val = self._yolo_class_score(yolo_class, yolo_conf)
         indicators['yolo'] = (WEIGHT_YOLO_CLASS, yolo_val)
 
@@ -243,7 +290,8 @@ class BehaviorAnalyzer:
 
         logger.debug(
             "Track %s: in_roi=%s oow_ambiguous=%s vertical=%s arms=%s "
-            "head_low=%s breathing=%s yolo=%.2f ankle_penalty=%s → score=%.3f",
+            "head_low=%s breathing=%s limb_still=%s face_sub=%s splash=%s "
+            "yolo=%.2f ankle_penalty=%s → score=%.3f",
             track_id,
             _in_water_roi,
             _oow_ambiguous,
@@ -251,6 +299,9 @@ class BehaviorAnalyzer:
             "None" if indicators['arms_elevated'][1] is None else f"{indicators['arms_elevated'][1]:.2f}",
             "None" if indicators['head_low'][1] is None else f"{indicators['head_low'][1]:.2f}",
             "None" if indicators['no_breathing'][1] is None else f"{indicators['no_breathing'][1]:.2f}",
+            "None" if indicators['no_limb_motion'][1] is None else f"{indicators['no_limb_motion'][1]:.2f}",
+            "None" if indicators['face_submerged'][1] is None else f"{indicators['face_submerged'][1]:.2f}",
+            "None" if indicators['splashing'][1] is None else f"{indicators['splashing'][1]:.2f}",
             indicators['yolo'][1],
             ankle_penalty_applied,
             final_score,
@@ -324,6 +375,93 @@ class BehaviorAnalyzer:
 
         # Low variance = frozen head (no breathing motion)
         return head_variance < NO_BREATHING_VARIANCE_THRESHOLD
+
+    def _no_limb_motion(
+        self, track_id: str, landmarks: List[Landmark]
+    ) -> Optional[bool]:
+        """True if wrists and ankles show minimal motion across history."""
+        left_wrist = landmarks[15]
+        right_wrist = landmarks[16]
+        left_ankle = landmarks[27]
+        right_ankle = landmarks[28]
+
+        if (
+            left_wrist.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+            or right_wrist.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+            or left_ankle.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+            or right_ankle.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+        ):
+            return None
+
+        if track_id not in self._limb_history:
+            self._limb_history[track_id] = deque(
+                maxlen=LIMB_MOTION_HISTORY_FRAMES
+            )
+
+        self._limb_history[track_id].append(
+            (left_wrist.x, right_wrist.x, left_ankle.x, right_ankle.x)
+        )
+
+        if len(self._limb_history[track_id]) < LIMB_MOTION_MIN_HISTORY_FRAMES:
+            return None
+
+        history = np.array(self._limb_history[track_id], dtype=np.float32)
+        max_std = float(np.max(np.std(history, axis=0)))
+        return max_std < LIMB_MOTION_STD_THRESHOLD
+
+    def _is_face_submerged(self, landmarks: List[Landmark]) -> bool:
+        """True if face visibility is low (likely submerged)."""
+        return landmarks[0].visibility < FACE_VISIBILITY_THRESHOLD
+
+    def _is_consecutive_splashing(
+        self, track_id: str, landmarks: List[Landmark]
+    ) -> Optional[bool]:
+        """True if rapid limb motion is sustained for consecutive frames."""
+        left_wrist = landmarks[15]
+        right_wrist = landmarks[16]
+        left_ankle = landmarks[27]
+        right_ankle = landmarks[28]
+
+        if (
+            left_wrist.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+            or right_wrist.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+            or left_ankle.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+            or right_ankle.visibility < LIMB_VISIBILITY_MIN_THRESHOLD
+        ):
+            self._splash_last_positions.pop(track_id, None)
+            return None
+
+        positions = (
+            left_wrist.y,
+            right_wrist.y,
+            left_ankle.y,
+            right_ankle.y,
+        )
+        last = self._splash_last_positions.get(track_id)
+        self._splash_last_positions[track_id] = positions
+        if last is None:
+            return None
+
+        deltas = [abs(curr - prev) for curr, prev in zip(positions, last)]
+        max_delta = float(max(deltas))
+        history = self._splash_delta_history.setdefault(
+            track_id, deque(maxlen=SPLASHING_HISTORY_FRAMES)
+        )
+        history.append(max_delta)
+
+        if len(history) < SPLASHING_MIN_CONSECUTIVE:
+            return None
+
+        max_run = 0
+        current = 0
+        for delta in history:
+            if delta >= SPLASHING_DELTA_THRESHOLD:
+                current += 1
+                max_run = max(max_run, current)
+            else:
+                current = 0
+
+        return max_run >= SPLASHING_MIN_CONSECUTIVE
 
     def _yolo_class_score(self, yolo_class: str, yolo_conf: float) -> float:
         """Return YOLO class contribution (0.0 or 1.0).
@@ -468,7 +606,17 @@ class BehaviorAnalyzer:
         Returns:
             Normalized score in [0.0, 1.0]
         """
-        _POSE_INDICATORS = frozenset({'vertical', 'arms_elevated', 'head_low', 'no_breathing'})
+        _POSE_INDICATORS = frozenset(
+            {
+                'vertical',
+                'arms_elevated',
+                'head_low',
+                'no_breathing',
+                'no_limb_motion',
+                'face_submerged',
+                'splashing',
+            }
+        )
 
         total_weight = 0.0
         weighted_sum = 0.0
@@ -500,6 +648,21 @@ class BehaviorAnalyzer:
     def cleanup_stale_tracks(self, active_track_ids: Iterable[str]) -> None:
         """Drop per-track history for IDs not present in the current frame."""
         active = set(active_track_ids)
-        stale_ids = [track_id for track_id in self._head_history if track_id not in active]
+        stale_ids = [
+            track_id for track_id in self._head_history if track_id not in active
+        ]
         for track_id in stale_ids:
             self._head_history.pop(track_id, None)
+
+        stale_limb_ids = [
+            track_id for track_id in self._limb_history if track_id not in active
+        ]
+        for track_id in stale_limb_ids:
+            self._limb_history.pop(track_id, None)
+
+        stale_splash_ids = [
+            track_id for track_id in self._splash_delta_history if track_id not in active
+        ]
+        for track_id in stale_splash_ids:
+            self._splash_delta_history.pop(track_id, None)
+            self._splash_last_positions.pop(track_id, None)

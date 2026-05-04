@@ -29,6 +29,8 @@ from services.webrtc_video_service import (
     AIORTC_AVAILABLE,
     AIORTC_IMPORT_ERROR,
     RTCPeerConnection,
+    RTCConfiguration,
+    RTCIceServer,
     RTCSessionDescription,
     SnapshotVideoTrack,
     candidate_from_sdp,
@@ -158,19 +160,31 @@ def _normalize_session_id(raw_session_id):
 
 def _ice_servers_from_config():
     stun_raw = current_app.config.get('WEBRTC_STUN_URLS', '')
-    turn_url = current_app.config.get('WEBRTC_TURN_URL')
+    turn_raw = current_app.config.get('WEBRTC_TURN_URL', '')
     turn_username = current_app.config.get('WEBRTC_TURN_USERNAME')
     turn_credential = current_app.config.get('WEBRTC_TURN_CREDENTIAL')
     force_relay = _parse_bool(current_app.config.get('WEBRTC_FORCE_RELAY'), default=False)
-    transport_policy = current_app.config.get('WEBRTC_ICE_TRANSPORT_POLICY', 'all')
+    transport_policy = str(
+        current_app.config.get('WEBRTC_ICE_TRANSPORT_POLICY', 'all')
+    ).strip().lower()
+    if transport_policy not in {'all', 'relay'}:
+        transport_policy = 'all'
 
     stun_urls = [url.strip() for url in str(stun_raw).split(',') if url.strip()]
+    turn_urls = [url.strip() for url in str(turn_raw).split(',') if url.strip()]
+    udp_turn_urls = [
+        url for url in turn_urls
+        if 'transport=udp' in str(url).lower()
+    ]
+    # Use UDP-only TURN transport when UDP candidates are available.
+    if udp_turn_urls:
+        turn_urls = udp_turn_urls
     servers = []
     if stun_urls:
         servers.append({'urls': stun_urls if len(stun_urls) > 1 else stun_urls[0]})
-    if turn_url and turn_username and turn_credential:
+    if turn_urls and turn_username and turn_credential:
         servers.append({
-            'urls': turn_url,
+            'urls': turn_urls if len(turn_urls) > 1 else turn_urls[0],
             'username': turn_username,
             'credential': turn_credential,
         })
@@ -183,6 +197,29 @@ def _ice_servers_from_config():
         'ice_transport_policy': transport_policy,
         'force_relay': force_relay,
     }
+
+
+def _create_peer_connection():
+    if RTCConfiguration is None or RTCIceServer is None:
+        return RTCPeerConnection()
+
+    ice_config = _ice_servers_from_config()
+    rtc_ice_servers = []
+    for server in ice_config['ice_servers']:
+        server_payload = {'urls': server.get('urls')}
+        username = server.get('username')
+        credential = server.get('credential')
+        if username and credential:
+            server_payload['username'] = username
+            server_payload['credential'] = credential
+        rtc_ice_servers.append(RTCIceServer(**server_payload))
+
+    return RTCPeerConnection(
+        RTCConfiguration(
+            iceServers=rtc_ice_servers,
+            iceTransportPolicy=ice_config['ice_transport_policy'],
+        )
+    )
 
 
 def _start_webrtc_loop():
@@ -234,7 +271,7 @@ def _run_in_webrtc_loop(coro):
 
 
 async def _create_answer_async(zone_id, offer_type, offer_sdp):
-    pc = RTCPeerConnection()
+    pc = _create_peer_connection()
     pc.addTrack(SnapshotVideoTrack(zone_id))
     try:
         await pc.setRemoteDescription(RTCSessionDescription(sdp=offer_sdp, type=offer_type))
@@ -534,6 +571,7 @@ def add_ice_candidate():
 
 
 @webrtc_bp.route('/session-status', methods=['GET'])
+@limiter.exempt
 def get_session_status_query():
     auth, error = _ensure_authorized()
     if error:
@@ -546,6 +584,7 @@ def get_session_status_query():
 
 
 @webrtc_bp.route('/session-status/<session_id>', methods=['GET'])
+@limiter.exempt
 def get_session_status_path(session_id):
     auth, error = _ensure_authorized()
     if error:

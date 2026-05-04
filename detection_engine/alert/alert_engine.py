@@ -1,4 +1,4 @@
-"""Alert engine — dispatches confirmed drowning alerts via MQTT, API, and logger (ephemeral system)."""
+"""Alert engine for dispatching confirmed drowning alerts to MQTT and API."""
 import atexit
 import base64
 from concurrent.futures import ThreadPoolExecutor
@@ -15,7 +15,10 @@ import cv2
 import numpy as np
 
 from detection_engine.models_data.alert_payload import AlertPayload
-from config.settings import ALERT_COOLDOWN_SECONDS
+from config.settings import (
+    ALERT_ACTIVE_MQTT_INTERVAL_SECONDS,
+    ALERT_COOLDOWN_SECONDS,
+)
 
 if TYPE_CHECKING:
     from detection_engine.alert.mqtt_client import MQTTClient
@@ -56,6 +59,7 @@ class AlertEngine:
         )
         self._closed = False
         self._last_alert_time: dict[str, float] = {}  # track_id → monotonic time
+        self._last_hardware_alert_publish: dict[str, float] = {}
         atexit.register(self.close)
 
         # Start background cleanup thread for snapshots
@@ -78,7 +82,11 @@ class AlertEngine:
                             try:
                                 os.remove(entry.path)
                             except OSError as exc:
-                                logger.debug("Failed to delete stale snapshot %s: %s", entry.path, exc)
+                                logger.debug(
+                                    "Failed to delete stale snapshot %s: %s",
+                                    entry.path,
+                                    exc,
+                                )
             except OSError as exc:
                 logger.error("Snapshot cleanup loop failed: %s", exc)
 
@@ -150,25 +158,42 @@ class AlertEngine:
             final_confidence=final_confidence if final_confidence is not None else score,
         )
 
-        payload_dict = {
-            "event_id": event_id,
-            "zone_id": zone_id,
-            "track_id": track_id,
-            "score": score,
-            "snapshot_path": snapshot_path,
-            "timestamp": timestamp,
-            "bbox": list(bbox) if bbox is not None else None,
-        }
-
         mqtt_hardware_payload = {
             "event_id": event_id,
-            "zone_id": zone_id
+            "zone_id": zone_id,
+            "track_id": str(track_id),
         }
 
         # Dispatch asynchronously through a bounded pool to avoid unbounded thread growth.
+        self._record_hardware_alert_publish(zone_id, track_id)
         self._executor.submit(self._send_mqtt, mqtt_hardware_payload)
         self._executor.submit(self._send_api, payload)
         self._executor.submit(self._log_alert, zone_id, track_id, score, event_id, timestamp)
+
+    def dispatch_active_hardware_alert(self, zone_id: str, track_id: str) -> bool:
+        """Refresh ESP32 alarm state while drowning remains continuously detected."""
+        assert zone_id is not None and str(zone_id).strip(), "Alert: invalid zone_id"
+        assert track_id is not None and str(track_id).strip(), "Alert: invalid track_id"
+
+        now = time.monotonic()
+        key = self._hardware_alert_key(zone_id, track_id)
+        last_time = self._last_hardware_alert_publish.get(key)
+        if (
+            last_time is not None
+            and (now - last_time) < ALERT_ACTIVE_MQTT_INTERVAL_SECONDS
+        ):
+            return False
+
+        keepalive_payload = {
+            "event_id": str(uuid.uuid4()),
+            "zone_id": zone_id,
+            "track_id": str(track_id),
+            "message_type": "alert_keepalive",
+        }
+        self._record_hardware_alert_publish(zone_id, track_id)
+        self._cleanup_stale_hardware_alerts(now, stale_threshold=300.0)
+        self._executor.submit(self._send_mqtt, keepalive_payload)
+        return True
 
     def should_trigger_alert(
         self,
@@ -207,6 +232,13 @@ class AlertEngine:
         """Record the dispatch time for per-track cooldown."""
         self._last_alert_time[str(track_id)] = time.monotonic()
 
+    def _hardware_alert_key(self, zone_id: str, track_id: str) -> str:
+        return f"{zone_id}:{track_id}"
+
+    def _record_hardware_alert_publish(self, zone_id: str, track_id: str) -> None:
+        key = self._hardware_alert_key(str(zone_id), str(track_id))
+        self._last_hardware_alert_publish[key] = time.monotonic()
+
     def _cleanup_stale_alerts(self, now: float, stale_threshold: float = 300.0) -> None:
         """Remove cooldown entries older than stale_threshold seconds."""
         stale_ids = [
@@ -215,6 +247,17 @@ class AlertEngine:
         ]
         for tid in stale_ids:
             self._last_alert_time.pop(tid, None)
+
+    def _cleanup_stale_hardware_alerts(
+        self, now: float, stale_threshold: float = 300.0
+    ) -> None:
+        stale_keys = [
+            key
+            for key, timestamp in self._last_hardware_alert_publish.items()
+            if (now - timestamp) > stale_threshold
+        ]
+        for key in stale_keys:
+            self._last_hardware_alert_publish.pop(key, None)
 
     def dispatch_alert(
         self,

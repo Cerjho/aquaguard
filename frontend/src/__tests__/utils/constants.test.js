@@ -26,6 +26,16 @@ describe('constants URL resolution', () => {
     ).toBe('http://localhost:5000');
   });
 
+  it('uses runtime origin for non-localhost same-host different-port LAN access', () => {
+    expect(
+      resolveRuntimeAwareUrl(
+        'http://192.168.110.200:5000',
+        'http://192.168.110.200:3000',
+        '192.168.110.200'
+      )
+    ).toBe('http://192.168.110.200:3000');
+  });
+
   it('uses runtime origin to avoid mixed content on same host', () => {
     expect(
       shouldUseRuntimeOrigin(

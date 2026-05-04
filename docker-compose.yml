@@ -121,7 +121,10 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      # LAN-safe defaults for cookie auth over HTTP; override to true for HTTPS.
+      - JWT_COOKIE_SECURE=${JWT_COOKIE_SECURE:-false}
+      - JWT_COOKIE_SAMESITE=${JWT_COOKIE_SAMESITE:-Lax}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
       - REDIS_URL=${REDIS_URL}
       - RATELIMIT_STORAGE_URI=${RATELIMIT_STORAGE_URI}
       - MQTT_BROKER_HOST=mosquitto
@@ -171,8 +174,9 @@ services:
     build:
       context: ./frontend
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL}
-        REACT_APP_WS_URL: ${REACT_APP_WS_URL}
+        # Empty defaults let the frontend use runtime same-origin (recommended for LAN).
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
+        REACT_APP_WS_URL: ${REACT_APP_WS_URL:-}
         REACT_APP_WEBRTC_STUN_URLS: ${REACT_APP_WEBRTC_STUN_URLS}
         REACT_APP_WEBRTC_TURN_URL: ""
         REACT_APP_WEBRTC_TURN_USERNAME: ""

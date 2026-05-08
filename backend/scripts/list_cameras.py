@@ -14,7 +14,7 @@ def list_cameras():
         cameras = CameraZone.query.all()
         print(f"\nFound {len(cameras)} camera(s) in database:\n")
         for cam in cameras:
-            status = "ACTIVE" if cam.is_active else "DISABLED"
+            status = cam.status.upper()
             print(
                 f"  [{status}] zone_id='{cam.zone_id}' "
                 f"name='{cam.zone_name}' rtsp='{cam.rtsp_url}'"

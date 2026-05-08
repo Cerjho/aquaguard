@@ -138,7 +138,7 @@ export function AlertProvider({ children }) {
         const normalized = {
           zone_id: camera.zone_id,
           zone_name: camera.zone_name || camera.zone_id,
-          status: normalizeServiceStatus(camera.status ?? camera.is_active),
+          status: normalizeServiceStatus(camera.status),
           snapshot_age_seconds:
             typeof camera.snapshot_age_seconds === 'number' ? camera.snapshot_age_seconds : null,
           last_snapshot_at: camera.last_snapshot_at || null,

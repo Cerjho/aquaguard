@@ -20,7 +20,7 @@ def disable_camera(zone_id: str) -> bool:
     with app.app_context():
         camera = CameraZone.query.filter_by(zone_id=zone_id).first()
         if camera:
-            camera.is_active = False
+            camera.status = 'inactive'
             db.session.commit()
             print(f"Camera '{zone_id}' disabled successfully.")
             return True

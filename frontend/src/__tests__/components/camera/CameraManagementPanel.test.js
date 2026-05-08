@@ -25,17 +25,17 @@ describe('CameraManagementPanel', () => {
           zone_id: 'zone_01',
           zone_name: 'Main Pool',
           rtsp_url: 'rtsp://one',
-          is_active: true,
+          status: 'active',
         },
         {
           zone_id: 'zone_02',
           zone_name: 'Kiddie Pool',
           rtsp_url: 'rtsp://two',
-          is_active: false,
+          status: 'inactive',
         },
       ],
     });
-    api.put.mockResolvedValueOnce({ data: { is_active: true } });
+    api.put.mockResolvedValueOnce({ data: { status: 'active' } });
 
     render(<CameraManagementPanel />);
 
@@ -58,7 +58,7 @@ describe('CameraManagementPanel', () => {
 
     await waitFor(() => {
       expect(api.put).toHaveBeenCalledWith('/api/v1/cameras/zone_02', {
-        is_active: true,
+        status: 'active',
       });
     });
   });
@@ -72,7 +72,7 @@ describe('CameraManagementPanel', () => {
           zone_id: 'zone_01',
           zone_name: 'Main Pool',
           rtsp_url: 'rtsp://one',
-          is_active: true,
+          status: 'active',
         },
       ],
     });
@@ -82,7 +82,7 @@ describe('CameraManagementPanel', () => {
         zone_id: 'zone_03',
         zone_name: 'Training Pool',
         rtsp_url: 'rtsp://three',
-        is_active: true,
+        status: 'active',
       },
     });
 
@@ -91,7 +91,7 @@ describe('CameraManagementPanel', () => {
         zone_id: 'zone_01',
         zone_name: 'Main Pool Updated',
         rtsp_url: 'rtsp://one-new',
-        is_active: true,
+        status: 'active',
       },
     });
 
@@ -158,7 +158,7 @@ describe('CameraManagementPanel', () => {
             zone_id: 'zone_02',
             zone_name: 'Kiddie Pool',
             rtsp_url: 'rtsp://two',
-            is_active: false,
+            status: 'inactive',
           },
         ],
       })
@@ -168,7 +168,7 @@ describe('CameraManagementPanel', () => {
             zone_id: 'zone_02',
             zone_name: 'Kiddie Pool',
             rtsp_url: 'rtsp://two',
-            is_active: false,
+            status: 'inactive',
           },
         ],
       })
@@ -211,7 +211,7 @@ describe('CameraManagementPanel', () => {
           location_description: 'North wing',
           frame_rate: 25,
           resolution: '1920x1080',
-          is_active: true,
+          status: 'active',
         },
       ],
     });
@@ -238,11 +238,11 @@ describe('CameraManagementPanel', () => {
           zone_id: 'zone_01',
           zone_name: 'Main Pool',
           rtsp_url: 'rtsp://one',
-          is_active: true,
+          status: 'active',
         },
       ],
     });
-    api.put.mockResolvedValueOnce({ data: { is_active: false } });
+    api.put.mockResolvedValueOnce({ data: { status: 'inactive' } });
 
     render(<CameraManagementPanel />);
 
@@ -256,7 +256,7 @@ describe('CameraManagementPanel', () => {
 
     await waitFor(() => {
       expect(api.put).toHaveBeenCalledWith('/api/v1/cameras/zone_01', {
-        is_active: false,
+        status: 'inactive',
       });
     });
 

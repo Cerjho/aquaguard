@@ -80,7 +80,7 @@ function CameraCard({
   const { activeAlerts } = useAlertState();
   const videoRef = useRef(null);
   const detectionStatus = normalizeServiceStatus(camera.detection_engine_status);
-  const cameraStatus = normalizeServiceStatus(camera.runtime_status ?? camera.status ?? camera.is_active);
+  const cameraStatus = normalizeServiceStatus(camera.runtime_status ?? camera.status);
   // Only hard-stop streaming on explicit offline states; "unknown" should still attempt connection.
   const detectionOnline = detectionStatus !== 'offline';
   const cameraOnline = cameraStatus !== 'offline';

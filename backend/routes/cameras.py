@@ -21,7 +21,7 @@ def list_internal_cameras():
     if not validate_internal_api_key():
         return error_response('Unauthorized', status_code=401)
 
-    cameras = CameraZone.query.filter_by(is_active=True).all()
+    cameras = CameraZone.query.filter_by(status='active').all()
     return success_response({
         'cameras': [
             {
@@ -31,7 +31,7 @@ def list_internal_cameras():
                 'zone_name': camera.zone_name,
                 'location_description': camera.location_description,
                 'resolution': camera.resolution,
-                'is_active': camera.is_active,
+                'is_active': camera.status == 'active',  # kept for detection engine compat
             }
             for camera in cameras
         ]
@@ -42,10 +42,10 @@ def list_internal_cameras():
 @jwt_required()
 def list_cameras():
     include_inactive = is_truthy(request.args.get('include_inactive'))
-    # Soft-deleted cameras use is_active=None and are always excluded from lists.
-    query = CameraZone.query.filter(CameraZone.is_active.isnot(None))
+    # Soft-deleted cameras (status='deleted') are always excluded from lists.
+    query = CameraZone.query.filter(CameraZone.status != 'deleted')
     if not include_inactive:
-        query = query.filter_by(is_active=True)
+        query = query.filter_by(status='active')
     cameras = query.all()
     return success_response([c.to_dict() for c in cameras])
 
@@ -63,8 +63,8 @@ def create_camera():
     if CameraZone.query.filter_by(zone_id=data['zone_id']).first():
         return error_response('zone_id already exists', status_code=409)
 
-    if 'is_active' in data and not isinstance(data.get('is_active'), bool):
-        return error_response('is_active must be a boolean', status_code=400)
+    if 'status' in data and data['status'] not in ('active', 'inactive'):
+        return error_response("status must be 'active' or 'inactive'", status_code=400)
 
     camera = CameraZone(
         zone_id              = data['zone_id'],
@@ -73,7 +73,7 @@ def create_camera():
         location_description = data.get('location_description'),
         frame_rate           = data.get('frame_rate', 30),
         resolution           = data.get('resolution', '1280x720'),
-        is_active            = data.get('is_active', True),
+        status               = data.get('status', 'active'),
     )
     db.session.add(camera)
     try:
@@ -92,15 +92,15 @@ def create_camera():
 def update_camera(zone_id):
     camera = CameraZone.query.filter(
         CameraZone.zone_id == zone_id,
-        CameraZone.is_active.isnot(None),
+        CameraZone.status != 'deleted',
     ).first_or_404()
     data = request.get_json(silent=True) or {}
 
-    if 'is_active' in data and not isinstance(data.get('is_active'), bool):
-        return error_response('is_active must be a boolean', status_code=400)
+    if 'status' in data and data['status'] not in ('active', 'inactive'):
+        return error_response("status must be 'active' or 'inactive'", status_code=400)
 
     for field in [
-        'zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'is_active'
+        'zone_name', 'rtsp_url', 'location_description', 'frame_rate', 'resolution', 'status'
     ]:
         if field in data:
             setattr(camera, field, data[field])
@@ -123,13 +123,13 @@ def delete_camera(zone_id):
     if camera is None:
         return error_response(f'Camera {zone_id} not found', status_code=404)
 
-    if camera.is_active is None:
+    if camera.status == 'deleted':
         return success_response(
             {'camera': camera.to_dict()},
             message=f'Camera {zone_id} already soft deleted',
         )
 
-    camera.is_active = None
+    camera.status = 'deleted'
     try:
         db.session.commit()
     except SQLAlchemyError as exc:
@@ -190,7 +190,7 @@ def _validate_stream_token(token, zone_id):
 @cameras_bp.route('/cameras/<zone_id>/stream-token', methods=['GET', 'POST'])
 @jwt_required()
 def create_stream_token(zone_id):
-    CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
+    CameraZone.query.filter_by(zone_id=zone_id, status='active').first_or_404()
     ttl_seconds = _stream_token_ttl_seconds()
     expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
     return success_response({
@@ -213,7 +213,7 @@ def stream_camera(zone_id):
         return error_response(reason, status_code=401)
 
     CameraZone.query.filter_by(
-        zone_id=zone_id, is_active=True
+        zone_id=zone_id, status='active'
     ).first_or_404()
 
     frame_path = os.path.join(LIVE_DIR, f'{zone_id}_latest.jpg')
@@ -255,7 +255,7 @@ def get_camera_health(zone_id):
 
     Health data is read from the detection engine's status file.
     """
-    CameraZone.query.filter_by(zone_id=zone_id, is_active=True).first_or_404()
+    CameraZone.query.filter_by(zone_id=zone_id, status='active').first_or_404()
 
     status_path = os.path.join(LIVE_DIR, f'{zone_id}_status.json')
     if not os.path.exists(status_path):
@@ -283,7 +283,7 @@ def get_camera_health(zone_id):
 @jwt_required()
 def get_all_cameras_health():
     """Return health metrics for all active cameras."""
-    cameras = CameraZone.query.filter_by(is_active=True).all()
+    cameras = CameraZone.query.filter_by(status='active').all()
     health_results = []
 
     for camera in cameras:

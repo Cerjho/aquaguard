@@ -26,7 +26,7 @@ describe('CameraGrid', () => {
     zone_id: 'zone_01',
     zone_name: 'Main Pool',
     location_description: 'North side',
-    is_active: true,
+    status: 'active',
   };
 
   beforeEach(() => {

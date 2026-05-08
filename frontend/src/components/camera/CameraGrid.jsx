@@ -171,7 +171,7 @@ function CameraGrid({ reloadToken = 0 }) {
     const prioritized = cameras
       .filter((camera) => {
         const runtime = normalizeServiceStatus(
-          cameraRuntimeMap[camera.zone_id] ?? camera.is_active
+          cameraRuntimeMap[camera.zone_id] ?? camera.status
         );
         return runtime === 'online';
       })

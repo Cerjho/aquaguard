@@ -35,7 +35,14 @@ class CameraZone(db.Model):
     location_description = db.Column(db.String(255))
     frame_rate           = db.Column(db.Integer, default=30)
     resolution           = db.Column(db.String(20), default='1280x720')
-    is_active            = db.Column(db.Boolean, default=True)
+    status               = db.Column(
+        db.String(20),
+        nullable=False,
+        default='active',
+        index=True,
+        # Valid values: 'active' | 'inactive' | 'deleted'
+        # 'deleted' is the soft-delete sentinel — excluded from all listings.
+    )
     created_at           = db.Column(db.DateTime, default=utcnow_naive)
 
     def __repr__(self):
@@ -50,7 +57,7 @@ class CameraZone(db.Model):
             'location_description': self.location_description,
             'frame_rate':           self.frame_rate,
             'resolution':           self.resolution,
-            'is_active':            self.is_active,
+            'status':               self.status,
             'created_at':           self.created_at.isoformat() if self.created_at else None,
         }
 

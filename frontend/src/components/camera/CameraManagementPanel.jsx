@@ -9,7 +9,7 @@ const INITIAL_FORM = {
   location_description: '',
   frame_rate: '30',
   resolution: '1280x720',
-  is_active: true,
+  status: 'active',
 };
 
 function CameraManagementPanel({ onCamerasChanged }) {
@@ -68,7 +68,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
   }, [fetchCameras, refreshGlobalCache, onCamerasChanged]);
 
   const activeCount = useMemo(
-    () => cameras.filter((camera) => camera.is_active).length,
+    () => cameras.filter((camera) => camera.status === 'active').length,
     [cameras]
   );
 
@@ -145,7 +145,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
       location_description: camera.location_description || '',
       frame_rate: String(camera.frame_rate ?? 30),
       resolution: camera.resolution || '1280x720',
-      is_active: Boolean(camera.is_active),
+      status: camera.status || 'active',
     });
     setFormOpen(true);
   }, []);
@@ -168,7 +168,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
       location_description: form.location_description.trim(),
       frame_rate: Number(form.frame_rate || 30),
       resolution: form.resolution.trim(),
-      is_active: Boolean(form.is_active),
+      status: form.status,
     };
 
     if (!editingZoneId) {
@@ -210,19 +210,20 @@ function CameraManagementPanel({ onCamerasChanged }) {
     setMenuOpenZoneId(null);
     setFeedback({ type: '', message: '' });
     try {
+      const newStatus = camera.status === 'active' ? 'inactive' : 'active';
       const res = await api.put(`/api/v1/cameras/${camera.zone_id}`, {
-        is_active: !camera.is_active,
+        status: newStatus,
       });
       const updatedCamera = res.data || {};
       setCameras((prev) => prev.map((item) => (
         item.zone_id === camera.zone_id
-          ? { ...item, ...updatedCamera, is_active: !camera.is_active }
+          ? { ...item, ...updatedCamera, status: newStatus }
           : item
       )));
       setFeedback({
         type: 'success',
         message: `${camera.zone_name || camera.zone_id} ${
-          camera.is_active ? 'deactivated' : 'activated'
+          newStatus === 'inactive' ? 'deactivated' : 'activated'
         }.`,
       });
       onCamerasChanged?.();
@@ -416,11 +417,11 @@ function CameraManagementPanel({ onCamerasChanged }) {
                   <div className="flex items-center gap-2">
                     <span
                       className={`h-2.5 w-2.5 rounded-full ${
-                        camera.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                        camera.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
                       }`}
                     ></span>
                     <span className="text-sm font-medium text-slate-600">
-                      {camera.is_active ? 'Online' : 'Offline'}
+                      {camera.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <button
@@ -467,9 +468,9 @@ function CameraManagementPanel({ onCamerasChanged }) {
             type="button"
             onClick={() => toggleActive(menuCamera)}
             className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
-            aria-label={`${menuCamera.is_active ? 'Deactivate' : 'Activate'} camera ${menuCamera.zone_name || menuCamera.zone_id}`}
+            aria-label={`${menuCamera.status === 'active' ? 'Deactivate' : 'Activate'} camera ${menuCamera.zone_name || menuCamera.zone_id}`}
           >
-            <span>{menuCamera.is_active ? 'Deactivate' : 'Activate'}</span>
+            <span>{menuCamera.status === 'active' ? 'Deactivate' : 'Activate'}</span>
             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Ctrl+Alt+T
             </span>
@@ -556,7 +557,7 @@ function CameraManagementPanel({ onCamerasChanged }) {
                 onClick={() => toggleActive(selectedCamera)}
                 className="rounded-2xl bg-white border border-[#e7ecef] px-6 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
-                {selectedCamera.is_active ? 'Deactivate' : 'Activate'}
+                {selectedCamera.status === 'active' ? 'Deactivate' : 'Activate'}
               </button>
               <button
                 type="button"
@@ -683,8 +684,8 @@ function CameraManagementPanel({ onCamerasChanged }) {
               <label className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700">
                 <input
                   type="checkbox"
-                  checked={form.is_active}
-                  onChange={(e) => handleChange('is_active', e.target.checked)}
+                  checked={form.status === 'active'}
+                  onChange={(e) => handleChange('status', e.target.checked ? 'active' : 'inactive')}
                   className="h-4 w-4 rounded border-slate-300 text-blue-500 focus:ring-blue-200"
                 />
                 Active camera

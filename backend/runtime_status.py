@@ -153,7 +153,7 @@ def get_runtime_status():
     now_utc = datetime.now(timezone.utc)
 
     try:
-        cameras = CameraZone.query.filter_by(is_active=True).all()
+        cameras = CameraZone.query.filter_by(status='active').all()
     except SQLAlchemyError:
         db.session.rollback()
         cameras = []

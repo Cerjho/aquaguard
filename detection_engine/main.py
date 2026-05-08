@@ -892,15 +892,21 @@ def main():
     )
 
     # ── Start detection pipeline (after ROI is configured) ────────────────────
-    pipeline_manager.start_all()  # Start detection workers + frame writers
+    pipeline_manager.start_all()  # Start detection workers
+
+    # ── Start in-memory MJPEG stream server (V2 fix: no disk I/O) ─────────
+    from detection_engine.stream_server import StreamServer
+    dashboard_buffers = pipeline_manager.get_all_dashboard_buffers()
+    stream_server = StreamServer(dashboard_buffers=dashboard_buffers)
+    stream_server.start()
 
     logger.info("=" * 60)
     logger.info("AquaGuard Detection Engine RUNNING")
     logger.info("  Architecture: Multi-threaded Three-Lane Highway")
     logger.info("  Worker 1 (Camera):    30 FPS frame capture")
     logger.info("  Worker 2 (Detection): ~10-15 FPS AI inference")
-    logger.info("  Worker 3 (Streamer):  30 FPS smooth output")
-    logger.info("=" * 60)
+    logger.info("  Worker 3 (Stream):    In-memory MJPEG @ %s", stream_server.url)
+    logger.info("="  * 60)
 
     # ── Main loop — just monitor, workers do the actual work ──────────────────
     last_roi_recalibrate = time.time()
@@ -938,6 +944,7 @@ def main():
         logger.info("KeyboardInterrupt received — shutting down ...")
     finally:
         # Stop in reverse order
+        stream_server.stop()
         pipeline_manager.stop_all()
         registry.stop_all()
         alert_journal.stop()

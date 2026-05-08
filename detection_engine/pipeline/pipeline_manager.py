@@ -12,6 +12,11 @@ Stream lane separation (P0-Task 3):
   - Detection branch: priority_queue.put(frame) — subject to backpressure
   - Dashboard branch: dashboard_buffer.write(frame) — always runs, never throttled
   No second RTSP connection.  No frame copy.  No shared locks between branches.
+
+V2 elimination:
+  ContinuousFrameWriter (disk-based) has been removed.  The dashboard
+  ring buffer feeds the in-memory StreamServer directly over HTTP.
+  Zero disk I/O in the streaming path.
 """
 import logging
 import threading
@@ -25,7 +30,6 @@ from detection_engine.pipeline.frame_queue import (
 )
 from detection_engine.pipeline.detection_worker import DetectionWorker
 from detection_engine.pipeline.dashboard_buffer import DashboardRingBuffer
-from detection_engine.camera.frame_writer import ContinuousFrameWriter
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +83,8 @@ class ZonePipeline:
         self.annotated_frame_queue = AnnotatedFrameQueue(zone_id)
 
         # Dashboard ring buffer (P0-Task 3: stream lane separation)
+        # V2 fix: this is now the SOLE output path for streaming (no disk I/O)
         self.dashboard_buffer = DashboardRingBuffer(zone_id)
-
-        # Create frame writer (Worker 3) — kept for backward compatibility
-        # TODO(out-of-scope): Remove ContinuousFrameWriter in Phase 1 Task 6
-        self.frame_writer = ContinuousFrameWriter(zone_id, live_dir, target_fps)
 
         # Create detection worker (Worker 2)
         self.detection_worker = DetectionWorker(
@@ -114,9 +115,6 @@ class ZonePipeline:
 
         self._stop_event.clear()
 
-        # Start frame writer first (Worker 3) — backward compat
-        self.frame_writer.start()
-
         # Start detection worker (Worker 2)
         self.detection_worker.start()
 
@@ -141,9 +139,6 @@ class ZonePipeline:
 
         # Stop detection worker
         self.detection_worker.stop()
-
-        # Stop frame writer last
-        self.frame_writer.stop()
 
         self._started = False
         logger.info("[%s] Pipeline stopped", self.zone_id)
@@ -201,17 +196,16 @@ class ZonePipeline:
                 ):
                     self.latest_detections = annotated_data.detections
 
-                # Overlay the latest known detections onto the fresh raw frame
-                # for the legacy frame writer (backward compat — removed in P1)
-                frame_out = frame.copy()
+                # Overlay the latest known detections onto the dashboard
+                # buffer frame for the in-memory stream server (V2 fix)
                 if self.latest_detections:
-                    frame_out = self.annotate_frame_fn(
-                        frame_out, self.latest_detections,
+                    annotated_frame = self.annotate_frame_fn(
+                        frame.copy(), self.latest_detections,
                         self.zone_id, timestamp,
                     )
-
-                # Feed the composited frame to legacy frame writer
-                self.frame_writer.update_raw_frame(frame_out)
+                    # Re-write the annotated frame to the dashboard buffer
+                    # so stream viewers see detection overlays
+                    self.dashboard_buffer.write(annotated_frame, time.monotonic())
 
                 frames_fed += 1
 
@@ -322,6 +316,17 @@ class PipelineManager:
             if pipeline is not None:
                 return pipeline.dashboard_buffer
             return None
+
+    def get_all_dashboard_buffers(self) -> Dict[str, DashboardRingBuffer]:
+        """Get all dashboard ring buffers keyed by zone_id.
+
+        Used by StreamServer to serve in-memory MJPEG streams.
+        """
+        with self._lock:
+            return {
+                zone_id: pipeline.dashboard_buffer
+                for zone_id, pipeline in self.pipelines.items()
+            }
 
     def start_all(self) -> None:
         """Start all pipelines."""

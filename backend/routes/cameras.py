@@ -216,9 +216,29 @@ def stream_camera(zone_id):
         zone_id=zone_id, status='active'
     ).first_or_404()
 
-    frame_path = os.path.join(LIVE_DIR, f'{zone_id}_latest.jpg')
+    # V2 fix: read from detection engine's in-memory stream server
+    # Falls back to disk if stream server is not available
+    import requests as http_requests
+    stream_server_port = int(os.environ.get('STREAM_SERVER_PORT', '8765'))
+    stream_server_url = f'http://127.0.0.1:{stream_server_port}/stream/{zone_id}'
 
-    def generate():
+    def generate_from_stream_server():
+        """Proxy MJPEG stream from detection engine's in-memory server."""
+        try:
+            resp = http_requests.get(stream_server_url, stream=True, timeout=5)
+            if resp.status_code == 200:
+                for chunk in resp.iter_content(chunk_size=65536):
+                    if chunk:
+                        yield chunk
+                return
+        except (http_requests.ConnectionError, http_requests.Timeout):
+            current_app.logger.debug(
+                'Stream server unavailable for %s, falling back to disk',
+                zone_id,
+            )
+
+        # Fallback: disk-based streaming (legacy path)
+        frame_path = os.path.join(LIVE_DIR, f'{zone_id}_latest.jpg')
         cached_frame = None
         cached_mtime = None
         while True:
@@ -229,11 +249,10 @@ def stream_camera(zone_id):
                         with open(frame_path, 'rb') as f:
                             cached_frame = f.read()
                         cached_mtime = frame_mtime
-                    frame_bytes = cached_frame
                     yield (
                         b'--frame\r\n'
                         b'Content-Type: image/jpeg\r\n\r\n'
-                        + frame_bytes
+                        + cached_frame
                         + b'\r\n'
                     )
                 except OSError:
@@ -241,7 +260,7 @@ def stream_camera(zone_id):
             time.sleep(0.033)
 
     return Response(
-        generate(),
+        generate_from_stream_server(),
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
 

@@ -642,10 +642,37 @@ def main():
         base_url=_get_required_api_url(),
         api_key=api_key,
     )
-    cameras = api_client.fetch_active_cameras()
+
+    # ── Camera config cache (P1-Task 5: offline startup resilience) ────────
+    from detection_engine.camera.config_cache import CameraConfigCache
+    _DATA_DIR = os.path.join(_BASE_DIR, "detection_engine", "data")
+    camera_cache = CameraConfigCache(data_dir=_DATA_DIR)
+
+    cameras = None
+    try:
+        cameras = api_client.fetch_active_cameras()
+        if cameras:
+            camera_cache.save(cameras)  # Persist for offline fallback
+    except (RuntimeError, OSError) as exc:
+        logger.warning(
+            "Backend camera fetch failed: %s — trying cached config", exc,
+        )
+
     if not cameras:
-        logger.error("Backend returned no active cameras; detection engine cannot start")
-        raise RuntimeError("No active cameras from backend internal endpoint")
+        cameras = camera_cache.load()
+        if cameras:
+            logger.warning(
+                "Using cached camera config (%d cameras) — "
+                "backend may be unreachable",
+                len(cameras),
+            )
+        else:
+            logger.error(
+                "No cameras available: backend unreachable and no valid cache"
+            )
+            raise RuntimeError(
+                "No cameras: backend unreachable and no cached config"
+            )
 
     # ── Camera registry ───────────────────────────────────────────────────────
     registry = CameraRegistry()
@@ -680,6 +707,45 @@ def main():
     mqtt_client = MQTTClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT)
     alert_engine = AlertEngine(mqtt_client, api_client, snapshot_dir=_SNAPSHOT_DIR)
     _connect_mqtt_with_retries(mqtt_client)
+
+    # ── Alert journal (P1-Task 4: store-and-forward persistence) ──────────
+    from detection_engine.alert.alert_journal import AlertJournal
+    alert_journal = AlertJournal(data_dir=_DATA_DIR)
+
+    def _journal_post_fn(payload: dict) -> bool:
+        """Retry delivery function for the alert journal."""
+        url = f"{api_client._base_url}/api/v1/events"
+        return api_client._post_event(url, payload)
+
+    alert_journal.start_retry_loop(_journal_post_fn)
+    # Monkey-patch AlertEngine._send_api to enqueue on failure
+    _original_send_api = alert_engine._send_api
+
+    def _send_api_with_journal(payload) -> None:
+        """Wrap API dispatch to enqueue failures in the alert journal."""
+        try:
+            _original_send_api(payload)
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
+            logger.warning(
+                "API dispatch failed, journaling alert %s: %s",
+                payload.event_id, exc,
+            )
+            alert_journal.enqueue({
+                'event_id': payload.event_id,
+                'zone_id': payload.zone_id,
+                'track_id': payload.track_id,
+                'class_label': payload.class_label,
+                'yolo_confidence': payload.yolo_confidence,
+                'pose_confidence': payload.pose_confidence,
+                'final_confidence': payload.final_confidence,
+                'confidence_score': payload.score,
+                'behavior_flags': {},
+                'snapshot_base64': payload.snapshot_b64,
+                'detected_at': payload.timestamp,
+                'alert_triggered': True,
+            })
+
+    alert_engine._send_api = _send_api_with_journal
 
     # ── Detection callback for alert processing ───────────────────────────────
     last_heartbeat_at = {}
@@ -869,6 +935,7 @@ def main():
         # Stop in reverse order
         pipeline_manager.stop_all()
         registry.stop_all()
+        alert_journal.stop()
         stop_gpu_monitor(gpu_monitor_stop_event, gpu_monitor_thread)
         gpu_memory_manager.cleanup()
         try:

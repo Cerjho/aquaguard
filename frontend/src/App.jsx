@@ -18,6 +18,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
 import MobileBottomNav from './components/layout/MobileBottomNav.jsx';
 import FullScreenLoader from './components/layout/FullScreenLoader.jsx';
+import AlertToast from './components/alerts/AlertToast.jsx';
 
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -83,6 +84,8 @@ function PrivateLayout() {
       </div>
       {/* Mobile bottom navigation — hidden on md+ */}
       <MobileBottomNav />
+      {/* Global alert toast */}
+      <AlertToast />
     </div>
   );
 }

@@ -376,9 +376,14 @@ function LoginPage() {
                 className="pointer-events-none absolute inset-0 h-full w-full scale-[1.08] object-cover object-center"
               />
               <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-              <div className="absolute bottom-10 left-10 z-20 text-white font-sans font-black tracking-widest text-3xl sm:text-4xl uppercase pointer-events-none leading-tight">
-                RIPPLE.<br />
-                <span className="text-[#a3cef1]"></span>SIGNAL. RESCUE.
+              <div className="absolute bottom-10 left-10 z-20 text-white font-sans pointer-events-none leading-tight">
+                <p className="font-black tracking-widest text-3xl sm:text-4xl uppercase">
+                  RIPPLE.<br />
+                  <span className="text-[#a3cef1]"></span>SIGNAL. RESCUE.
+                </p>
+                <p className="mt-3 text-sm sm:text-base font-medium text-white/70 tracking-wide">
+                  AI-Powered Drowning Detection System
+                </p>
               </div>
             </section>
 

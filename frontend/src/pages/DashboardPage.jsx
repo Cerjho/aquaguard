@@ -13,6 +13,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import CameraGrid from '../components/camera/CameraGrid.jsx';
 import DetectionFeed from '../components/events/DetectionFeed.jsx';
 import SystemStatus from '../components/system/SystemStatus.jsx';
+import StatsBar from '../components/dashboard/StatsBar.jsx';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,6 +54,11 @@ function DashboardPage() {
             </p>
           </div>
         </div>
+      </motion.div>
+
+      {/* Hero KPI stats */}
+      <motion.div variants={itemVariants}>
+        <StatsBar />
       </motion.div>
 
       {/* Main grid */}

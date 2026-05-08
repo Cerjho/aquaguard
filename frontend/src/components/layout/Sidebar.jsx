@@ -6,6 +6,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useSocketState, useSystemState } from '../../context/AlertContext.jsx';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 import BrandMark from './BrandMark.jsx';
 
 const navItems = [
@@ -58,6 +60,25 @@ function Sidebar() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const popoverRef = useRef(null);
+  const [clockStr, setClockStr] = useState('');
+  const { socketConnected } = useSocketState();
+  const { systemStatus } = useSystemState();
+
+  // Live clock
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setClockStr(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // System health
+  const deStatus = normalizeServiceStatus(systemStatus?.detection_engine?.status);
+  const systemHealthy = socketConnected && (deStatus === 'online' || deStatus === 'active' || deStatus === 'running');
+  const systemDegraded = socketConnected && !systemHealthy;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -82,8 +103,24 @@ function Sidebar() {
   return (
     <aside className="w-64 h-screen flex flex-col shrink-0 bg-white border-r border-slate-100 shadow-[4px_0_24px_rgba(15,23,42,0.03)] p-4 relative z-20 rounded-r-[2rem]">
       {/* Brand Header */}
-      <div className="mb-6 px-2 mt-2">
-        <BrandMark />
+      <div className="mb-2 px-2 mt-2">
+        <div className="flex items-center gap-2">
+          <BrandMark />
+          <span
+            className={`h-2 w-2 rounded-full shrink-0 ${
+              systemHealthy
+                ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse'
+                : systemDegraded
+                ? 'bg-amber-500'
+                : 'bg-slate-300'
+            }`}
+            title={systemHealthy ? 'System online' : systemDegraded ? 'Degraded' : 'Connecting...'}
+          />
+        </div>
+        {/* Live clock */}
+        <p className="mt-2 px-1 text-[11px] font-mono tracking-wider text-slate-400 tabular-nums">
+          {clockStr}
+        </p>
       </div>
 
       {/* Navigation */}
@@ -95,8 +132,8 @@ function Sidebar() {
             end={item.end}
             className={({ isActive }) =>
               isActive
-                ? 'flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#f0f7ff] text-blue-600 font-medium transition-all duration-200'
-                : 'flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-800 transition-colors duration-200'
+                ? 'relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#f0f7ff] text-blue-600 font-medium transition-all duration-200'
+                : 'relative flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-800 transition-colors duration-200'
             }
           >
             {({ isActive }) => (
@@ -108,6 +145,13 @@ function Sidebar() {
               >
                 {item.icon}
                 <span>{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebarActiveBar"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-blue-500"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
               </motion.div>
             )}
           </NavLink>
@@ -188,6 +232,10 @@ function Sidebar() {
           </svg>
         </div>
       </div>
+    {/* Version badge */}
+    <div className="px-4 pb-2 flex justify-center">
+      <span className="text-[10px] font-medium text-slate-300 tracking-wider">AquaGuard v1.0.0</span>
+    </div>
     </aside>
   );
 }

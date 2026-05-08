@@ -402,3 +402,58 @@ code {
     transform: translateX(100%);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AquaGuard Expo Enhancements
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Selection color — brand-consistent */
+::selection {
+  background: rgba(163, 206, 241, 0.35);
+  color: #0f172a;
+}
+
+/* Alert card pulsing glow */
+@keyframes alert-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(244, 63, 94, 0.3), 0 4px 16px rgba(244, 63, 94, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(244, 63, 94, 0.5), 0 4px 24px rgba(244, 63, 94, 0.25);
+  }
+}
+
+.alert-card-glow {
+  animation: alert-glow 2s ease-in-out infinite;
+}
+
+/* KPI pulse glow — for active alert stat card */
+.animate-pulse-glow {
+  animation: alert-glow 2s ease-in-out infinite;
+}
+
+/* Surveillance scan-line overlay */
+.scan-line-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* Recording dot animation */
+@keyframes recording-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.recording-dot {
+  animation: recording-blink 1.5s ease-in-out infinite;
+}

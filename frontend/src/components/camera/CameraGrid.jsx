@@ -371,9 +371,14 @@ function CameraGrid({ reloadToken = 0 }) {
 
   if (cameras.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
-        <p className="font-medium">No cameras registered.</p>
-        <p className="text-sm mt-1">Add cameras via the backend admin panel.</p>
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50">
+          <svg className="h-8 w-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.25} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        </div>
+        <p className="text-base font-semibold text-slate-700">No cameras registered</p>
+        <p className="text-sm text-slate-400 mt-1.5">Add cameras via the System settings to start monitoring.</p>
       </div>
     );
   }

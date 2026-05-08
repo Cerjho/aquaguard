@@ -420,7 +420,15 @@ function AlertHistory({ headerTabs }) {
 
       <div className="flex-1 overflow-hidden" data-testid="incident-master-list">
         {alerts.length === 0 ? (
-          <div className="text-center py-10 text-slate-500">No alerts found.</div>
+          <div className="text-center py-12 px-6">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+              <svg className="h-7 w-7 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-slate-700">All clear</p>
+            <p className="text-xs text-slate-400 mt-1">No alerts found for the selected filters.</p>
+          </div>
         ) : (
           <div className="divide-y divide-[#e7ecef]">
             {alerts.map((alert) => (
@@ -428,11 +436,11 @@ function AlertHistory({ headerTabs }) {
                 key={getIncidentKey(alert)}
                 type="button"
                 onClick={() => setSelectedIncident(alert)}
-                className="w-full text-left px-5 py-4 hover:bg-slate-50 hover:shadow-sm cursor-pointer transition-all"
+                className="w-full text-left px-5 py-4 hover:bg-slate-50 hover:shadow-sm cursor-pointer transition-all border-l-4 border-transparent hover:border-l-rose-400"
                 data-testid="incident-row"
               >
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <div className="md:col-span-4">
+                  <div className="md:col-span-5">
                     <p className="text-sm font-semibold text-slate-900">
                       {alert.zone_name || alert.zone_id || '—'}
                     </p>
@@ -441,10 +449,7 @@ function AlertHistory({ headerTabs }) {
                   <div className="md:col-span-3 text-sm text-slate-700">
                     Confidence: {formatConfidence(alert)}
                   </div>
-                  <div className="md:col-span-3">{alertBadge()}</div>
-                  <div className="md:col-span-2 text-xs text-slate-500 text-left md:text-right">
-                    {formatAlertTime(alert)}
-                  </div>
+                  <div className="md:col-span-4 flex justify-start md:justify-end">{alertBadge()}</div>
                 </div>
               </button>
             ))}

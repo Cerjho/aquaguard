@@ -191,7 +191,7 @@ function CameraCard({
         }
       }}
       className={`group relative overflow-hidden cursor-pointer transition-all duration-500 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-300/70 border rounded-2xl shadow-md bg-white ${
-        hasActiveAlert ? 'ring-2 ring-rose-400 border-rose-200 shadow-rose-200/60 shadow-lg' : 'border-slate-200 hover:shadow-lg hover:shadow-slate-200/70'
+        hasActiveAlert ? 'ring-2 ring-rose-400 border-rose-200 alert-card-glow shadow-lg' : 'border-slate-200 hover:shadow-lg hover:shadow-slate-200/70'
       }`}
       style={{ touchAction: 'manipulation' }}
       aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
@@ -251,6 +251,18 @@ function CameraCard({
             </div>
             <span className="text-xs font-medium opacity-60">{offlineReason}</span>
           </div>
+        )}
+
+        {/* Surveillance HUD: scan-line overlay + bottom gradient + REC dot */}
+        {(showWebRTC || showFallbackStream) && (
+          <>
+            <div className="scan-line-overlay" />
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent pointer-events-none z-[5]" />
+            <div className="absolute bottom-2.5 left-3 z-[6] flex items-center gap-1.5 pointer-events-none">
+              <span className="h-2 w-2 rounded-full bg-rose-500 recording-dot" />
+              <span className="text-[10px] font-bold text-white/80 tracking-wider [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">REC</span>
+            </div>
+          </>
         )}
 
 

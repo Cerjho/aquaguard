@@ -418,6 +418,78 @@ function AnalyticsChart() {
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
       aria-label="Analytics charts"
     >
+      {/* KPI Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {[
+          {
+            key: 'total',
+            label: 'Total Alerts',
+            value: kpis.totalAlerts,
+            icon: (
+              <svg className="h-5 w-5 text-rose-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            ),
+            accent: '#f43f5e',
+          },
+          {
+            key: 'confidence',
+            label: 'Avg Confidence',
+            value: `${kpis.avgConfidence.toFixed(1)}%`,
+            icon: (
+              <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h4.5L9 5l6 14 1.5-7H21" />
+              </svg>
+            ),
+            accent: '#3b82f6',
+          },
+          {
+            key: 'uptime',
+            label: 'System Uptime',
+            value: kpis.systemUptime,
+            icon: (
+              <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ),
+            accent: '#10b981',
+          },
+          {
+            key: 'cameras',
+            label: 'Active Cameras',
+            value: kpis.activeCameras,
+            icon: (
+              <svg className="h-5 w-5 text-cyan-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+            ),
+            accent: '#06b6d4',
+          },
+        ].map((card, idx) => (
+          <motion.div
+            key={card.key}
+            className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0.01 : 0.35, delay: prefersReducedMotion ? 0 : idx * 0.06 }}
+          >
+            <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl" style={{ background: card.accent }} />
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
+                style={{ background: `${card.accent}18` }}
+              >
+                {card.icon}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{card.label}</p>
+                <p className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">{card.value}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
       <div className="grid min-h-[42rem] grid-cols-1 gap-3 lg:h-full lg:grid-cols-3 lg:grid-rows-2">
         <InteractiveBentoCard
           className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md lg:col-span-2 lg:row-span-1 min-h-0"

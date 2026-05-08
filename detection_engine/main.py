@@ -747,6 +747,11 @@ def main():
 
     alert_engine._send_api = _send_api_with_journal
 
+    # ── GPU memory pressure → MQTT (P2: adaptive VRAM management) ─────────
+    from detection_engine.gpu_monitor import create_mqtt_pressure_callback
+    gpu_pressure_cb = create_mqtt_pressure_callback(mqtt_client)
+    gpu_memory_manager._on_pressure_change = gpu_pressure_cb
+
     # ── Detection callback for alert processing ───────────────────────────────
     last_heartbeat_at = {}
 

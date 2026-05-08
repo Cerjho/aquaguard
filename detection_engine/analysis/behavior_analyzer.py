@@ -214,9 +214,10 @@ class BehaviorAnalyzer:
         else:
             indicators['vertical'] = (WEIGHT_VERTICAL_ORIENTATION, None)
 
-        # Indicator 2: Arms elevated
-        if has_landmarks and landmarks[15].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD and \
-           landmarks[16].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD:
+        # Indicator 2: Arms elevated (at least one wrist visible and raised)
+        left_wrist_visible = landmarks[15].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD
+        right_wrist_visible = landmarks[16].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD
+        if has_landmarks and (left_wrist_visible or right_wrist_visible):
             indicators['arms_elevated'] = (
                 WEIGHT_ARMS_ELEVATED,
                 float(self._are_arms_elevated(landmarks)),
@@ -312,9 +313,19 @@ class BehaviorAnalyzer:
     # ── Private indicator methods ─────────────────────────────────────────────
 
     def _is_vertical_orientation(self, landmarks: List[Landmark]) -> bool:
-        """True if body vector is within VERTICAL_ANGLE_THRESHOLD_DEG from vertical.
+        """True if body is in a non-swimming (danger) posture.
 
-        At water level, drowning posture is more vertical (head down into water).
+        Covers two dangerous scenarios:
+        - ACTIVE DROWNING: body vertical/upright (head at surface, arms raised)
+          → angle near 0° from vertical
+        - PASSIVE/UNCONSCIOUS FLOAT: body prone/horizontal (face-down float)
+          → angle near 90° from vertical
+
+        Normal swimming is typically in the 30°–70° range (body tilted but
+        propelling forward). Both extremes (near 0° and near 90°) are danger
+        signals.  Returns True for angles < VERTICAL_ANGLE_THRESHOLD_DEG
+        (active drowning) OR angles > (90° - VERTICAL_ANGLE_THRESHOLD_DEG)
+        (prone float, e.g. face-down unconscious in water).
         """
         shoulder_x = (landmarks[11].x + landmarks[12].x) / 2.0
         shoulder_y = (landmarks[11].y + landmarks[12].y) / 2.0
@@ -324,18 +335,31 @@ class BehaviorAnalyzer:
         dx = hip_x - shoulder_x
         dy = hip_y - shoulder_y  # y increases downward in image coords
 
-        # Angle from vertical (0°=straight down, 90°=horizontal)
+        # Angle from vertical (0°=upright/active drown, 90°=horizontal/prone float)
         angle_deg = abs(np.degrees(np.arctan2(dx, dy)))
-        return angle_deg < VERTICAL_ANGLE_THRESHOLD_DEG
+
+        is_active_drowning = angle_deg < VERTICAL_ANGLE_THRESHOLD_DEG
+        # Prone float: body nearly horizontal (face-down, motionless)
+        is_prone_float = angle_deg > (90.0 - VERTICAL_ANGLE_THRESHOLD_DEG)
+        return is_active_drowning or is_prone_float
 
     def _are_arms_elevated(self, landmarks: List[Landmark]) -> bool:
-        """True if both wrists are above their respective shoulders (smaller y = higher).
+        """True if at least one wrist is raised above its shoulder (panic/distress signal).
 
-        Panic response: arms raised (wrists well above shoulders).
+        CRITICAL: The instinctive drowning response raises only ONE arm above
+        water — the person cannot voluntarily control both arms while fighting
+        to keep their head above the surface.  Requiring BOTH wrists elevated
+        caused a miss on the most common active-drowning posture (head
+        submerging, single arm waving above water).
+
+        Returns True if EITHER wrist is clearly above its corresponding shoulder.
+        The individual wrist visibility gate in analyze() ensures we only
+        evaluate wrists that MediaPipe can actually see.
         """
-        left_wrist_above = landmarks[15].y < landmarks[11].y
-        right_wrist_above = landmarks[16].y < landmarks[12].y
-        return left_wrist_above and right_wrist_above
+        left_wrist_above = landmarks[15].y < landmarks[11].y   # left wrist above left shoulder
+        right_wrist_above = landmarks[16].y < landmarks[12].y  # right wrist above right shoulder
+        # OR — either arm raised counts as a distress signal
+        return left_wrist_above or right_wrist_above
 
     def _is_head_position_low(self, landmarks: List[Landmark]) -> bool:
         """True if head is stuck at shoulder level (at water line).

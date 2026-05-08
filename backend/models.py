@@ -1,5 +1,5 @@
 from extensions import db
-from utils.date_utils import utcnow_naive
+from utils.date_utils import utcnow_naive, serialize_datetime
 
 
 class User(db.Model):
@@ -20,7 +20,7 @@ class User(db.Model):
             'id':         self.id,
             'username':   self.username,
             'role':       self.role,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': serialize_datetime(self.created_at),
             'is_active':  self.is_active,
         }
 
@@ -58,7 +58,7 @@ class CameraZone(db.Model):
             'frame_rate':           self.frame_rate,
             'resolution':           self.resolution,
             'status':               self.status,
-            'created_at':           self.created_at.isoformat() if self.created_at else None,
+            'created_at':           serialize_datetime(self.created_at),
         }
 
 
@@ -113,7 +113,7 @@ class DetectionEvent(db.Model):
             'bbox':             self.bbox,
             'alert_triggered':  self.alert_triggered,
             'snapshot_path':    self.snapshot_path,
-            'detected_at':      self.detected_at.isoformat() if self.detected_at else None,
+            'detected_at':      serialize_datetime(self.detected_at),
         }
 
 

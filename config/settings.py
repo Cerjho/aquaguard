@@ -13,28 +13,28 @@ except ModuleNotFoundError:
 # ── Confidence Filter (Rolling Window) — Water-Level Tuned ────────────────────
 CONFIDENCE_WINDOW_SIZE = int(
     os.environ.get("CONFIDENCE_WINDOW_SIZE", "8")
-)  # N default=10 (faster response @ water level)
+)  # N default=8 (wider window for more stable detections)
 CONFIDENCE_THRESHOLD = float(
-    os.environ.get("CONFIDENCE_THRESHOLD", "0.70")
-)  # T default=0.70 (aggressive FP reduction for on-land scenarios)
+    os.environ.get("CONFIDENCE_THRESHOLD", "0.55")
+)  # T default=0.55 (requires stronger evidence to confirm)
 CONFIDENCE_MIN_HITS = int(
     os.environ.get("CONFIDENCE_MIN_HITS", "6")
-)  # K default=6 (6 of 10 frames high confidence)
+)  # K default=6 (6 of 8 frames must pass — reduces sporadic false positives)
 CONSECUTIVE_FRAMES_REQUIRED = CONFIDENCE_MIN_HITS
 CONSECUTIVE_FRAME_LOW_THRESHOLD = float(
-    os.environ.get("CONSECUTIVE_FRAME_LOW_THRESHOLD", "0.60")
-)  # Default raised from 0.65 (each frame must score higher to count as hit)
+    os.environ.get("CONSECUTIVE_FRAME_LOW_THRESHOLD", "0.35")
+)  # Per-frame hit threshold (raised from 0.20 to reject weak detections)
 
 # ── Behavior Analyzer Weights (Water-Level Tuned) ───────────────────────────
 # NOTE: Sum = 1.55 (normalized dynamically based on visibility gating)
-WEIGHT_VERTICAL_ORIENTATION = 0.30  # Reliable: shoulder landmarks visible
+WEIGHT_VERTICAL_ORIENTATION = 0.25  # Non-swimming posture: upright (active drown) OR prone (float)
 WEIGHT_ARMS_ELEVATED = 0.20         # Reduced from 0.25 (water-level angle affects)
-WEIGHT_HEAD_POSITION_LOW = 0.35     # NEW: Most reliable surface cue @ water level
-WEIGHT_NO_BREATHING_MOTION = 0.25   # NEW: Temporal signal (breathing pattern absence)
-WEIGHT_NO_LIMB_MOTION = 0.10        # Low-weight stillness signal when limbs visible
-WEIGHT_FACE_SUBMERGED = 0.10        # Low-weight visibility cue at water line
+WEIGHT_HEAD_POSITION_LOW = 0.35     # Most reliable surface cue @ water level
+WEIGHT_NO_BREATHING_MOTION = 0.25   # Temporal signal (breathing pattern absence)
+WEIGHT_NO_LIMB_MOTION = 0.25        # RAISED: Complete stillness = primary signal for unconscious float
+WEIGHT_FACE_SUBMERGED = 0.10        # Visibility cue at water line
 WEIGHT_SPLASHING = 0.15             # Rapid limb motion (consecutive splashing)
-WEIGHT_YOLO_CLASS = 0.10            # Keep: YOLO classification
+WEIGHT_YOLO_CLASS = 0.10            # YOLO classification
 
 # ── Behavior Analyzer Thresholds ────────────────────────────────────────────
 VERTICAL_ANGLE_THRESHOLD_DEG = 40   # Body angle from vertical (degrees)
@@ -100,7 +100,7 @@ YOLO_MIN_BBOX_AREA = 400            # Min bbox area in px² (only filters person
 # ── Water-Presence Validation (Camera-Position Independent) ───────────────────
 # Layer 1: YOLO hard gate — suppress scoring for "person_out_of_water" detections
 SUPPRESS_OUT_OF_WATER_CLASS = is_truthy(
-    os.environ.get("SUPPRESS_OUT_OF_WATER_CLASS", "1")
+    os.environ.get("SUPPRESS_OUT_OF_WATER_CLASS", "0")
 )
 # When YOLO says person_out_of_water but spatial evidence is ambiguous (person
 # appears to be inside the water ROI and no full-body-visible gate fires),

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 from utils.response_utils import success_response, error_response
+from utils.date_utils import serialize_datetime
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
 from PIL import Image, UnidentifiedImageError
@@ -36,9 +37,9 @@ def _serialize_alert_event_payload(alert, event):
         'alert_id': event.event_id,
         'zone_id': event.zone_id,
         'status': 'unacknowledged',
-        'triggered_at': event.detected_at.isoformat() if event.detected_at else None,
+        'triggered_at': serialize_datetime(event.detected_at),
         # Alias used by some clients
-        'timestamp': event.detected_at.isoformat() if event.detected_at else None,
+        'timestamp': serialize_datetime(event.detected_at),
         'confidence_score': event.confidence_score,
         'bbox': event.bbox,
         'snapshot_path': event.snapshot_path,
@@ -57,7 +58,7 @@ def _serialize_detection_event_payload(event):
     payload = event.to_dict()
     payload.update({
         'event_type': 'detection_event',
-        'timestamp': event.detected_at.isoformat() if event.detected_at else None,
+        'timestamp': serialize_datetime(event.detected_at),
         'ingested_at': datetime.now(timezone.utc).isoformat(),
         'snapshot_url': None,
     })

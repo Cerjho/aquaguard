@@ -1,12 +1,17 @@
 """
 Pipeline Manager — Orchestrates the Three-Lane Highway architecture.
 
-Manages all three workers for each camera zone:
+Manages all workers for each camera zone:
 1. Camera Capture (Worker 1) — already exists in CameraCapture class
 2. Detection Worker (Worker 2) — runs YOLO in separate thread
-3. Frame Writer (Worker 3) — writes frames at 30 FPS for streaming
+3. Dashboard Ring Buffer — in-memory circular buffer for live streaming
 
-This ensures smooth video regardless of AI detection speed.
+Stream lane separation (P0-Task 3):
+  After decoding a frame ONCE from RTSP, the same frame reference is
+  passed to BOTH consumers:
+  - Detection branch: priority_queue.put(frame) — subject to backpressure
+  - Dashboard branch: dashboard_buffer.write(frame) — always runs, never throttled
+  No second RTSP connection.  No frame copy.  No shared locks between branches.
 """
 import logging
 import threading
@@ -14,8 +19,12 @@ import time
 from typing import Dict, Optional, Callable, Any
 from datetime import datetime, timezone
 
-from detection_engine.pipeline.frame_queue import FrameQueue, AnnotatedFrameQueue
+from detection_engine.pipeline.frame_queue import (
+    FrameQueue,
+    AnnotatedFrameQueue,
+)
 from detection_engine.pipeline.detection_worker import DetectionWorker
+from detection_engine.pipeline.dashboard_buffer import DashboardRingBuffer
 from detection_engine.camera.frame_writer import ContinuousFrameWriter
 
 logger = logging.getLogger(__name__)
@@ -29,16 +38,20 @@ class ZonePipeline:
     """
     Complete multi-threaded pipeline for a single camera zone.
 
-    Three-Lane Highway:
-    ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-    │   Camera    │ ───► │  Detection  │ ───► │   Frame     │
-    │  (30 FPS)   │      │  (~10 FPS)  │      │   Writer    │
-    └─────────────┘      └─────────────┘      │  (30 FPS)   │
-          │                    │              └─────────────┘
-          │                    │                    │
-          └────────────────────┴────────────────────┘
-                         Raw frames also go
-                         directly to writer
+    Stream Lane Separation (P0-Task 3):
+    ┌─────────────┐      ┌─────────────┐
+    │   Camera    │ ───► │  Detection  │
+    │  (30 FPS)   │      │  (~10 FPS)  │
+    └─────────────┘      └─────────────┘
+          │                    │
+          │  ┌─────────────────┘
+          │  │
+          ▼  ▼
+    ┌─────────────┐      ┌─────────────┐
+    │  Priority   │      │  Dashboard  │
+    │  Frame Q    │      │  Ring Buf   │
+    │ (detection) │      │ (streaming) │
+    └─────────────┘      └─────────────┘
     """
 
     def __init__(
@@ -54,6 +67,7 @@ class ZonePipeline:
         detection_callback: Optional[Callable] = None,
         target_fps: int = 30,
         gpu_memory_manager=None,
+        mqtt_client=None,
     ):
         self.zone_id = zone_id
         self.camera = camera
@@ -64,7 +78,11 @@ class ZonePipeline:
         self.raw_frame_queue = FrameQueue(zone_id)
         self.annotated_frame_queue = AnnotatedFrameQueue(zone_id)
 
-        # Create frame writer (Worker 3)
+        # Dashboard ring buffer (P0-Task 3: stream lane separation)
+        self.dashboard_buffer = DashboardRingBuffer(zone_id)
+
+        # Create frame writer (Worker 3) — kept for backward compatibility
+        # TODO(out-of-scope): Remove ContinuousFrameWriter in Phase 1 Task 6
         self.frame_writer = ContinuousFrameWriter(zone_id, live_dir, target_fps)
 
         # Create detection worker (Worker 2)
@@ -79,6 +97,7 @@ class ZonePipeline:
             annotate_frame_fn=annotate_frame_fn,
             detection_callback=detection_callback,
             gpu_memory_manager=gpu_memory_manager,
+            mqtt_client=mqtt_client,
         )
 
         # Camera feeder thread (Worker 1 bridge)
@@ -95,7 +114,7 @@ class ZonePipeline:
 
         self._stop_event.clear()
 
-        # Start frame writer first (Worker 3)
+        # Start frame writer first (Worker 3) — backward compat
         self.frame_writer.start()
 
         # Start detection worker (Worker 2)
@@ -110,7 +129,7 @@ class ZonePipeline:
         self._feeder_thread.start()
 
         self._started = True
-        logger.info("[%s] Pipeline started (3 workers)", self.zone_id)
+        logger.info("[%s] Pipeline started (detection + dashboard streams)", self.zone_id)
 
     def stop(self) -> None:
         """Stop all pipeline workers."""
@@ -131,40 +150,30 @@ class ZonePipeline:
 
     def _camera_feeder_loop(self) -> None:
         """
-        Camera feeder loop — bridges camera capture to the pipeline queues.
+        Camera feeder loop — bridges camera capture to the pipeline.
 
-        This is the "glue" that connects Worker 1 (Camera) to the pipeline:
-        - Reads frames from camera at camera FPS
-        - Puts raw frames into raw_frame_queue (for detection)
-        - Continuously drains annotated_frame_queue to feed frame writer
-        - Ensures annotated frames are prioritized over raw frames for streaming
-        - Adaptively throttles to match detection worker throughput
+        Stream Lane Separation (P0-Task 3):
+        After decoding a frame ONCE, the SAME frame reference goes to both:
+        1. Detection branch: priority_queue.put(frame) — backpressure-aware
+        2. Dashboard branch: dashboard_buffer.write(frame) — always runs
+
+        The dashboard branch does NOT acquire any lock held by the
+        detection branch.  No frame copy.  No second RTSP connection.
         """
         logger.info("[%s] Camera feeder starting...", self.zone_id)
         frames_fed = 0
         last_log_time = time.time()
 
-        # Adaptive throttling — pace feeder to detection worker throughput
-        # to keep drop_rate ≤ 5%.  The sleep starts at 0 and grows only when
-        # the queue reports high drop rates.
-        throttle_sleep = 0.0
-        _MAX_THROTTLE = 0.050   # 50 ms ≈ cap feeder at ~20 FPS
-        _THROTTLE_STEP = 0.005  # 5 ms increments
-        _DROP_RATE_HIGH = 0.05  # above 5% → slow down
-        _DROP_RATE_LOW = 0.02   # below 2% → speed up
-
         while not self._stop_event.is_set():
             try:
-                # Read frame from camera
+                # Read frame from camera (decoded ONCE)
                 frame, metadata = self.camera.read()
 
                 if frame is None:
                     time.sleep(0.01)  # Brief sleep if no frame
                     continue
 
-                # Camera.read() can return the same latest frame between capture
-                # updates. Skip duplicate enqueues so drop_rate reflects actual
-                # backpressure, not feeder loop speed.
+                # Skip duplicate frames (same sequence number)
                 frame_sequence = metadata.get("frame_sequence")
                 if isinstance(frame_sequence, int):
                     if frame_sequence == self._last_frame_sequence:
@@ -174,48 +183,50 @@ class ZonePipeline:
 
                 timestamp = metadata.get("timestamp") or _utc_now_iso()
 
-                # Feed to raw frame queue (for detection worker)
+                # ── BRANCH 1: Detection path (backpressure-aware) ────────
+                # Frame reference goes into priority queue — may be dropped
+                # by the queue's priority policies.
                 self.raw_frame_queue.put(frame, timestamp, metadata)
 
-                # Drain annotated frame from detection worker to update latest detections
+                # ── BRANCH 2: Dashboard path (always runs, never throttled) ──
+                # Same frame reference — NO copy.  Dashboard buffer uses its
+                # own write lock, independent of the detection queue lock.
+                self.dashboard_buffer.write(frame, time.monotonic())
+
+                # Drain annotated frame to update latest detections overlay
                 annotated_data = self.annotated_frame_queue.get()
-                if annotated_data is not None and getattr(annotated_data, 'detections', None) is not None:
+                if (
+                    annotated_data is not None
+                    and getattr(annotated_data, 'detections', None) is not None
+                ):
                     self.latest_detections = annotated_data.detections
 
                 # Overlay the latest known detections onto the fresh raw frame
+                # for the legacy frame writer (backward compat — removed in P1)
                 frame_out = frame.copy()
                 if self.latest_detections:
                     frame_out = self.annotate_frame_fn(
-                        frame_out, self.latest_detections, self.zone_id, timestamp
+                        frame_out, self.latest_detections,
+                        self.zone_id, timestamp,
                     )
 
-                # Feed ONLY the fully composited frame to the frame writer
+                # Feed the composited frame to legacy frame writer
                 self.frame_writer.update_raw_frame(frame_out)
 
                 frames_fed += 1
 
-                # Adaptive throttle: slow the feeder when queue drops are high
-                if throttle_sleep > 0:
-                    time.sleep(throttle_sleep)
-
-                # Log stats and adjust throttle every 10 seconds
+                # Log stats every 10 seconds
                 now = time.time()
                 if now - last_log_time >= 10.0:
                     fps = frames_fed / (now - last_log_time)
                     queue_stats = self.raw_frame_queue.stats
-                    current_drop = queue_stats['drop_rate']
                     logger.debug(
-                        "[%s] Feeder: %.1f FPS fed, queue drop_rate=%.1f%%, throttle=%.0fms",
-                        self.zone_id, fps, current_drop * 100,
-                        throttle_sleep * 1000,
+                        "[%s] Feeder: %.1f FPS, queue depth=%.0f%%, "
+                        "dashboard_buf writes=%d",
+                        self.zone_id, fps,
+                        queue_stats.get('queue_depth', 0) * 100,
+                        self.dashboard_buffer.total_writes,
                     )
-
-                    # Adjust throttle based on windowed drop rate
-                    if current_drop > _DROP_RATE_HIGH:
-                        throttle_sleep = min(throttle_sleep + _THROTTLE_STEP, _MAX_THROTTLE)
-                    elif current_drop < _DROP_RATE_LOW and throttle_sleep > 0:
-                        throttle_sleep = max(throttle_sleep - _THROTTLE_STEP, 0.0)
-
                     last_log_time = now
                     frames_fed = 0
 
@@ -231,6 +242,7 @@ class ZonePipeline:
             'is_running': self._started,
             'raw_queue': self.raw_frame_queue.stats,
             'detection': self.detection_worker.stats,
+            'dashboard_buffer_writes': self.dashboard_buffer.total_writes,
         }
 
 
@@ -253,12 +265,14 @@ class PipelineManager:
         detection_callback: Optional[Callable] = None,
         target_fps: int = 30,
         gpu_memory_manager=None,
+        mqtt_client=None,
     ):
         self.live_dir = live_dir
         self.annotate_frame_fn = annotate_frame_fn
         self.detection_callback = detection_callback
         self.target_fps = target_fps
         self.gpu_memory_manager = gpu_memory_manager
+        self.mqtt_client = mqtt_client
 
         self.pipelines: Dict[str, ZonePipeline] = {}
         self._lock = threading.Lock()
@@ -290,6 +304,7 @@ class PipelineManager:
                 detection_callback=self.detection_callback,
                 target_fps=self.target_fps,
                 gpu_memory_manager=self.gpu_memory_manager,
+                mqtt_client=self.mqtt_client,
             )
             self.pipelines[zone_id] = pipeline
             logger.info("Created pipeline for zone: %s", zone_id)
@@ -299,6 +314,14 @@ class PipelineManager:
         """Get pipeline for a zone."""
         with self._lock:
             return self.pipelines.get(zone_id)
+
+    def get_dashboard_buffer(self, zone_id: str) -> Optional[DashboardRingBuffer]:
+        """Get dashboard ring buffer for a zone."""
+        with self._lock:
+            pipeline = self.pipelines.get(zone_id)
+            if pipeline is not None:
+                return pipeline.dashboard_buffer
+            return None
 
     def start_all(self) -> None:
         """Start all pipelines."""

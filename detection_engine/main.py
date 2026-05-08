@@ -783,6 +783,7 @@ def main():
         detection_callback=_on_detection,
         target_fps=30,
         gpu_memory_manager=gpu_memory_manager,
+        mqtt_client=mqtt_client,
     )
 
     # Create pipeline for each camera zone

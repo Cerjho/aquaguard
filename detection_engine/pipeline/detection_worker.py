@@ -36,8 +36,18 @@ from detection_engine.memory_manager import get_gpu_memory_manager
 logger = logging.getLogger(__name__)
 
 # ── Backpressure thresholds ──────────────────────────────────────────────────
+# Entry thresholds (transition UP to this tier when depth exceeds)
 _PRESSURE_DEPTH = 0.5
 _OVERLOAD_DEPTH = 0.8
+
+# Exit thresholds (transition DOWN only when depth drops below)
+# Hysteresis prevents oscillation at tier boundaries
+_PRESSURE_EXIT_DEPTH = 0.35   # Must drop to 0.35 to leave PRESSURE→NORMAL
+_OVERLOAD_EXIT_DEPTH = 0.60   # Must drop to 0.60 to leave OVERLOAD→PRESSURE
+
+# Minimum dwell time: stay in a tier for at least this long before going DOWN
+# UP transitions are always immediate (safety-critical: respond to overload fast)
+_MIN_DWELL_SECONDS = 3.0
 
 # Resolution overrides per backpressure tier
 _NORMAL_IMGSZ = None   # Use default from settings.py
@@ -119,6 +129,7 @@ class DetectionWorker:
         # Backpressure state
         self._backpressure_tier = BackpressureTier.NORMAL
         self._overload_warning_sent = False  # Prevents per-frame MQTT spam
+        self._tier_entered_at = time.monotonic()  # When current tier was entered
 
         # Stats
         self._frames_processed = 0
@@ -218,19 +229,50 @@ class DetectionWorker:
     # ── Backpressure ─────────────────────────────────────────────────────────
 
     def _update_backpressure_tier(self) -> None:
-        """Read queue depth and transition backpressure tier if needed."""
-        depth = self.input_queue.queue_depth()
+        """Read queue depth and transition backpressure tier if needed.
 
+        Uses hysteresis bands and minimum dwell time to prevent thrashing:
+        - UP transitions (NORMAL→PRESSURE→OVERLOAD): immediate, for safety
+        - DOWN transitions: require (a) depth below exit threshold AND
+          (b) minimum dwell time elapsed in current tier
+        """
+        depth = self.input_queue.queue_depth()
+        current = self._backpressure_tier
+        now = time.monotonic()
+        dwell_elapsed = now - self._tier_entered_at
+
+        # Determine target tier based on depth + hysteresis
         if depth >= _OVERLOAD_DEPTH:
             new_tier = BackpressureTier.OVERLOAD
         elif depth >= _PRESSURE_DEPTH:
-            new_tier = BackpressureTier.PRESSURE
+            # If already in OVERLOAD, need to drop below exit threshold
+            if current == BackpressureTier.OVERLOAD:
+                if depth <= _OVERLOAD_EXIT_DEPTH and dwell_elapsed >= _MIN_DWELL_SECONDS:
+                    new_tier = BackpressureTier.PRESSURE
+                else:
+                    new_tier = BackpressureTier.OVERLOAD  # Stay
+            else:
+                new_tier = BackpressureTier.PRESSURE
         else:
-            new_tier = BackpressureTier.NORMAL
+            # depth < _PRESSURE_DEPTH
+            if current == BackpressureTier.OVERLOAD:
+                # Need to pass through PRESSURE first + dwell
+                if depth <= _OVERLOAD_EXIT_DEPTH and dwell_elapsed >= _MIN_DWELL_SECONDS:
+                    new_tier = BackpressureTier.PRESSURE
+                else:
+                    new_tier = BackpressureTier.OVERLOAD  # Stay
+            elif current == BackpressureTier.PRESSURE:
+                if depth <= _PRESSURE_EXIT_DEPTH and dwell_elapsed >= _MIN_DWELL_SECONDS:
+                    new_tier = BackpressureTier.NORMAL
+                else:
+                    new_tier = BackpressureTier.PRESSURE  # Stay
+            else:
+                new_tier = BackpressureTier.NORMAL
 
         if new_tier != self._backpressure_tier:
             old_tier = self._backpressure_tier
             self._backpressure_tier = new_tier
+            self._tier_entered_at = now  # Reset dwell timer
             logger.warning(
                 "[%s] Backpressure tier transition: %s → %s (depth=%.2f)",
                 self.zone_id,

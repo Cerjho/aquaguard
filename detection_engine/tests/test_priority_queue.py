@@ -483,14 +483,51 @@ class TestBackpressureTier:
         assert worker._backpressure_tier == BackpressureTier.OVERLOAD
 
     def test_transition_back_to_normal(self):
-        """Tier transitions back to NORMAL when depth drops."""
+        """Tier transitions back to NORMAL after dwell time + exit threshold."""
+        import detection_engine.pipeline.detection_worker as dw_mod
+
         worker, q = self._make_worker(0.9)
         worker._update_backpressure_tier()
         assert worker._backpressure_tier == BackpressureTier.OVERLOAD
 
+        # Drop depth below exit threshold but dwell time NOT elapsed yet
+        q.queue_depth.return_value = 0.1
+        worker._update_backpressure_tier()
+        # Should still be OVERLOAD (dwell time not met)
+        assert worker._backpressure_tier == BackpressureTier.OVERLOAD
+
+        # Simulate dwell time elapsed by backdating _tier_entered_at
+        worker._tier_entered_at = time.monotonic() - dw_mod._MIN_DWELL_SECONDS - 1
+        q.queue_depth.return_value = 0.1
+        worker._update_backpressure_tier()
+        # Should now step down to PRESSURE (not skip to NORMAL)
+        assert worker._backpressure_tier == BackpressureTier.PRESSURE
+
+        # Elapse dwell again, depth below PRESSURE exit
+        worker._tier_entered_at = time.monotonic() - dw_mod._MIN_DWELL_SECONDS - 1
         q.queue_depth.return_value = 0.1
         worker._update_backpressure_tier()
         assert worker._backpressure_tier == BackpressureTier.NORMAL
+
+    def test_hysteresis_prevents_oscillation(self):
+        """Depth at boundary does NOT cause immediate downgrade."""
+        import detection_engine.pipeline.detection_worker as dw_mod
+
+        worker, q = self._make_worker(0.85)
+        worker._update_backpressure_tier()
+        assert worker._backpressure_tier == BackpressureTier.OVERLOAD
+
+        # Depth drops to 0.7 (below entry but ABOVE exit threshold 0.6)
+        q.queue_depth.return_value = 0.70
+        worker._tier_entered_at = time.monotonic() - dw_mod._MIN_DWELL_SECONDS - 1
+        worker._update_backpressure_tier()
+        # Should STAY in OVERLOAD (0.70 > 0.60 exit threshold)
+        assert worker._backpressure_tier == BackpressureTier.OVERLOAD
+
+        # Now drop below exit threshold
+        q.queue_depth.return_value = 0.55
+        worker._update_backpressure_tier()
+        assert worker._backpressure_tier == BackpressureTier.PRESSURE
 
     def test_skip_low_in_pressure(self):
         """LOW frames are skipped in PRESSURE tier."""

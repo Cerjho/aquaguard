@@ -65,6 +65,52 @@ export function AlertProvider({ children }) {
   const detectionBufferRef = useRef([]);
   const detectionFlushTimerRef = useRef(null);
 
+  // Clips state
+  const [pendingClips, setPendingClips] = useState([]);
+  const [pendingClipsCount, setPendingClipsCount] = useState(0);
+  const [newClipToast, setNewClipToast] = useState(null);
+
+  const fetchPendingClipsCount = useCallback(async () => {
+    if (!realtimeEnabled) return;
+    try {
+      const res = await api.get('/api/v1/clips', { params: { status: 'pending', limit: 100 } });
+      const data = res?.data?.data ?? res?.data;
+      const fetchedClips = Array.isArray(data) ? data : (data.clips || []);
+      
+      setPendingClips((prev) => {
+        const merged = [...prev];
+        let changed = false;
+        fetchedClips.forEach(clip => {
+          if (!merged.find(c => c.clip_id === clip.clip_id)) {
+            merged.push(clip);
+            changed = true;
+          }
+        });
+        return changed ? merged : prev;
+      });
+      
+      if (data && typeof data.total === 'number') {
+        // Use the backend total if it exceeds our fetched limit, but at least our deduped list length
+        setPendingClipsCount((prevCount) => Math.max(data.total, fetchedClips.length));
+      } else {
+        setPendingClipsCount((prev) => Math.max(prev, fetchedClips.length));
+      }
+    } catch (err) {
+      logger.error('Failed to fetch pending clips count', err);
+    }
+  }, [realtimeEnabled]);
+
+  useEffect(() => {
+    fetchPendingClipsCount();
+  }, [fetchPendingClipsCount]);
+
+  const decrementPendingClips = useCallback((clipId) => {
+    if (clipId) {
+      setPendingClips((prev) => prev.filter(c => c.clip_id !== clipId));
+    }
+    setPendingClipsCount((prev) => Math.max(0, prev - 1));
+  }, []);
+
   const setTriageFilters = useCallback((next) => {
     setTriageFiltersState((prev) => {
       if (typeof next === 'function') return next(prev);
@@ -185,6 +231,24 @@ export function AlertProvider({ children }) {
     });
   }, []);
 
+  const onClipReady = useCallback((payload) => {
+    if (!payload || !payload.clip_id) return;
+    
+    setPendingClips((prev) => {
+      // Deduplicate by clip_id
+      if (prev.some(c => c.clip_id === payload.clip_id)) {
+        return prev;
+      }
+      
+      // If it's a new clip, increment the count and show toast
+      setPendingClipsCount((count) => count + 1);
+      setNewClipToast(payload);
+      setTimeout(() => setNewClipToast(null), 5000);
+      
+      return [payload, ...prev];
+    });
+  }, []);
+
   const onConnectionChange = useCallback((connected, meta) => {
     setSocketConnected(Boolean(connected));
     setSocketMeta(meta || null);
@@ -197,6 +261,7 @@ export function AlertProvider({ children }) {
     onDetectionEvent,
     onCameraStatus,
     onSystemStatus,
+    onClipReady,
     onConnectionChange,
   });
 
@@ -316,11 +381,21 @@ export function AlertProvider({ children }) {
     activeAlerts,
     alertHistory,
     detectionEvents,
+    pendingClips,
+    pendingClipsCount,
+    decrementPendingClips,
+    fetchPendingClipsCount,
+    newClipToast,
   }), [
     activeAlert,
     activeAlerts,
     alertHistory,
     detectionEvents,
+    pendingClips,
+    pendingClipsCount,
+    decrementPendingClips,
+    fetchPendingClipsCount,
+    newClipToast,
   ]);
 
   const systemStateValue = useMemo(() => ({

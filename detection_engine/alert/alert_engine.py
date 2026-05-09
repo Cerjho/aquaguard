@@ -107,6 +107,7 @@ class AlertEngine:
         yolo_confidence: float | None = None,
         pose_confidence: float | None = None,
         final_confidence: float | None = None,
+        event_id: str | None = None,
     ) -> None:
         """Save snapshot and dispatch alert payload to all three channels.
 
@@ -116,13 +117,20 @@ class AlertEngine:
         happened inside dispatch_alert(), leaving the legacy _process_zone_frame
         path unprotected against alert storms.
 
+        Args:
+            event_id: Optional pre-generated UUID. If provided, this exact ID
+                is used for the alert event — allows the caller to share the
+                same event_id with the clip capture engine. Falls back to
+                internal uuid4() generation if not supplied.
+
         Three daemon threads are launched simultaneously for MQTT, API,
         and logger so that a slow channel does not delay the others.
         """
         # Always record dispatch time FIRST so cooldown is applied even if
         # something below raises an exception.
         self._record_alert_time(track_id)
-        event_id = str(uuid.uuid4())
+        if event_id is None:
+            event_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
         # Encode frame to JPEG bytes
@@ -269,6 +277,7 @@ class AlertEngine:
         yolo_confidence: float | None = None,
         pose_confidence: float | None = None,
         final_confidence: float | None = None,
+        event_id: str | None = None,
     ) -> None:
         """Compatibility wrapper used by the multi-threaded pipeline callback.
 
@@ -286,6 +295,7 @@ class AlertEngine:
             yolo_confidence=yolo_confidence,
             pose_confidence=pose_confidence,
             final_confidence=final_confidence,
+            event_id=event_id,
         )
 
     def close(self) -> None:

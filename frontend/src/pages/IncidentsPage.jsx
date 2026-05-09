@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import AlertHistory from '../components/alerts/AlertHistory.jsx';
 import IncidentHistory from '../components/events/IncidentHistory.jsx';
+import { useAlertState } from '../context/AlertContext.jsx';
 
 const TABS = [
   {
@@ -29,6 +30,7 @@ function IncidentsPage() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'alerts');
   const prefersReducedMotion = useReducedMotion();
+  const { pendingClipsCount } = useAlertState();
 
   useEffect(() => {
     if (location.state?.activeTab) {
@@ -53,6 +55,11 @@ function IncidentsPage() {
           <span className="flex items-center gap-2">
             {tab.icon}
             {tab.label}
+            {tab.id === 'alerts' && pendingClipsCount > 0 && (
+              <span className="ml-1 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[1.25rem] text-center shadow-sm">
+                {pendingClipsCount}
+              </span>
+            )}
           </span>
           {activeTab === tab.id && (
             <motion.div

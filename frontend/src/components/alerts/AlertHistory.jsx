@@ -12,6 +12,9 @@ import { formatDateTime } from '../../utils/dateFormat';
 import { useFilterState } from '../../context/AlertContext.jsx';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
 import PremiumLoader from '../layout/PremiumLoader.jsx';
+import useClipsApi from '../../hooks/useClipsApi';
+import ClipPlayer from '../events/ClipPlayer.jsx';
+import ClipReviewControls from '../events/ClipReviewControls.jsx';
 
 const PAGE_SIZE = 10;
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -146,7 +149,38 @@ function AlertHistory({ headerTabs }) {
   const [appliedFilters, setAppliedFilters] = useState(triageFilters || {});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [clipMetadata, setClipMetadata] = useState(null);
+  const [fetchingClip, setFetchingClip] = useState(false);
   const requestIdRef = useRef(0);
+  const { getClipMetadata, fetchClips } = useClipsApi();
+
+  useEffect(() => {
+    if (!selectedIncident) {
+      setClipMetadata(null);
+      return;
+    }
+    const loadClip = async () => {
+      setFetchingClip(true);
+      try {
+        // Find if this incident has an associated pending/confirmed clip
+        // Use event_id which might be in the incident payload
+        const eventId = selectedIncident.event_id || selectedIncident.id;
+        const res = await fetchClips({ event_id: eventId, limit: 1 });
+        const clips = res?.clips || res;
+        if (Array.isArray(clips) && clips.length > 0) {
+          const metadata = await getClipMetadata(clips[0].clip_id);
+          setClipMetadata(metadata);
+        } else {
+          setClipMetadata(null);
+        }
+      } catch (err) {
+        setClipMetadata(null);
+      } finally {
+        setFetchingClip(false);
+      }
+    };
+    loadClip();
+  }, [selectedIncident, fetchClips, getClipMetadata]);
 
   useEffect(() => {
     if (!alertHistorySnapshot) return;
@@ -506,7 +540,11 @@ function AlertHistory({ headerTabs }) {
             >
               {/* Media Player Container */}
               <div className="w-full md:w-[60%] bg-slate-900 flex items-center justify-center min-h-[300px] rounded-2xl overflow-hidden shadow-inner relative group">
-                {selectedIncident.video_url || selectedIncident.videoUrl ? (
+                {fetchingClip ? (
+                  <PremiumLoader />
+                ) : clipMetadata ? (
+                  <ClipPlayer clipId={clipMetadata.clip_id} metadata={clipMetadata} />
+                ) : selectedIncident.video_url || selectedIncident.videoUrl ? (
                   <video 
                     src={selectedIncident.video_url || selectedIncident.videoUrl} 
                     controls 
@@ -573,20 +611,34 @@ function AlertHistory({ headerTabs }) {
                 </div>
 
                 <div className="flex gap-3 justify-end mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedIncident(null)}
-                    className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedIncident(null)}
-                    className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5"
-                  >
-                    Download Log
-                  </button>
+                  {clipMetadata && clipMetadata.review?.status === 'pending' ? (
+                    <div className="w-full">
+                      <ClipReviewControls 
+                        clipId={clipMetadata.clip_id} 
+                        onSuccess={() => {
+                          setSelectedIncident(null);
+                          // We optimistically close the modal.
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedIncident(null)}
+                        className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedIncident(null)}
+                        className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        Download Log
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>

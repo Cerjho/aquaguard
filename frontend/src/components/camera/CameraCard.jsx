@@ -103,6 +103,7 @@ function CameraCard({
   const { transport, streamUrl, videoStream } = useWebRTCStream({
     zoneId: camera.zone_id,
     streamToken,
+    streamSessionId,
     shouldRenderStream,
     isActive,
   });
@@ -217,7 +218,7 @@ function CameraCard({
         ) : showFallbackStream ? (
           <img
             ref={imgRef}
-            key={`${camera.zone_id}-${streamToken}-${streamSessionId}`}
+            key={`${camera.zone_id}-${streamSessionId}`}
             src={streamUrl}
             alt={`Live feed — ${camera.zone_name}`}
             className="w-full h-full object-cover transition-transform duration-300"

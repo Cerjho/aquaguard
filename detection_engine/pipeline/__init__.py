@@ -7,6 +7,7 @@ from detection_engine.pipeline.frame_queue import (
 from detection_engine.pipeline.detection_worker import DetectionWorker
 from detection_engine.pipeline.pipeline_manager import PipelineManager
 from detection_engine.pipeline.dashboard_buffer import DashboardRingBuffer
+from detection_engine.pipeline.clip_buffer import ClipRingBuffer
 
 __all__ = [
     'FrameQueue',
@@ -15,4 +16,6 @@ __all__ = [
     'DetectionWorker',
     'PipelineManager',
     'DashboardRingBuffer',
+    'ClipRingBuffer',
 ]
+

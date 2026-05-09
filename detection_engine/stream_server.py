@@ -17,6 +17,7 @@ import os
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from typing import Dict, Optional
 
 import cv2
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_PORT = int(os.environ.get("STREAM_SERVER_PORT", "8765"))
 _DEFAULT_HOST = os.environ.get("STREAM_SERVER_HOST", "0.0.0.0")
 _STREAM_FPS = 30
-_BOUNDARY = b"aquaguard_frame"
+_BOUNDARY = b"frame"
 
 
 class _StreamRequestHandler(BaseHTTPRequestHandler):
@@ -157,9 +158,15 @@ class _StreamRequestHandler(BaseHTTPRequestHandler):
         return None
 
 
-class _ReusableHTTPServer(HTTPServer):
-    """HTTPServer with SO_REUSEADDR set before bind."""
+class _ReusableHTTPServer(ThreadingMixIn, HTTPServer):
+    """HTTPServer with SO_REUSEADDR and per-connection threading.
+
+    ThreadingMixIn spawns a new thread for each incoming request,
+    allowing multiple users to stream MJPEG simultaneously.
+    daemon_threads ensures handler threads are cleaned up on shutdown.
+    """
     allow_reuse_address = True
+    daemon_threads = True
 
 
 class StreamServer:

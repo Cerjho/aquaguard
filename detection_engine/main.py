@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 import time
+import uuid
 import warnings
 from datetime import datetime, timezone
 
@@ -610,6 +611,7 @@ def main():
     from detection_engine.gpu_monitor import start_gpu_monitor, stop_gpu_monitor
     from detection_engine.memory_manager import get_gpu_memory_manager
     from detection_engine.pipeline.pipeline_manager import PipelineManager
+    from detection_engine.clip.clip_capture_engine import ClipCaptureEngine
 
     validate_runtime_settings()
     gpu_memory_manager = get_gpu_memory_manager()
@@ -754,6 +756,8 @@ def main():
 
     # ── Detection callback for alert processing ───────────────────────────────
     last_heartbeat_at = {}
+    last_snapshot_at = {}
+    clip_capture_engine = None  # Set before closure; assigned after pipeline start
 
     def _on_detection(zone_id: str, frame_data, filtered_detections: list):
         """Called by detection worker for each processed frame."""
@@ -763,8 +767,38 @@ def main():
         camera = registry.cameras.get(zone_id)
         camera_health = camera.health if camera else None
 
-        # Send heartbeat if due
         now_ts = time.time()
+
+        # Periodically write live artifacts for backend fallback/health checks (every 3 seconds)
+        # V2: Even though streaming uses in-memory buffers, the backend health endpoint
+        # still relies on the timestamp of the _latest.jpg and _status.json files.
+        if (now_ts - last_snapshot_at.get(zone_id, 0.0)) >= 3.0:
+            last_snapshot_at[zone_id] = now_ts
+            metadata = getattr(frame_data, 'metadata', {}) or {}
+            frame_timestamp = metadata.get("timestamp") or _utc_now_iso()
+            status_payload = {
+                "component": "detection_engine",
+                "zone_id": zone_id,
+                "status": camera_health.status if camera_health else "unknown",
+                "heartbeat_source": "annotated_feed",
+                "feed_mode": "annotated_snapshot_mjpeg",
+                "feed_status": camera_health.status if camera_health else "unknown",
+                "detection_count": len(filtered_detections),
+                "latest_frame_at": frame_timestamp,
+                "updated_at": _utc_now_iso(),
+                "fps_actual": round(camera_health.fps_actual, 2) if camera_health else 0.0,
+                "fps_target": camera_health.fps_target if camera_health else 30,
+                "corruption_rate": round(camera_health.corruption_rate, 4) if camera_health else 0.0,
+                "reconnect_count": camera_health.reconnect_count if camera_health else 0,
+                "uptime_seconds": round(camera_health.uptime_seconds, 1) if camera_health else 0.0,
+            }
+            try:
+                annotated = _annotate_live_frame(frame, filtered_detections, zone_id, frame_timestamp)
+                _write_live_zone_artifacts(_LIVE_DIR, zone_id, annotated, status_payload)
+            except (OSError, ValueError) as artifact_exc:
+                logger.warning("Live artifact update failed for zone %s: %s", zone_id, artifact_exc)
+
+        # Send heartbeat if due
         try:
             _send_zone_heartbeat_if_due(
                 mqtt_client=mqtt_client,
@@ -807,6 +841,23 @@ def main():
             )
 
             if should_alert:
+                # Generate a shared event_id for both clip and alert
+                shared_event_id = str(uuid.uuid4())
+
+                # Trigger clip capture BEFORE alert dispatch (captures pre-buffer snapshot)
+                if clip_capture_engine is not None:
+                    try:
+                        clip_capture_engine.start_clip(
+                            zone_id=zone_id,
+                            track_id=str(det.track_id),
+                            event_id=shared_event_id,
+                            timestamp=_utc_now_iso(),
+                        )
+                    except Exception as clip_exc:
+                        logger.warning(
+                            "Zone %s: clip capture failed: %s", zone_id, clip_exc,
+                        )
+
                 alert_engine.dispatch_alert(
                     zone_id=zone_id,
                     track_id=det.track_id,
@@ -816,8 +867,9 @@ def main():
                     yolo_confidence=float(det.confidence),
                     pose_confidence=None,
                     final_confidence=float(behavior_score),
+                    event_id=shared_event_id,
                 )
-                logger.info("Zone %s track %s: alert dispatched", zone_id, det.track_id)
+                logger.info("Zone %s track %s: alert dispatched (event=%s)", zone_id, det.track_id, shared_event_id)
             else:
                 alert_engine.dispatch_active_hardware_alert(
                     zone_id=zone_id,
@@ -900,12 +952,29 @@ def main():
     stream_server = StreamServer(dashboard_buffers=dashboard_buffers)
     stream_server.start()
 
+    # ── Start clip capture engine (local drowning event recording) ─────────
+    from backend.extensions import socketio
+    _CLIPS_DIR = os.path.join(_BASE_DIR, 'backend', 'clips')
+    clip_buffers = pipeline_manager.get_all_clip_buffers()
+    clip_capture_engine = ClipCaptureEngine(
+        clips_dir=_CLIPS_DIR,
+        clip_buffers=clip_buffers,
+        socketio=socketio,
+        mqtt_client=mqtt_client,
+    )
+    clip_capture_engine.start()
+    logger.info(
+        'ClipCaptureEngine started (%d zones, clips_dir=%s)',
+        len(clip_buffers), _CLIPS_DIR,
+    )
+
     logger.info("=" * 60)
     logger.info("AquaGuard Detection Engine RUNNING")
     logger.info("  Architecture: Multi-threaded Three-Lane Highway")
     logger.info("  Worker 1 (Camera):    30 FPS frame capture")
     logger.info("  Worker 2 (Detection): ~10-15 FPS AI inference")
     logger.info("  Worker 3 (Stream):    In-memory MJPEG @ %s", stream_server.url)
+    logger.info("  Worker 4 (Clips):     Local event clip capture")
     logger.info("="  * 60)
 
     # ── Main loop — just monitor, workers do the actual work ──────────────────
@@ -944,6 +1013,7 @@ def main():
         logger.info("KeyboardInterrupt received — shutting down ...")
     finally:
         # Stop in reverse order
+        clip_capture_engine.stop()
         stream_server.stop()
         pipeline_manager.stop_all()
         registry.stop_all()

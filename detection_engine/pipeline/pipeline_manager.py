@@ -30,6 +30,7 @@ from detection_engine.pipeline.frame_queue import (
 )
 from detection_engine.pipeline.detection_worker import DetectionWorker
 from detection_engine.pipeline.dashboard_buffer import DashboardRingBuffer
+from detection_engine.pipeline.clip_buffer import ClipRingBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,10 @@ class ZonePipeline:
         # Dashboard ring buffer (P0-Task 3: stream lane separation)
         # V2 fix: this is now the SOLE output path for streaming (no disk I/O)
         self.dashboard_buffer = DashboardRingBuffer(zone_id)
+
+        # Clip ring buffer — JPEG-compressed pre-event frames for clip capture
+        # ~3.6 MB/zone at default settings (240 slots × ~15 KB JPEG)
+        self.clip_buffer = ClipRingBuffer(zone_id)
 
         # Create detection worker (Worker 2)
         self.detection_worker = DetectionWorker(
@@ -188,6 +193,11 @@ class ZonePipeline:
                 # own write lock, independent of the detection queue lock.
                 self.dashboard_buffer.write(frame, time.monotonic())
 
+                # ── BRANCH 3: Clip capture path (always runs, never throttled) ──
+                # JPEG-encodes internally to keep memory at ~3.6 MB/zone.
+                # Independent write lock — no contention with detection or dashboard.
+                self.clip_buffer.write(frame, time.monotonic())
+
                 # Drain annotated frame to update latest detections overlay
                 annotated_data = self.annotated_frame_queue.get()
                 if (
@@ -237,6 +247,7 @@ class ZonePipeline:
             'raw_queue': self.raw_frame_queue.stats,
             'detection': self.detection_worker.stats,
             'dashboard_buffer_writes': self.dashboard_buffer.total_writes,
+            'clip_buffer_writes': self.clip_buffer.total_writes,
         }
 
 
@@ -325,6 +336,17 @@ class PipelineManager:
         with self._lock:
             return {
                 zone_id: pipeline.dashboard_buffer
+                for zone_id, pipeline in self.pipelines.items()
+            }
+
+    def get_all_clip_buffers(self) -> Dict[str, ClipRingBuffer]:
+        """Get all clip ring buffers keyed by zone_id.
+
+        Used by ClipCaptureEngine to snapshot pre-event frames.
+        """
+        with self._lock:
+            return {
+                zone_id: pipeline.clip_buffer
                 for zone_id, pipeline in self.pipelines.items()
             }
 

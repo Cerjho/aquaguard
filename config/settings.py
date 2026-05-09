@@ -205,6 +205,47 @@ ALERT_ACTIVE_MQTT_INTERVAL_SECONDS = float(
 SNAPSHOT_FORMAT = "jpg"
 SNAPSHOT_QUALITY = 85
 
+# ── Clip Capture (Local Drowning Event Recording) ────────────────────────────
+CLIP_PRE_BUFFER_SECONDS = int(
+    os.environ.get('CLIP_PRE_BUFFER_SECONDS', '8')
+)  # Seconds of pre-event footage retained in ring buffer
+CLIP_POST_BUFFER_SECONDS = int(
+    os.environ.get('CLIP_POST_BUFFER_SECONDS', '10')
+)  # Seconds of post-event footage captured after alert
+CLIP_BUFFER_SLOTS = int(
+    os.environ.get('CLIP_BUFFER_SLOTS', '240')
+)  # Ring buffer capacity (default: 30fps × 8s = 240)
+CLIP_FRAME_FORMAT = os.environ.get(
+    'CLIP_FRAME_FORMAT', 'jpeg'
+)  # 'jpeg' (low memory ~15KB/frame) or 'raw' (high memory ~2.76MB/frame)
+CLIP_JPEG_QUALITY = int(
+    os.environ.get('CLIP_JPEG_QUALITY', '85')
+)  # JPEG encode quality for clip ring buffer frames
+CLIP_VIDEO_FPS = int(
+    os.environ.get('CLIP_VIDEO_FPS', '30')
+)  # Output MP4 frame rate
+
+# Clip retention policy — configurable per review-status folder
+CLIP_PENDING_RETENTION_DAYS = int(
+    os.environ.get('CLIP_PENDING_RETENTION_DAYS', '30')
+)
+CLIP_CONFIRMED_RETENTION_DAYS = int(
+    os.environ.get('CLIP_CONFIRMED_RETENTION_DAYS', '90')
+)  # Review with legal before deployment
+CLIP_DISMISSED_RETENTION_DAYS = int(
+    os.environ.get('CLIP_DISMISSED_RETENTION_DAYS', '7')
+)
+
+# Disk space guard: skip clip writes when free space drops below this threshold
+CLIP_MIN_FREE_DISK_GB = float(
+    os.environ.get('CLIP_MIN_FREE_DISK_GB', '2.0')
+)
+
+# Per-zone hourly rate limit to prevent disk saturation from false-positive floods
+CLIP_MAX_PER_HOUR = int(
+    os.environ.get('CLIP_MAX_PER_HOUR', '20')
+)
+
 # ── Live feed + heartbeat ─────────────────────────────────────────────────────
 LIVE_SNAPSHOT_JPEG_QUALITY = 75
 DETECTION_ENGINE_HEARTBEAT_INTERVAL_SECONDS = 5
@@ -331,6 +372,28 @@ def validate_runtime_settings():
         raise ValueError('RTSP_READ_TIMEOUT_SECONDS must be >= 1')
     if RTSP_STALL_THRESHOLD_SECONDS < 1:
         raise ValueError('RTSP_STALL_THRESHOLD_SECONDS must be >= 1')
+
+    # ── Clip capture validation ──────────────────────────────────────────────
+    if CLIP_PRE_BUFFER_SECONDS < 1:
+        raise ValueError('CLIP_PRE_BUFFER_SECONDS must be >= 1')
+    if CLIP_POST_BUFFER_SECONDS < 1:
+        raise ValueError('CLIP_POST_BUFFER_SECONDS must be >= 1')
+    if CLIP_BUFFER_SLOTS < 1:
+        raise ValueError('CLIP_BUFFER_SLOTS must be >= 1')
+    if CLIP_JPEG_QUALITY < 1 or CLIP_JPEG_QUALITY > 95:
+        raise ValueError('CLIP_JPEG_QUALITY must be in range 1..95')
+    if CLIP_VIDEO_FPS < 1:
+        raise ValueError('CLIP_VIDEO_FPS must be >= 1')
+    if CLIP_PENDING_RETENTION_DAYS < 1:
+        raise ValueError('CLIP_PENDING_RETENTION_DAYS must be >= 1')
+    if CLIP_CONFIRMED_RETENTION_DAYS < 1:
+        raise ValueError('CLIP_CONFIRMED_RETENTION_DAYS must be >= 1')
+    if CLIP_DISMISSED_RETENTION_DAYS < 1:
+        raise ValueError('CLIP_DISMISSED_RETENTION_DAYS must be >= 1')
+    if CLIP_MIN_FREE_DISK_GB < 0:
+        raise ValueError('CLIP_MIN_FREE_DISK_GB must be >= 0')
+    if CLIP_MAX_PER_HOUR < 1:
+        raise ValueError('CLIP_MAX_PER_HOUR must be >= 1')
 
     env_name = resolve_backend_environment()
     if env_name == 'production':

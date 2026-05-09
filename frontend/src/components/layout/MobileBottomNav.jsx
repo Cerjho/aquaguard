@@ -12,6 +12,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useAlertState } from '../../context/AlertContext.jsx';
 
 const navItems = [
   {
@@ -62,6 +63,7 @@ function MobileBottomNav() {
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { pendingClipsCount } = useAlertState();
   const drawerRef = useRef(null);
 
   // Close drawer when clicking outside
@@ -209,9 +211,16 @@ function MobileBottomNav() {
             >
               {({ isActive }) => (
                 <>
-                  <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
-                    {item.icon}
-                  </span>
+                  <div className="relative">
+                    <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
+                      {item.icon}
+                    </span>
+                    {item.to === '/incidents' && pendingClipsCount > 0 && (
+                      <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.125rem] text-center shadow-sm">
+                        {pendingClipsCount}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-medium leading-none">
                     {item.label}
                   </span>

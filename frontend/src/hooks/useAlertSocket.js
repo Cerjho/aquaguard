@@ -26,6 +26,7 @@ import logger from '../utils/logger';
  * @param {Function} [options.onDetectionEvent] - Called when detection_event is received
  * @param {Function} [options.onCameraStatus] - Called when camera_status is received
  * @param {Function} [options.onSystemStatus] - Called when system_status is received
+ * @param {Function} [options.onClipReady] - Called when clip_ready is received
  * @param {Function} [options.onConnectionChange] - Called on socket connect/disconnect/error
  */
 function useAlertSocket({
@@ -34,6 +35,7 @@ function useAlertSocket({
   onDetectionEvent,
   onCameraStatus,
   onSystemStatus,
+  onClipReady,
   onConnectionChange,
 } = {}) {
   const socketRef = useRef(null);
@@ -164,6 +166,13 @@ function useAlertSocket({
     if (typeof onSystemStatus === 'function') {
       socket.on('system_status', (payload) => {
         onSystemStatus(payload);
+      });
+    }
+
+    if (typeof onClipReady === 'function') {
+      socket.on('clip_ready', (payload) => {
+        logger.info('[AquaGuard WS] clip_ready received:', payload);
+        onClipReady(payload);
       });
     }
 

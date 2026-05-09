@@ -26,7 +26,6 @@ describe('AlertHistory shared triage filters', () => {
     useFilterState.mockReturnValue({
       triageFilters: {
         zone_id: 'zone_01',
-        status: 'unacknowledged',
         min_confidence: '0.7',
         from: '',
         to: '',
@@ -61,13 +60,12 @@ describe('AlertHistory shared triage filters', () => {
           page: 1,
           limit: 10,
           zone_id: 'zone_01',
-          status: 'unacknowledged',
           min_confidence: 0.7,
         }),
       });
     });
 
-    const matches = await screen.findAllByText(/Unacknowledged/i);
+    const matches = await screen.findAllByText(/Drowning Alert/i);
     expect(matches.length).toBeGreaterThan(0);
   });
 

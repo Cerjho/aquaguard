@@ -6,7 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useSocketState, useSystemState } from '../../context/AlertContext.jsx';
+import { useSocketState, useSystemState, useAlertState } from '../../context/AlertContext.jsx';
 import { normalizeServiceStatus } from '../../utils/statusHelpers';
 import BrandMark from './BrandMark.jsx';
 
@@ -63,6 +63,7 @@ function Sidebar() {
   const [clockStr, setClockStr] = useState('');
   const { socketConnected } = useSocketState();
   const { systemStatus } = useSystemState();
+  const { pendingClipsCount } = useAlertState();
 
   // Live clock
   useEffect(() => {
@@ -144,7 +145,12 @@ function Sidebar() {
                 transition={{ delay: index * 0.05 }}
               >
                 {item.icon}
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.to === '/incidents' && pendingClipsCount > 0 && (
+                  <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[1.25rem] text-center shadow-sm">
+                    {pendingClipsCount}
+                  </span>
+                )}
                 {isActive && (
                   <motion.div
                     layoutId="sidebarActiveBar"

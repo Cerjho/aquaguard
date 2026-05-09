@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from './useApi';
 import {
   API_BASE_URL,
@@ -16,6 +16,11 @@ import {
   WEBRTC_RETRY_INTERVAL_MS,
 } from '../utils/constants';
 
+// ── Constants ────────────────────────────────────────────────────────────
+// Exponential backoff: 1.5s → 3s → 6s → 12s → 24s → cap at 30s
+const BACKOFF_BASE_MS = WEBRTC_RETRY_INTERVAL_MS;
+const BACKOFF_MAX_MS = 30000;
+
 function toIceServersFromEnv() {
   const servers = [];
   const stun = (WEBRTC_STUN_URLS || '').split(',').map((v) => v.trim()).filter(Boolean);
@@ -30,7 +35,20 @@ function toIceServersFromEnv() {
   return servers;
 }
 
-export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStream, isActive }) {
+/**
+ * useWebRTCStream — Dual-transport stream hook.
+ *
+ * Design principle: **MJPEG-first, WebRTC as a progressive upgrade.**
+ *
+ * The MJPEG fallback stream starts immediately and is never interrupted.
+ * WebRTC negotiates silently in the background. Only when WebRTC actually
+ * delivers video (ontrack fires) does the hook switch `transport` from
+ * 'fallback' to 'webrtc'. If WebRTC fails, MJPEG continues undisturbed.
+ *
+ * Retries use exponential backoff (1.5s → 3s → … → 30s cap) so a broken
+ * TURN server does not generate constant network chatter.
+ */
+export default function useWebRTCStream({ zoneId, streamToken, streamSessionId, shouldRenderStream, isActive }) {
   const [transport, setTransport] = useState('fallback');
   const [webrtcState, setWebrtcState] = useState('idle');
   const [streamUrl, setStreamUrl] = useState(null);
@@ -41,22 +59,37 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
   const retryTimerRef = useRef(null);
   const sessionIdRef = useRef(null);
   const fallbackUrlRef = useRef(null);
+  const activeFallbackSessionRef = useRef(null);
   const negotiatedRef = useRef(false);
   const stoppedRef = useRef(false);
   const retryScheduledRef = useRef(false);
+  const retryCountRef = useRef(0);
   const pollFailureCountRef = useRef(0);
   const pollIntervalMsRef = useRef(WEBRTC_STATUS_POLL_MS);
 
-  const fallbackUrl = useMemo(() => {
-    if (!zoneId || !streamToken) return null;
-    return `${API_BASE_URL}/api/v1/cameras/${zoneId}/stream?token=${encodeURIComponent(streamToken)}`;
-  }, [zoneId, streamToken]);
-
+  // ── Keep fallback URL in sync (session-stable) ──────────────────────
   useEffect(() => {
-    fallbackUrlRef.current = fallbackUrl;
-  }, [fallbackUrl]);
+    if (!zoneId || !streamToken) {
+      fallbackUrlRef.current = null;
+      activeFallbackSessionRef.current = null;
+      return;
+    }
+    const sessionKey = `${zoneId}-${streamSessionId || ''}`;
+    if (activeFallbackSessionRef.current !== sessionKey) {
+      activeFallbackSessionRef.current = sessionKey;
+      fallbackUrlRef.current = `${API_BASE_URL}/api/v1/cameras/${zoneId}/stream?token=${encodeURIComponent(streamToken)}&session=${encodeURIComponent(streamSessionId || Date.now())}`;
+      
+      // Push updated URL to any active fallback stream
+      setStreamUrl((currentUrl) => {
+        if (currentUrl) return fallbackUrlRef.current;
+        return currentUrl;
+      });
+    }
+  }, [zoneId, streamToken, streamSessionId]);
 
+  // ── Main effect — manages both transports ───────────────────────────
   useEffect(() => {
+    // Gate: if WebRTC is disabled or stream shouldn't render, go straight to MJPEG
     if (!WEBRTC_ENABLE || !zoneId || !shouldRenderStream || !isActive) {
       setTransport('fallback');
       setWebrtcState(WEBRTC_ENABLE ? 'idle' : 'disabled');
@@ -72,10 +105,17 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       return undefined;
     }
 
+    // ─── Always start MJPEG immediately ──────────────────────────────
+    // This is the key design decision: the user sees a live stream from
+    // frame one. WebRTC upgrades it later if possible.
+    setTransport('fallback');
+    setStreamUrl(fallbackUrlRef.current);
+
     let negotiationTimeoutId = null;
     stoppedRef.current = false;
     negotiatedRef.current = false;
     retryScheduledRef.current = false;
+    retryCountRef.current = 0;
     pollFailureCountRef.current = 0;
     pollIntervalMsRef.current = WEBRTC_STATUS_POLL_MS;
 
@@ -106,23 +146,37 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       setVideoStream(null);
     };
 
+    // ── Exponential backoff retry ────────────────────────────────────
+    // MJPEG stays running. Only the WebRTC peer is torn down.
     const scheduleRetry = () => {
       if (stoppedRef.current) return;
       if (retryScheduledRef.current) return;
       retryScheduledRef.current = true;
+      retryCountRef.current += 1;
       clearTimers();
       teardownPeer();
-      setTransport('fallback');
+
+      // If WebRTC was previously connected and just dropped, revert to
+      // MJPEG so the user still has video.
+      if (transport === 'webrtc' || negotiatedRef.current) {
+        setTransport('fallback');
+        setStreamUrl(fallbackUrlRef.current);
+      }
+
+      // Exponential backoff: 1.5s → 3s → 6s → 12s → 24s → 30s cap
+      const delay = Math.min(
+        BACKOFF_BASE_MS * Math.pow(2, retryCountRef.current - 1),
+        BACKOFF_MAX_MS
+      );
       setWebrtcState('retrying');
-      setStreamUrl(fallbackUrlRef.current);
+
       retryTimerRef.current = setTimeout(() => {
         retryScheduledRef.current = false;
         if (!stoppedRef.current) startWebRTC();
-      }, WEBRTC_RETRY_INTERVAL_MS);
+      }, delay);
     };
 
     // ICE restart: re-use existing peer connection with fresh candidates.
-    // Much faster than a full teardown + renegotiation.
     const attemptIceRestart = async () => {
       const pc = pcRef.current;
       if (!pc || !sessionIdRef.current) {
@@ -207,11 +261,12 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       }
     };
 
+    // ── WebRTC negotiation (background, non-destructive) ─────────────
+    // Key: we do NOT change `transport` or `streamUrl` here.
+    // MJPEG stays active. Only `ontrack` promotes to WebRTC.
     const startWebRTC = async () => {
       try {
-        setTransport('webrtc');
         setWebrtcState('connecting');
-        setStreamUrl(null);
         teardownPeer();
 
         const rtcConfig = await fetchIceConfig();
@@ -219,8 +274,10 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         pcRef.current = pc;
         pollFailureCountRef.current = 0;
 
+        // ── SUCCESS: WebRTC delivers video → promote transport ──────
         pc.ontrack = (event) => {
           negotiatedRef.current = true;
+          retryCountRef.current = 0; // Reset backoff on success
           const media = event.streams?.[0] || null;
           setVideoStream(media);
           setWebrtcState('connected');
@@ -273,6 +330,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
         const offerStatus = offerData.status;
         const fallbackActive = Boolean(offerData.fallback?.active);
         if (offerStatus === 'fallback_active' || fallbackActive) {
+          // Server says "just use MJPEG" — no need to retry
           clearTimers();
           teardownPeer();
           setTransport('fallback');
@@ -307,6 +365,7 @@ export default function useWebRTCStream({ zoneId, streamToken, shouldRenderStrea
       if (pc && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
         attemptIceRestart();
       } else if (!pc) {
+        retryCountRef.current = 0; // Fresh network = fresh backoff
         scheduleRetry();
       }
     };

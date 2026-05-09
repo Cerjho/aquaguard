@@ -18,7 +18,7 @@ import { normalizeServiceStatus } from '../../utils/statusHelpers';
 const STREAM_TOKEN_REFRESH_BUFFER_SECONDS = 5;
 const STREAM_REFRESH_CHECK_MS = 5000;
 const HIDDEN_TOKEN_REFRESH_CHECK_MS = 20000;
-const MAX_GRID_STREAMS = 1;
+const MAX_GRID_STREAMS = 6;
 
 function CameraGrid({ reloadToken = 0 }) {
   const prefersReducedMotion = useReducedMotion();
@@ -305,11 +305,23 @@ function CameraGrid({ reloadToken = 0 }) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [focusedCamera, closeFocus]);
 
-  const focusedStreamUrl = useMemo(() => {
-    if (!focusedCamera?.zone_id) return null;
+  const [focusedStreamUrl, setFocusedStreamUrl] = useState(null);
+  const activeFocusSessionRef = useRef(null);
+
+  useEffect(() => {
+    if (!focusedCamera?.zone_id) {
+      setFocusedStreamUrl(null);
+      activeFocusSessionRef.current = null;
+      return;
+    }
     const token = streamTokens[focusedCamera.zone_id]?.token;
-    if (!token) return null;
-    return `${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}&session=${encodeURIComponent(streamSessionId)}`;
+    if (!token) return;
+
+    const sessionKey = `${focusedCamera.zone_id}-${streamSessionId}`;
+    if (activeFocusSessionRef.current !== sessionKey) {
+      activeFocusSessionRef.current = sessionKey;
+      setFocusedStreamUrl(`${API_BASE_URL}/api/v1/cameras/${focusedCamera.zone_id}/stream?token=${encodeURIComponent(token)}&session=${encodeURIComponent(streamSessionId)}`);
+    }
   }, [focusedCamera, streamTokens, streamSessionId]);
 
   const isDetectionEngineOnline = useMemo(() => {

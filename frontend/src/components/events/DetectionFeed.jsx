@@ -9,7 +9,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../hooks/useApi';
-import { formatDateTime } from '../../utils/dateFormat';
+import { formatDateTime, timeAgo } from '../../utils/dateFormat';
 import { useAlertState, useSocketState } from '../../context/AlertContext.jsx';
 import {
   mapEventClassLabel,
@@ -160,8 +160,8 @@ function DetectionFeed({ headerTabs }) {
                       {confidence != null ? ` ${(confidence * 100).toFixed(0)}%` : ''}
                     </p>
                   </div>
-                  <time className="shrink-0 text-xs text-slate-500 whitespace-nowrap font-mono">
-                    {formatDateTime(eventTime)}
+                  <time className="shrink-0 text-xs text-slate-500 whitespace-nowrap font-mono" title={formatDateTime(eventTime)}>
+                    {timeAgo(eventTime)}
                   </time>
                 </motion.li>
               );

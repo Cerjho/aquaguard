@@ -160,7 +160,7 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
     ? systemStatus.recent_detections.length
     : (typeof systemStatus?.detection_count === 'number'
       ? systemStatus.detection_count
-      : (typeof detectionFreshness === 'number' ? detectionFreshness : 0));
+      : 0);
   const showDashboardDiagnostics = showCameraIndicators && !showCameraStatusList;
   const onlineRatio = cameraEntries.length > 0 ? (onlineCameraCount / cameraEntries.length) * 100 : 0;
 
@@ -212,9 +212,9 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
               <div className="rounded-lg bg-white px-3 py-3">
                 <p className="text-[11px] uppercase tracking-wider text-slate-400">AI Detections</p>
                 <div className="mt-1 flex items-end justify-between">
-                  <p className="text-xl font-bold text-slate-800">{aiDetectionCount}</p>
+                  <p className="text-xl font-bold text-slate-800">{aiDetectionCount.toLocaleString()}</p>
                   <span className={`text-xs font-semibold ${aiOnline ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {aiOnline ? 'Live' : 'Degraded'}
+                    {aiOnline ? 'Live' : 'Offline'}
                   </span>
                 </div>
               </div>
@@ -239,8 +239,8 @@ function SystemStatus({ showCameraIndicators = true, showCameraStatusList = true
                     style={{ width: `${onlineRatio}%` }}
                   />
                 </div>
-                <p className={`mt-2 text-[11px] font-semibold ${degradedCameraCount > 0 ? 'text-amber-500' : 'text-slate-500'}`}>
-                  {degradedCameraCount > 0 ? `${degradedCameraCount} degraded` : 'All camera streams healthy'}
+                <p className={`mt-2 text-[11px] font-semibold ${staleCameraCount > 0 ? 'text-rose-500' : degradedCameraCount > 0 ? 'text-amber-500' : 'text-slate-500'}`}>
+                  {staleCameraCount > 0 ? `${staleCameraCount} offline` : degradedCameraCount > 0 ? `${degradedCameraCount} degraded` : 'All camera streams healthy'}
                 </p>
               </div>
 

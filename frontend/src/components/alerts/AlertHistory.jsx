@@ -284,7 +284,10 @@ function AlertHistory({ headerTabs }) {
     if (!value) return '—';
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return String(value);
-    return formatDateTime(parsed);
+    return parsed.toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', second: '2-digit'
+    });
   };
 
   const formatConfidence = (alert) => {
@@ -297,7 +300,8 @@ function AlertHistory({ headerTabs }) {
   };
 
   const alertBadge = () => (
-    <span className="px-2.5 py-1 rounded-full text-xs font-semibold border bg-rose-100 text-rose-700 border-rose-200">
+    <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-600/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse" />
       Drowning Alert
     </span>
   );
@@ -470,20 +474,32 @@ function AlertHistory({ headerTabs }) {
                 key={getIncidentKey(alert)}
                 type="button"
                 onClick={() => setSelectedIncident(alert)}
-                className="w-full text-left px-5 py-4 hover:bg-slate-50 hover:shadow-sm cursor-pointer transition-all border-l-4 border-transparent hover:border-l-rose-400"
+                className="w-full text-left px-5 py-4 hover:bg-slate-50 hover:shadow-sm cursor-pointer transition-all border-l-4 border-transparent hover:border-l-rose-400 group flex items-center justify-between gap-4"
                 data-testid="incident-row"
               >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                  <div className="md:col-span-5">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {alert.zone_name || alert.zone_id || '—'}
+                {/* Left: Zone & Time */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-bold text-slate-900 truncate">
+                      {alert.zone_name || alert.zone_id || 'Unknown Zone'}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">{formatAlertTime(alert)}</p>
+                    {alertBadge()}
                   </div>
-                  <div className="md:col-span-3 text-sm text-slate-700">
-                    Confidence: {formatConfidence(alert)}
+                  <p className="text-xs text-slate-500 mt-1 font-mono">{formatAlertTime(alert)}</p>
+                </div>
+
+                {/* Right: Confidence & Icon */}
+                <div className="flex items-center gap-6 shrink-0">
+                  <div className="hidden sm:flex flex-col items-end">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">Confidence</p>
+                    <p className="text-sm font-semibold text-slate-700 font-mono">{formatConfidence(alert)}</p>
                   </div>
-                  <div className="md:col-span-4 flex justify-start md:justify-end">{alertBadge()}</div>
+                  
+                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-500 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               </button>
             ))}

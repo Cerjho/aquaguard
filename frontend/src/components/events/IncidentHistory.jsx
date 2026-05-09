@@ -110,28 +110,48 @@ function IncidentHistory({ headerTabs }) {
               const eventTime = mapEventTimestamp(ev);
               const key = ev.id || ev.event_id || `${eventTime}-${idx}`;
               return (
-                <div key={key} className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-all flex items-center gap-3">
+                <div key={key} className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-all flex items-start gap-4">
                   <span
-                    className={`shrink-0 w-2.5 h-2.5 rounded-full ${
-                      ev.alert_triggered ? 'bg-rose-500 animate-pulse' : 'bg-blue-400'
+                    className={`mt-1.5 shrink-0 w-2.5 h-2.5 rounded-full shadow-sm ${
+                      ev.alert_triggered ? 'bg-rose-500 shadow-rose-500/50 animate-pulse' : 'bg-sky-400 shadow-sky-400/50'
                     }`}
                     title={ev.alert_triggered ? 'Alert triggered' : 'Detection only'}
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center flex-1">
-                    <div className="md:col-span-4">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
-                        {mapEventClassLabel(ev)}
+                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    {/* Event Info */}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 truncate">
+                          {mapEventClassLabel(ev)}
+                        </p>
                         {ev.alert_triggered && (
-                          <span className="ml-2 text-xs text-rose-600 font-bold">⚠ ALERT</span>
+                          <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-600/20">
+                            ALERT
+                          </span>
                         )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 font-mono">
+                        {new Date(eventTime).toLocaleString(undefined, {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                          hour: 'numeric', minute: '2-digit', second: '2-digit'
+                        })}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">{formatDateTime(eventTime)}</p>
                     </div>
-                    <div className="md:col-span-4 text-sm text-slate-700">
-                      Zone: {ev.zone_name || ev.zone_id || '—'}
-                    </div>
-                    <div className="md:col-span-4 text-sm text-slate-700 text-left md:text-right">
-                      Confidence: {confidence != null ? `${(confidence * 100).toFixed(1)}%` : '—'}
+
+                    {/* Zone & Confidence */}
+                    <div className="flex items-center gap-4 sm:gap-6 shrink-0">
+                      <div className="hidden sm:flex flex-col items-end">
+                        <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">Zone</p>
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-500/10">
+                          {ev.zone_name || ev.zone_id || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="hidden sm:flex flex-col items-end">
+                        <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">Confidence</p>
+                        <p className="text-sm font-semibold text-slate-700 font-mono">
+                          {confidence != null ? `${(confidence * 100).toFixed(1)}%` : '—'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

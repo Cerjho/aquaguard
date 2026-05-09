@@ -218,9 +218,14 @@ def stream_camera(zone_id):
 
     # V2 fix: read from detection engine's in-memory stream server
     # Falls back to disk if stream server is not available
+    # In Docker: STREAM_SERVER_URL=http://detection_engine:8765
+    # Local dev: defaults to http://127.0.0.1:8765
     import requests as http_requests
-    stream_server_port = int(os.environ.get('STREAM_SERVER_PORT', '8765'))
-    stream_server_url = f'http://127.0.0.1:{stream_server_port}/stream/{zone_id}'
+    stream_server_base = os.environ.get(
+        'STREAM_SERVER_URL',
+        f'http://127.0.0.1:{os.environ.get("STREAM_SERVER_PORT", "8765")}',
+    )
+    stream_server_url = f'{stream_server_base}/stream/{zone_id}'
 
     def generate_from_stream_server():
         """Proxy MJPEG stream from detection engine's in-memory server."""

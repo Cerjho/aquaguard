@@ -139,6 +139,8 @@ services:
       - AQUAGUARD_API_KEY=${AQUAGUARD_API_KEY}
       - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD}
       - SEED_GUARD_PASSWORD=${SEED_GUARD_PASSWORD}
+      # Stream server: detection engine's in-memory MJPEG endpoint
+      - STREAM_SERVER_URL=http://detection_engine:8765
     volumes:
       - ./backend/snapshots:/app/snapshots
     depends_on:
@@ -233,6 +235,10 @@ services:
       - GLOG_minloglevel=3
       - GLOG_logtostderr=0
       - ABSL_LOG_LEVEL=3
+      # Stream server port (in-memory MJPEG)
+      - STREAM_SERVER_PORT=${STREAM_SERVER_PORT:-8765}
+    ports:
+      - "8765:8765"
     volumes:
       - ./detection_engine/models:/app/detection_engine/models:ro
       - ./config:/app/config:ro

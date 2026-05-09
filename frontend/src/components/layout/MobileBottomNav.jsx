@@ -123,20 +123,20 @@ function MobileBottomNav() {
               aria-modal="true"
               aria-label="Account menu"
             >
-              <div className="mx-3 rounded-2xl bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-[0_-8px_30px_rgba(15,23,42,0.12)] overflow-hidden">
+              <div className="mx-3 rounded-2xl bg-[#0a0f18]/95 backdrop-blur-xl border border-slate-800 shadow-[0_-8px_32px_rgba(0,0,0,0.8)] overflow-hidden">
                 {/* User info header */}
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center shrink-0">
-                    <svg className="h-5 w-5 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
+                  <div className="h-10 w-10 rounded bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
+                    <svg className="h-5 w-5 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {currentUser?.username || 'Unknown User'}
+                    <p className="text-sm font-mono font-bold tracking-wider text-slate-200 uppercase truncate">
+                      {currentUser?.username || 'UNKNOWN'}
                     </p>
-                    <p className="text-xs text-slate-500 capitalize truncate">
-                      {currentUser?.role || 'User'}
+                    <p className="text-[10px] font-mono tracking-widest text-slate-500 uppercase truncate">
+                      {currentUser?.role || 'USER'}
                     </p>
                   </div>
                 </div>
@@ -144,7 +144,7 @@ function MobileBottomNav() {
                 {/* Actions */}
                 <div className="p-2">
                   <button
-                    className="w-full text-left px-4 py-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 rounded-xl transition-colors flex items-center gap-3"
+                    className="w-full text-left px-4 py-3.5 text-xs font-mono font-bold tracking-wider uppercase text-slate-300 hover:bg-slate-900 active:bg-slate-800 rounded-xl transition-colors flex items-center gap-3"
                     onClick={() => {
                       setIsDrawerOpen(false);
                       navigate('/settings/password');
@@ -157,12 +157,12 @@ function MobileBottomNav() {
                     Change Password
                   </button>
 
-                  <div className="h-px bg-slate-100 mx-2 my-1" />
+                  <div className="h-px bg-slate-800 mx-2 my-1" />
 
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="w-full text-left px-4 py-3.5 text-sm font-medium text-rose-600 hover:bg-rose-50 active:bg-rose-100 rounded-xl transition-colors flex items-center justify-between gap-3"
+                    className="w-full text-left px-4 py-3.5 text-xs font-mono font-bold tracking-wider uppercase text-rose-400 hover:bg-rose-950/30 active:bg-rose-900/50 rounded-xl transition-colors flex items-center justify-between gap-3"
                     style={{ touchAction: 'manipulation' }}
                     aria-label="Logout"
                   >
@@ -188,7 +188,7 @@ function MobileBottomNav() {
 
       {/* Bottom Navigation Bar */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white/90 backdrop-blur-xl border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]"
+        className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-[#0a0f18]/90 backdrop-blur-xl border-t border-slate-800 shadow-[0_-4px_32px_rgba(0,0,0,0.8)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Mobile navigation"
       >
@@ -202,8 +202,8 @@ function MobileBottomNav() {
               className={({ isActive }) =>
                 `flex-1 flex flex-col items-center justify-center gap-1 transition-colors duration-200 touch-manipulation ${
                   isActive
-                    ? 'text-blue-600'
-                    : 'text-slate-500 active:text-slate-800'
+                    ? 'text-cyan-400'
+                    : 'text-slate-500 active:text-slate-300'
                 }`
               }
               style={{ touchAction: 'manipulation', minHeight: '44px' }}
@@ -221,13 +221,13 @@ function MobileBottomNav() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] font-medium leading-none">
+                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase leading-none mt-1">
                     {item.label}
                   </span>
                   {isActive && (
                     <motion.span
                       layoutId="mobileActiveTab"
-                      className="absolute bottom-0 h-0.5 w-8 bg-blue-600 rounded-t-full"
+                      className="absolute bottom-0 h-0.5 w-8 bg-cyan-400 rounded-t shadow-[0_0_8px_rgba(34,211,238,0.8)]"
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
@@ -237,25 +237,24 @@ function MobileBottomNav() {
           ))}
 
           {/* Vertical divider */}
-          <div className="w-px bg-slate-100 self-stretch my-3" />
+          <div className="w-px bg-slate-800 self-stretch my-3" />
 
-          {/* User / Account button */}
           <button
             type="button"
             onClick={() => setIsDrawerOpen((v) => !v)}
-            className="flex flex-col items-center justify-center gap-1 px-4 text-slate-500 active:text-slate-800 transition-colors duration-200"
+            className="flex flex-col items-center justify-center gap-1 px-4 text-slate-500 active:text-slate-300 transition-colors duration-200"
             style={{ touchAction: 'manipulation', minHeight: '44px', minWidth: '60px' }}
             aria-label="Account menu"
             aria-expanded={isDrawerOpen}
           >
-            <div className={`h-7 w-7 rounded-full border flex items-center justify-center transition-colors duration-200 ${
-              isDrawerOpen ? 'bg-blue-50 border-blue-300' : 'bg-slate-100 border-slate-200'
+            <div className={`h-7 w-7 rounded border flex items-center justify-center transition-colors duration-200 ${
+              isDrawerOpen ? 'bg-slate-800 border-slate-700' : 'bg-[#0a0f18] border-slate-800'
             }`}>
-              <svg className={`h-4 w-4 transition-colors duration-200 ${isDrawerOpen ? 'text-blue-600' : 'text-slate-500'}`} fill="currentColor" viewBox="0 0 24 24">
+              <svg className={`h-4 w-4 transition-colors duration-200 ${isDrawerOpen ? 'text-cyan-400' : 'text-slate-500'}`} fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
               </svg>
             </div>
-            <span className="text-[10px] font-medium leading-none">
+            <span className="text-[10px] font-mono font-bold tracking-wider uppercase leading-none mt-1">
               Account
             </span>
           </button>

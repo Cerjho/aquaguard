@@ -24,6 +24,8 @@ import {
 } from 'recharts';
 import api from '../../hooks/useApi';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
+import { useSystemState, useSocketState } from '../../context/AlertContext.jsx';
+import { normalizeServiceStatus } from '../../utils/statusHelpers';
 import PremiumLoader from '../layout/PremiumLoader.jsx';
 
 const ZONE_LINE_COLORS = ['#10b981', '#f59e0b', '#f43f5e', '#3b82f6', '#06b6d4', '#64748b'];
@@ -31,6 +33,8 @@ const ZONE_LINE_COLORS = ['#10b981', '#f59e0b', '#f43f5e', '#3b82f6', '#06b6d4',
 function AnalyticsChart() {
   const prefersReducedMotion = useReducedMotion();
   const { analyticsSnapshot, setAnalyticsSnapshot } = useDataCache();
+  const { cameraStatuses, systemStatus } = useSystemState();
+  const { socketConnected } = useSocketState();
   const [zoneData, setZoneData] = useState([]);
   const [timeData, setTimeData] = useState([]);
   const [eventsData, setEventsData] = useState([]);
@@ -265,7 +269,13 @@ function AnalyticsChart() {
 
   const kpis = useMemo(() => {
     const totalAlerts = zoneData.reduce((sum, zone) => sum + (zone.alerts || 0), 0);
-    const activeCameras = zoneData.length;
+    
+    // Use real active cameras from system state, matching dashboard
+    const cameraEntries = Object.values(cameraStatuses || {});
+    const activeCameras = cameraEntries.filter(
+      (cam) => normalizeServiceStatus(cam.status) === 'online'
+    ).length;
+
     let confidenceTotal = 0;
     let confidenceCount = 0;
 
@@ -283,13 +293,25 @@ function AnalyticsChart() {
       ? (confidenceTotal / confidenceCount) * 100
       : 0;
 
+    // Use real uptime logic, matching dashboard
+    let uptimeVal = 0;
+    const subsystems = systemStatus?.subsystems;
+    if (!subsystems) {
+      uptimeVal = socketConnected ? 99 : 0;
+    } else {
+      const deOnline = normalizeServiceStatus(subsystems.detection_engine?.status) === 'online';
+      const apiOnline = socketConnected;
+      if (deOnline && apiOnline) uptimeVal = 99;
+      else if (deOnline || apiOnline) uptimeVal = 75;
+    }
+
     return {
       totalAlerts,
       avgConfidence,
-      systemUptime: `${Math.max(90, 99 - Math.min(8, activeCameras / 2)).toFixed(1)}%`,
+      systemUptime: `${uptimeVal}%`,
       activeCameras,
     };
-  }, [zoneData, eventsData, normalizeConfidence]);
+  }, [zoneData, eventsData, normalizeConfidence, cameraStatuses, systemStatus, socketConnected]);
 
   const applyAnalyticsData = useCallback((data) => {
     setZoneData(data.zoneData || []);
@@ -396,15 +418,15 @@ function AnalyticsChart() {
     return <PremiumLoader />;
   }
 
-  if (error) {
+    if (error) {
       return (
-      <div className="rounded-xl bg-rose-100 border border-rose-200 p-6 text-center" role="alert">
-        <p className="text-rose-700">{error}</p>
+      <div className="rounded border border-rose-500/30 bg-rose-500/10 p-6 text-center" role="alert">
+        <p className="text-[10px] font-mono tracking-widest uppercase text-rose-400">{error}</p>
         <button
           onClick={fetchSummary}
-          className="mt-3 btn-danger"
+          className="mt-3 px-4 py-2 rounded text-[10px] font-mono font-bold tracking-widest uppercase bg-rose-500/20 text-rose-300 border border-rose-500/50 hover:bg-rose-500 hover:text-white transition-all shadow-[0_0_12px_rgba(244,63,94,0.3)]"
         >
-          Retry
+          RETRY
         </button>
       </div>
     );
@@ -468,22 +490,22 @@ function AnalyticsChart() {
         ].map((card, idx) => (
           <motion.div
             key={card.key}
-            className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+            className="relative overflow-hidden rounded border border-slate-800 bg-[#05080f] p-4 shadow-[0_4px_16px_rgba(0,0,0,0.5)] transition-shadow hover:shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
             initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: prefersReducedMotion ? 0.01 : 0.35, delay: prefersReducedMotion ? 0 : idx * 0.06 }}
           >
-            <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl" style={{ background: card.accent }} />
+            <div className="absolute inset-x-0 top-0 h-0.5 rounded-t" style={{ background: card.accent, boxShadow: `0 0 8px ${card.accent}80` }} />
             <div className="flex items-center gap-3">
               <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0"
-                style={{ background: `${card.accent}18` }}
+                className="flex h-10 w-10 items-center justify-center rounded border shrink-0"
+                style={{ background: `${card.accent}18`, borderColor: `${card.accent}40` }}
               >
                 {card.icon}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{card.label}</p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">{card.value}</p>
+                <p className="text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-slate-500">{card.label}</p>
+                <p className="text-xl font-mono font-bold tracking-widest text-slate-200 mt-1">{card.value}</p>
               </div>
             </div>
           </motion.div>
@@ -492,37 +514,37 @@ function AnalyticsChart() {
 
       <div className="grid min-h-[42rem] grid-cols-1 gap-3 lg:h-full lg:grid-cols-3 lg:grid-rows-2">
         <InteractiveBentoCard
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md lg:col-span-2 lg:row-span-1 min-h-0"
+          className="rounded border border-slate-800 bg-[#0a0f18] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] lg:col-span-2 lg:row-span-1 min-h-0"
           prefersReducedMotion={prefersReducedMotion}
           delay={0.15}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">
-              {isComparativeView ? 'Comparative Temporal Analysis' : 'Incidents by Time of Day'}
+            <h3 className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase">
+              {isComparativeView ? 'COMPARATIVE TEMPORAL ANALYSIS' : 'INCIDENTS BY TIME OF DAY'}
             </h3>
             <div className="flex items-center gap-2">
-              <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-0.5">
+              <div className="inline-flex rounded border border-slate-800 bg-slate-900 p-0.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]">
                 <button
                   type="button"
                   onClick={() => setIsComparativeView(false)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${!isComparativeView ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`rounded px-2.5 py-1 text-[9px] font-mono tracking-widest uppercase transition-colors ${!isComparativeView ? 'bg-slate-800 text-slate-200 shadow-sm border border-slate-700' : 'text-slate-500 hover:text-slate-400 border border-transparent'}`}
                 >
-                  All
+                  ALL
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsComparativeView(true)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${isComparativeView ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`rounded px-2.5 py-1 text-[9px] font-mono tracking-widest uppercase transition-colors ${isComparativeView ? 'bg-slate-800 text-slate-200 shadow-sm border border-slate-700' : 'text-slate-500 hover:text-slate-400 border border-transparent'}`}
                 >
-                  By Zone
+                  BY ZONE
                 </button>
               </div>
               <FilterDropdown
                 ariaLabel="Incidents by time range"
                 options={[
-                  { value: '1', label: 'Today' },
-                  { value: '7', label: 'This Week' },
-                  { value: '30', label: 'This Month' },
+                  { value: '1', label: 'TODAY' },
+                  { value: '7', label: 'THIS WEEK' },
+                  { value: '30', label: 'THIS MONTH' },
                 ]}
                 value={lineRangeDays}
                 onChange={setLineRangeDays}
@@ -530,18 +552,18 @@ function AnalyticsChart() {
             </div>
           </div>
           {resolvedLineChart.data.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-8">No hourly data available.</p>
+            <p className="text-slate-500 text-[10px] font-mono tracking-widest uppercase text-center py-8">NO HOURLY DATA AVAILABLE.</p>
           ) : (
-            <div className="h-[280px] w-full overflow-hidden rounded-xl sm:h-[300px] lg:h-[260px]">
+            <div className="h-[280px] w-full overflow-hidden rounded sm:h-[300px] lg:h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={shouldRenderMultiZoneLines ? lineMultiZone.data : resolvedLineChart.data}
                   margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#d8e1ea" />
-                  <XAxis dataKey={resolvedLineChart.xKey} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-                  <Tooltip content={<CustomTooltip multiSeries={shouldRenderMultiZoneLines} />} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey={resolvedLineChart.xKey} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'monospace' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                  <Tooltip content={<CustomTooltip multiSeries={shouldRenderMultiZoneLines} />} cursor={{ stroke: '#334155', strokeWidth: 1, strokeDasharray: '4 4' }} />
                   {shouldRenderMultiZoneLines && (
                     <Legend
                       align="right"
@@ -549,7 +571,7 @@ function AnalyticsChart() {
                       iconType="circle"
                       iconSize={8}
                       wrapperStyle={{ paddingBottom: 8 }}
-                      formatter={(value) => <span className="text-xs text-slate-500">{value}</span>}
+                      formatter={(value) => <span className="text-[10px] font-mono tracking-widest text-slate-500">{value}</span>}
                     />
                   )}
                   {shouldRenderMultiZoneLines ? (
@@ -583,19 +605,19 @@ function AnalyticsChart() {
         </InteractiveBentoCard>
 
         <InteractiveBentoCard
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md lg:row-span-1 min-h-0"
+          className="rounded border border-slate-800 bg-[#0a0f18] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] lg:row-span-1 min-h-0"
           prefersReducedMotion={prefersReducedMotion}
           delay={0.2}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Incidents by Zone</h3>
+            <h3 className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase">INCIDENTS BY ZONE</h3>
             <div className="flex items-center gap-2">
               <FilterDropdown
                 ariaLabel="Zone scope filter"
                 options={[
-                  { value: 'all', label: 'All Zones' },
-                  { value: 'top5', label: 'Top 5' },
-                  { value: 'top8', label: 'Top 8' },
+                  { value: 'all', label: 'ALL ZONES' },
+                  { value: 'top5', label: 'TOP 5' },
+                  { value: 'top8', label: 'TOP 8' },
                 ]}
                 value={zoneScope}
                 onChange={setZoneScope}
@@ -603,9 +625,9 @@ function AnalyticsChart() {
               <FilterDropdown
                 ariaLabel="Incidents by zone time range"
                 options={[
-                  { value: '1', label: 'Today' },
-                  { value: '7', label: 'This Wk' },
-                  { value: '30', label: 'This Mo' },
+                  { value: '1', label: 'TODAY' },
+                  { value: '7', label: 'THIS WK' },
+                  { value: '30', label: 'THIS MO' },
                 ]}
                 value={zoneRangeDays}
                 onChange={setZoneRangeDays}
@@ -613,11 +635,11 @@ function AnalyticsChart() {
             </div>
           </div>
           {filteredZoneData.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-8">No zone data available.</p>
+            <p className="text-slate-500 text-[10px] font-mono tracking-widest uppercase text-center py-8">NO ZONE DATA AVAILABLE.</p>
           ) : (
             <div className="grid h-[280px] grid-cols-[1.15fr_1fr] gap-2 sm:h-[300px] lg:h-[260px]">
               <div
-                className="overflow-hidden rounded-xl transition-transform duration-300 ease-out hover:scale-[1.02]"
+                className="overflow-hidden rounded transition-transform duration-300 ease-out hover:scale-[1.02]"
                 onMouseLeave={() => setActiveZoneIndex(null)}
               >
                 <ResponsiveContainer width="100%" height="100%">
@@ -644,7 +666,7 @@ function AnalyticsChart() {
                       onMouseEnter={(_, index) => setActiveZoneIndex(index)}
                     >
                       {filteredZoneData.map((entry, idx) => (
-                        <Cell key={`${entry.zone}-${idx}`} fill={['#a3cef1', '#93c5fd', '#bfdbfe', '#dbeafe'][idx % 4]} />
+                        <Cell key={`${entry.zone}-${idx}`} fill={['#22d3ee', '#0ea5e9', '#3b82f6', '#0284c7'][idx % 4]} stroke="#0a0f18" strokeWidth={2} />
                       ))}
                     </Pie>
                   </PieChart>
@@ -653,7 +675,7 @@ function AnalyticsChart() {
               <div className="overflow-auto pr-1">
                 <div className="space-y-1.5">
                   {filteredZoneData.map((entry, idx) => {
-                    const color = ['#a3cef1', '#93c5fd', '#bfdbfe', '#dbeafe'][idx % 4];
+                    const color = ['#22d3ee', '#0ea5e9', '#3b82f6', '#0284c7'][idx % 4];
                     const percent = zoneTotalAlerts > 0
                       ? Math.round(((entry.alerts || 0) / zoneTotalAlerts) * 100)
                       : 0;
@@ -663,16 +685,16 @@ function AnalyticsChart() {
                         key={`${entry.zoneId || entry.zone}-${idx}`}
                         onMouseEnter={() => setActiveZoneIndex(idx)}
                         onFocus={() => setActiveZoneIndex(idx)}
-                        className={`w-full rounded-lg border px-2 py-1.5 text-left transition-colors ${activeZoneIndex === idx ? 'border-[#a3cef1] bg-[#a3cef1]/10' : 'border-slate-200 bg-white/90'}`}
+                        className={`w-full rounded border px-2 py-1.5 text-left transition-colors ${activeZoneIndex === idx ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-slate-800 bg-[#05080f] hover:bg-slate-900'}`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex min-w-0 items-center gap-1.5">
-                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-                            <span className="truncate text-[12px] font-medium text-slate-700">{entry.zone}</span>
+                            <span className="h-2 w-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}80` }} />
+                            <span className="truncate text-[10px] font-mono tracking-wider text-slate-300 uppercase">{entry.zone}</span>
                           </div>
-                          <span className="text-[11px] font-semibold text-slate-600">{percent}%</span>
+                          <span className="text-[10px] font-mono font-bold text-cyan-400">{percent}%</span>
                         </div>
-                        <p className="mt-0.5 text-[11px] text-slate-500">{entry.alerts || 0} incidents</p>
+                        <p className="mt-0.5 text-[9px] font-mono tracking-[0.2em] uppercase text-slate-500">{entry.alerts || 0} INCIDENTS</p>
                       </button>
                     );
                   })}
@@ -683,32 +705,32 @@ function AnalyticsChart() {
         </InteractiveBentoCard>
 
         <InteractiveBentoCard
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:row-span-1 min-h-0"
+          className="rounded border border-slate-800 bg-[#0a0f18] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] lg:row-span-1 min-h-0"
           prefersReducedMotion={prefersReducedMotion}
           delay={0.35}
         >
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-900">Trend List</h3>
+            <h3 className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase">TREND LIST</h3>
           </div>
           <div className="flex flex-col gap-4">
             {[
-              { key: 'total', label: 'Total Alerts', subtext: 'Last 7 days', value: kpis.totalAlerts, trend: 'up', trendVal: '+12%' },
-              { key: 'confidence', label: 'Avg Confidence', subtext: 'System wide', value: `${kpis.avgConfidence.toFixed(1)}%`, trend: 'up', trendVal: '+2.1%' },
-              { key: 'uptime', label: 'System Uptime', subtext: 'Trailing 30d', value: kpis.systemUptime, trend: 'down', trendVal: '-0.5%' },
-              { key: 'active', label: 'Active Cameras', subtext: 'Currently streaming', value: kpis.activeCameras, trend: 'neutral', trendVal: '0%' },
+              { key: 'total', label: 'TOTAL ALERTS', subtext: 'LAST 7 DAYS', value: kpis.totalAlerts, trend: 'up', trendVal: '+12%' },
+              { key: 'confidence', label: 'AVG CONFIDENCE', subtext: 'SYSTEM WIDE', value: `${kpis.avgConfidence.toFixed(1)}%`, trend: 'up', trendVal: '+2.1%' },
+              { key: 'uptime', label: 'SYSTEM UPTIME', subtext: 'TRAILING 30D', value: kpis.systemUptime, trend: 'down', trendVal: '-0.5%' },
+              { key: 'active', label: 'ACTIVE CAMERAS', subtext: 'CURRENTLY STREAMING', value: kpis.activeCameras, trend: 'neutral', trendVal: '0%' },
             ].map((item) => (
               <div key={item.key} className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{item.label}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{item.subtext}</p>
+                  <p className="text-[10px] font-mono font-bold tracking-wider text-slate-300 uppercase">{item.label}</p>
+                  <p className="text-[9px] font-mono tracking-[0.2em] text-slate-500 mt-0.5 uppercase">{item.subtext}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-slate-900">{item.value}</p>
+                  <p className="text-[11px] font-mono font-bold text-slate-200">{item.value}</p>
                   <div className="flex items-center justify-end gap-1 mt-0.5">
-                    {item.trend === 'up' && <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>}
-                    {item.trend === 'down' && <svg className="w-3 h-3 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>}
-                    {item.trend === 'neutral' && <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" /></svg>}
-                    <span className={`text-[10px] font-medium ${item.trend === 'up' ? 'text-emerald-600' : item.trend === 'down' ? 'text-rose-600' : 'text-slate-500'}`}>
+                    {item.trend === 'up' && <svg className="w-3 h-3 text-emerald-400 drop-shadow-[0_0_4px_rgba(52,211,153,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>}
+                    {item.trend === 'down' && <svg className="w-3 h-3 text-rose-500 drop-shadow-[0_0_4px_rgba(244,63,94,0.8)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>}
+                    {item.trend === 'neutral' && <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" /></svg>}
+                    <span className={`text-[9px] font-mono tracking-widest font-bold ${item.trend === 'up' ? 'text-emerald-400' : item.trend === 'down' ? 'text-rose-400' : 'text-slate-500'}`}>
                       {item.trendVal}
                     </span>
                   </div>
@@ -719,41 +741,41 @@ function AnalyticsChart() {
         </InteractiveBentoCard>
 
         <InteractiveBentoCard
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md lg:col-span-2 lg:row-span-1 min-h-0"
+          className="rounded border border-slate-800 bg-[#0a0f18] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] lg:col-span-2 lg:row-span-1 min-h-0"
           prefersReducedMotion={prefersReducedMotion}
           delay={0.3}
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Detection Frequency</h3>
+            <h3 className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase">DETECTION FREQUENCY</h3>
             <FilterDropdown
               ariaLabel="Detection frequency range"
               options={[
-                { value: '1', label: 'Today' },
-                { value: '7', label: 'This Week' },
-                { value: '30', label: 'This Month' },
+                { value: '1', label: 'TODAY' },
+                { value: '7', label: 'THIS WEEK' },
+                { value: '30', label: 'THIS MONTH' },
               ]}
               value={frequencyRangeDays}
               onChange={setFrequencyRangeDays}
             />
           </div>
           {resolvedFrequencyChart.data.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-8">No hourly data available.</p>
+            <p className="text-slate-500 text-[10px] font-mono tracking-widest uppercase text-center py-8">NO HOURLY DATA AVAILABLE.</p>
           ) : (
-            <div className="h-[280px] w-full overflow-hidden rounded-xl sm:h-[300px] lg:h-[260px]">
+            <div className="h-[280px] w-full overflow-hidden rounded sm:h-[300px] lg:h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={resolvedFrequencyChart.data} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="freqFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#bfdbfe" stopOpacity={0.9} />
-                      <stop offset="95%" stopColor="#bfdbfe" stopOpacity={0.1} />
+                      <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#d8e1ea" />
-                  <XAxis dataKey={resolvedFrequencyChart.xKey} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="detections" stroke="#3b82f6" fill="url(#freqFill)" strokeWidth={2.5} isAnimationActive />
-                  <Line type="monotone" dataKey="detections" stroke="#1d4ed8" strokeWidth={2} dot={false} isAnimationActive />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey={resolvedFrequencyChart.xKey} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'monospace' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#334155', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                  <Area type="monotone" dataKey="detections" stroke="#22d3ee" fill="url(#freqFill)" strokeWidth={2.5} isAnimationActive />
+                  <Line type="monotone" dataKey="detections" stroke="#06b6d4" strokeWidth={2} dot={false} isAnimationActive />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -785,11 +807,11 @@ function FilterDropdown({ options, value, onChange, ariaLabel }) {
       <button
         type="button"
         aria-label={ariaLabel}
-        className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200"
+        className="inline-flex items-center gap-1 rounded bg-slate-900 px-3 py-1 text-[9px] font-mono tracking-widest uppercase text-slate-300 transition-colors border border-slate-700 hover:bg-slate-800 hover:text-slate-200"
         onClick={() => setOpen((prev) => !prev)}
       >
         {selected?.label}
-        <svg className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+        <svg className={`h-3 w-3 text-cyan-400 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 011.1 1.02l-4.25 4.5a.75.75 0 01-1.1 0l-4.25-4.5a.75.75 0 01.02-1.04z" clipRule="evenodd" />
         </svg>
       </button>
@@ -801,7 +823,7 @@ function FilterDropdown({ options, value, onChange, ariaLabel }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18 }}
-            className="absolute right-0 top-9 z-30 min-w-[150px] rounded-2xl border border-slate-100 bg-white/90 p-1.5 shadow-lg backdrop-blur-xl"
+            className="absolute right-0 top-9 z-30 min-w-[150px] rounded border border-slate-700 bg-[#0a0f18]/95 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl"
           >
             {options.map((option) => {
               const isSelected = option.value === value;
@@ -809,14 +831,14 @@ function FilterDropdown({ options, value, onChange, ariaLabel }) {
                 <button
                   key={option.value}
                   type="button"
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors ${isSelected ? 'text-sky-700' : 'text-slate-600 hover:bg-[#e7ecef] hover:text-sky-700'}`}
+                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-[9px] font-mono tracking-widest uppercase transition-colors ${isSelected ? 'text-cyan-400 bg-cyan-500/10 border border-cyan-500/50' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}`}
                   onClick={() => {
                     onChange(option.value);
                     setOpen(false);
                   }}
                 >
                   <span>{option.label}</span>
-                  {isSelected && <span className="text-[#a3cef1]">✓</span>}
+                  {isSelected && <span className="text-cyan-400 font-bold">✓</span>}
                 </button>
               );
             })}
@@ -850,22 +872,22 @@ function CustomTooltip({
 
   return (
     <div
-      className="rounded-xl border border-white/50 bg-white/90 p-3 shadow-xl backdrop-blur-md transition-all duration-200 ease-out"
+      className="rounded border border-slate-700 bg-[#0a0f18]/90 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-md transition-all duration-200 ease-out"
       style={{ transform }}
     >
-      <p className="text-xs text-slate-500">{label || point?.payload?.zone || 'Data'}</p>
+      <p className="text-[9px] font-mono tracking-widest uppercase text-slate-500">{label || point?.payload?.zone || 'DATA'}</p>
       {multiSeries ? (
         <div className="mt-2 space-y-1.5">
           {entriesToRender.map((entry) => {
-            const color = entry?.color || entry?.fill || '#a3cef1';
-            const keyLabel = entry?.name || entry?.dataKey || 'Zone';
+            const color = entry?.color || entry?.fill || '#22d3ee';
+            const keyLabel = entry?.name || entry?.dataKey || 'ZONE';
             return (
               <div key={`${keyLabel}-${entry?.dataKey}`} className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                  <span className="text-sm text-slate-600 truncate">{keyLabel}</span>
+                  <span className="h-2 w-2 rounded-full shrink-0 shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}80` }} />
+                  <span className="text-[10px] font-mono tracking-wider text-slate-300 uppercase truncate">{keyLabel}</span>
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{entry?.value ?? 0}</span>
+                <span className="text-[10px] font-mono font-bold text-slate-200">{entry?.value ?? 0}</span>
               </div>
             );
           })}
@@ -873,10 +895,10 @@ function CustomTooltip({
       ) : (
         <>
           <div className="mt-1 flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: point?.color || point?.fill || '#a3cef1' }} />
-            <span className="text-sm text-slate-500">{point?.name || point?.dataKey || 'value'}</span>
+            <span className="h-2 w-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ backgroundColor: point?.color || point?.fill || '#22d3ee', boxShadow: `0 0 8px ${point?.color || point?.fill || '#22d3ee'}80` }} />
+            <span className="text-[10px] font-mono tracking-wider text-slate-400 uppercase">{point?.name || point?.dataKey || 'VALUE'}</span>
           </div>
-          <p className="mt-1 text-base font-semibold text-slate-900">{point?.value ?? '—'}</p>
+          <p className="mt-1 text-[11px] font-mono font-bold text-cyan-400">{point?.value ?? '—'}</p>
         </>
       )}
     </div>
@@ -917,7 +939,7 @@ function InteractiveBentoCard({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
-          background: `radial-gradient(circle at ${cursor.x}% ${cursor.y}%, rgba(163,206,241,0.22) 0%, rgba(163,206,241,0.1) 18%, rgba(255,255,255,0) 62%)`,
+          background: `radial-gradient(circle at ${cursor.x}% ${cursor.y}%, rgba(34,211,238,0.08) 0%, rgba(34,211,238,0.03) 18%, rgba(0,0,0,0) 62%)`,
         }}
         animate={{ opacity: isHovering ? 1 : 0 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}

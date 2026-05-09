@@ -21,10 +21,10 @@ function SystemPage() {
     >
       {/* Page header */}
       <div className="flex items-center gap-3">
-        <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
+        <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-500 to-cyan-400" />
         <div>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">System Status</h2>
-          <p className="text-sm text-slate-600 mt-1">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">System Status</h2>
+          <p className="text-sm text-slate-400 mt-1">
             Real-time health of cameras, detection engine, and ESP32 devices
           </p>
         </div>

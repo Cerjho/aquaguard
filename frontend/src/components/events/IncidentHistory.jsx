@@ -83,37 +83,37 @@ function IncidentHistory({ headerTabs }) {
       initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
-      className="relative rounded-3xl border border-[#e7ecef] bg-white shadow-sm flex flex-col"
+      className="relative rounded-xl border border-slate-800 bg-[#0a0f18] shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col"
     >
-      <div className="relative flex items-center justify-between px-6 border-b border-[#e7ecef] bg-white rounded-t-3xl">
+      <div className="relative flex items-center justify-between px-6 border-b border-slate-800 bg-[#0a0f18] rounded-t-xl">
         {headerTabs ? headerTabs : (
           <div className="py-4">
-            <p className="text-sm font-medium text-slate-900">Detection Events</p>
-            <p className="text-xs text-slate-500">Master view of historical detections</p>
+            <p className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase">Detection Events</p>
+            <p className="text-[10px] font-mono tracking-widest text-slate-500 uppercase">Master view of historical detections</p>
           </div>
         )}
       </div>
 
       {refreshing && (
-        <div className="px-6 py-2 border-b border-[#e7ecef] bg-slate-50 text-xs text-slate-500">
+        <div className="px-6 py-2 border-b border-slate-800 bg-slate-900 text-[10px] font-mono tracking-widest text-cyan-400 uppercase">
           Refreshing events…
         </div>
       )}
 
       <div className="flex-1 overflow-hidden">
         {events.length === 0 ? (
-          <div className="text-center py-10 text-slate-500">No events found.</div>
+          <div className="text-center py-10 text-xs font-mono tracking-widest text-slate-500 uppercase">No events found.</div>
         ) : (
-          <div className="divide-y divide-[#e7ecef]">
+          <div className="divide-y divide-slate-800">
             {events.map((ev, idx) => {
               const confidence = mapEventConfidence(ev);
               const eventTime = mapEventTimestamp(ev);
               const key = ev.id || ev.event_id || `${eventTime}-${idx}`;
               return (
-                <div key={key} className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-all flex items-start gap-4">
+                <div key={key} className="w-full text-left px-5 py-4 hover:bg-slate-900/50 transition-all flex items-start gap-4">
                   <span
-                    className={`mt-1.5 shrink-0 w-2.5 h-2.5 rounded-full shadow-sm ${
-                      ev.alert_triggered ? 'bg-rose-500 shadow-rose-500/50 animate-pulse' : 'bg-sky-400 shadow-sky-400/50'
+                    className={`mt-1.5 shrink-0 w-2 h-2 rounded shadow-[0_0_8px_rgba(0,0,0,0.8)] ${
+                      ev.alert_triggered ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] animate-pulse' : 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]'
                     }`}
                     title={ev.alert_triggered ? 'Alert triggered' : 'Detection only'}
                   />
@@ -121,16 +121,16 @@ function IncidentHistory({ headerTabs }) {
                     {/* Event Info */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-slate-900 truncate">
+                        <p className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase truncate">
                           {mapEventClassLabel(ev)}
                         </p>
                         {ev.alert_triggered && (
-                          <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-600/20">
+                          <span className="inline-flex items-center rounded bg-rose-500/10 px-2 py-0.5 text-[10px] font-mono font-bold tracking-widest text-rose-400 border border-rose-500/30">
                             ALERT
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 mt-1 font-mono">
+                      <p className="text-[10px] text-slate-500 mt-1 font-mono tracking-widest uppercase">
                         {new Date(eventTime).toLocaleString(undefined, {
                           month: 'short', day: 'numeric', year: 'numeric',
                           hour: 'numeric', minute: '2-digit', second: '2-digit'
@@ -141,14 +141,14 @@ function IncidentHistory({ headerTabs }) {
                     {/* Zone & Confidence */}
                     <div className="flex items-center gap-4 sm:gap-6 shrink-0">
                       <div className="hidden sm:flex flex-col items-end">
-                        <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">Zone</p>
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-500/10">
-                          {ev.zone_name || ev.zone_id || 'Unknown'}
+                        <p className="text-[9px] uppercase tracking-[0.2em] font-mono font-bold text-slate-500 mb-0.5">Zone</p>
+                        <span className="inline-flex items-center rounded bg-slate-900 px-2 py-1 text-[10px] font-mono font-bold tracking-wider text-slate-300 border border-slate-800">
+                          {ev.zone_name || ev.zone_id || 'UNKNOWN'}
                         </span>
                       </div>
                       <div className="hidden sm:flex flex-col items-end">
-                        <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">Confidence</p>
-                        <p className="text-sm font-semibold text-slate-700 font-mono">
+                        <p className="text-[9px] uppercase tracking-[0.2em] font-mono font-bold text-slate-500 mb-0.5">Confidence</p>
+                        <p className="text-sm font-bold text-cyan-400 font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
                           {confidence != null ? `${(confidence * 100).toFixed(1)}%` : '—'}
                         </p>
                       </div>
@@ -163,7 +163,7 @@ function IncidentHistory({ headerTabs }) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-[#e7ecef] bg-slate-50 flex items-center justify-between text-sm text-slate-600 rounded-b-3xl">
+        <div className="px-6 py-4 border-t border-slate-800 bg-[#0a0f18] flex items-center justify-between text-xs font-mono font-bold tracking-widest text-slate-500 uppercase rounded-b-xl">
           <span>
             Page {page} of {totalPages}
           </span>
@@ -171,7 +171,7 @@ function IncidentHistory({ headerTabs }) {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              className="px-4 py-2 rounded border border-slate-700 hover:bg-slate-800 hover:text-slate-200 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
               style={{ touchAction: 'manipulation', minHeight: '44px' }}
             >
               ← Prev
@@ -179,7 +179,7 @@ function IncidentHistory({ headerTabs }) {
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              className="px-4 py-2 rounded border border-slate-700 hover:bg-slate-800 hover:text-slate-200 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
               style={{ touchAction: 'manipulation', minHeight: '44px' }}
             >
               Next →

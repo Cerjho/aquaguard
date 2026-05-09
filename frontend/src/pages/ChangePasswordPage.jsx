@@ -87,10 +87,10 @@ function PasswordField({ id, label, value, onChange, show, onToggle, hasError })
       <input
         type={show ? 'text' : 'password'}
         id={id}
-        className={`peer block w-full appearance-none rounded-xl border-2 bg-transparent px-4 pb-2.5 pt-5 text-sm text-slate-900 transition-all duration-200 focus:outline-none focus:ring-2 pr-12 ${
+        className={`peer block w-full appearance-none rounded border-2 bg-[#0a0f18] px-4 pb-2.5 pt-5 text-sm text-slate-200 transition-all duration-200 focus:outline-none focus:ring-2 pr-12 ${
           hasError
-            ? 'border-red-300 focus:border-red-500 focus:ring-red-100'
-            : 'border-slate-200 focus:border-blue-500 focus:ring-blue-100'
+            ? 'border-red-500 focus:border-red-400 focus:ring-red-500/20'
+            : 'border-slate-800 focus:border-cyan-500 focus:ring-cyan-500/20'
         }`}
         placeholder=" "
         value={value}
@@ -99,10 +99,10 @@ function PasswordField({ id, label, value, onChange, show, onToggle, hasError })
       />
       <label
         htmlFor={id}
-        className={`absolute left-4 top-3.5 z-10 origin-[0] -translate-y-2 scale-[0.85] transform text-sm transition-all duration-200 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2 peer-focus:scale-[0.85] cursor-text ${
+        className={`absolute left-4 top-3.5 z-10 origin-[0] -translate-y-2 scale-[0.85] transform text-xs font-mono font-bold tracking-wider uppercase transition-all duration-200 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2 peer-focus:scale-[0.85] cursor-text ${
           hasError
-            ? 'text-red-500 peer-focus:text-red-500'
-            : 'text-slate-500 peer-focus:text-blue-500'
+            ? 'text-red-500 peer-focus:text-red-400'
+            : 'text-slate-500 peer-focus:text-cyan-400'
         }`}
       >
         {label}
@@ -198,8 +198,8 @@ export default function ChangePasswordPage() {
               <div ref={lottieRef} className="w-48 h-48 mb-2 relative">
                 <DotLottieReact src={rocketLottie} loop autoplay />
               </div>
-              <h2 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Change Password</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-3xl font-bold text-slate-200 tracking-tight mb-2">Change Password</h2>
+              <p className="text-sm text-slate-400">
                 Secure your account by choosing a strong, new password.
               </p>
             </div>
@@ -262,14 +262,14 @@ export default function ChangePasswordPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="px-2 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                  className="px-2 py-2 text-xs font-mono font-bold tracking-wider uppercase text-slate-400 hover:text-slate-200 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-mono font-bold tracking-wider uppercase text-[#0a0f18] bg-cyan-400 hover:bg-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed rounded shadow-[0_0_12px_rgba(34,211,238,0.4)] transition-colors"
                 >
                   {isLoading && (
                     <svg
@@ -301,8 +301,8 @@ export default function ChangePasswordPage() {
             <div className="w-56 h-56 mb-4">
               <DotLottieReact src={successLottie} loop={false} autoplay />
             </div>
-            <h2 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Password Updated!</h2>
-            <p className="text-slate-500">Redirecting you back to the dashboard…</p>
+            <h2 className="text-3xl font-bold text-slate-200 tracking-tight mb-2">Password Updated!</h2>
+            <p className="text-slate-400">Redirecting you back to the dashboard…</p>
           </motion.div>
         )}
       </AnimatePresence>

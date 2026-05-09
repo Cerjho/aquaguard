@@ -96,35 +96,34 @@ function DetectionFeed({ headerTabs }) {
   const events = allEvents.slice(0, displayLimit);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 shadow-[0_16px_32px_rgba(15,23,42,0.06)] backdrop-blur-md flex flex-col">
-      <div className="px-6 border-b border-slate-200/70 flex items-center justify-between bg-white/80">
+    <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0a0f18] shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col">
+      <div className="px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
         {headerTabs ? headerTabs : (
-          <div className="flex items-center gap-2.5 py-3.5">
-            <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#a3cef1]/40 bg-[#a3cef1]/15 text-[#7fb2db] shadow-sm">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12h4.5L9 5l6 14 1.5-7H21" />
+          <div className="flex items-center gap-2 py-2.5">
+            <div className="inline-flex h-6 w-6 items-center justify-center rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
               </svg>
             </div>
-            <h3 className="text-sm font-semibold text-slate-800">Live Detection Feed</h3>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-300">Live Feed</h3>
           </div>
         )}
       </div>
 
       {error && (
-        <p className="px-4 py-2 text-xs text-rose-700 bg-rose-100 border-b border-rose-200">{error}</p>
+        <p className="px-3 py-1.5 text-[11px] font-mono text-rose-400 bg-rose-950/50 border-b border-rose-900/50">{error}</p>
       )}
 
-      <ul className={`divide-y divide-slate-100/80 ${isDashboard ? '' : 'max-h-80 overflow-y-auto'}`}>
+      <ul className={`divide-y divide-slate-800/50 ${isDashboard ? '' : 'max-h-80 overflow-y-auto'}`}>
         {events.length === 0 && !error ? (
-          <li className="px-4 py-8 text-center">
-            <div className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#a3cef1]/45 bg-gradient-to-b from-[#a3cef1]/25 via-white to-[#a3cef1]/10 shadow-sm">
-              <span className="absolute inset-0 rounded-2xl border border-white/60" />
-              <span className="absolute -inset-1 rounded-2xl border border-[#a3cef1]/25 animate-pulse" />
-              <svg className="relative z-10 h-7 w-7 text-[#7fb2db]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M3 12h4.5L9 5l6 14 1.5-7H21" />
+          <li className="px-4 py-6 text-center">
+            <div className="relative mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50">
+              <span className="absolute inset-0 rounded-lg border border-slate-700/50" />
+              <svg className="relative z-10 h-5 w-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-slate-500 text-sm font-medium">No detection events yet</p>
+            <p className="text-slate-500 text-[11px] uppercase tracking-wider font-semibold">System idle</p>
           </li>
         ) : (
           <AnimatePresence initial={false}>
@@ -134,33 +133,33 @@ function DetectionFeed({ headerTabs }) {
               return (
                 <motion.li
                   key={ev.event_id || ev.id || `${eventTime}-${idx}`}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.2 }}
-                  className={`mx-2 my-1.5 flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-white hover:shadow-sm transition-all text-sm ${
-                    ev.alert_triggered ? 'bg-rose-50/70 border border-rose-100' : 'bg-slate-50/40'
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.15 }}
+                  className={`flex items-start gap-3 px-3 py-2 text-sm border-l-2 ${
+                    ev.alert_triggered ? 'bg-rose-950/30 border-rose-500 hover:bg-rose-900/40' : 'border-transparent hover:bg-slate-900/50'
                   }`}
                 >
                   <span
-                      className={`mt-1 shrink-0 w-2.5 h-2.5 rounded-full ${
-                        ev.alert_triggered ? 'bg-rose-500 animate-pulse' : 'bg-blue-400'
+                      className={`mt-1.5 shrink-0 w-2 h-2 rounded-sm ${
+                        ev.alert_triggered ? 'bg-rose-500 animate-pulse' : 'bg-cyan-500'
                       }`}
                     title={ev.alert_triggered ? 'Alert triggered' : 'Detection only'}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-slate-900 truncate">
-                      {mapEventClassLabel(ev)}
+                    <p className={`font-mono text-[13px] truncate ${ev.alert_triggered ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
+                      {mapEventClassLabel(ev).toUpperCase()}
                       {ev.alert_triggered && (
-                          <span className="ml-2 text-xs text-rose-600 font-bold">⚠ ALERT</span>
+                          <span className="ml-2 text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded uppercase tracking-widest">Alert</span>
                       )}
                     </p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {ev.zone_name || ev.zone_id || '—'} · 
-                      {confidence != null ? ` ${(confidence * 100).toFixed(0)}%` : ''}
+                    <p className="text-[11px] font-mono text-slate-500 truncate mt-0.5">
+                      {ev.zone_name || ev.zone_id || 'UNKNOWN_ZONE'} 
+                      {confidence != null ? ` · ${(confidence * 100).toFixed(0)}% CONF` : ''}
                     </p>
                   </div>
-                  <time className="shrink-0 text-xs text-slate-500 whitespace-nowrap font-mono" title={formatDateTime(eventTime)}>
+                  <time className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap font-mono mt-0.5" title={formatDateTime(eventTime)}>
                     {timeAgo(eventTime)}
                   </time>
                 </motion.li>
@@ -170,12 +169,12 @@ function DetectionFeed({ headerTabs }) {
         )}
       </ul>
       {isDashboard && allEvents.length > 5 && (
-        <div className="border-t border-slate-100/80 p-2.5 bg-slate-50/30">
+        <div className="border-t border-slate-800 p-1.5 bg-slate-900/80">
           <button 
             onClick={() => navigate('/incidents', { state: { activeTab: 'events' } })}
-            className="w-full py-2 text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 rounded-xl transition-colors"
+            className="w-full py-1.5 text-[11px] uppercase tracking-widest font-semibold text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 rounded transition-colors"
           >
-            See all detections
+            View Full Log
           </button>
         </div>
       )}

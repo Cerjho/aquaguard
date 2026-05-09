@@ -5,7 +5,7 @@ import swimmingAnimation from '../../vector/swimming.lottie';
 
 function FullScreenLoader() {
   return (
-    <div className="flex h-screen items-center justify-center bg-white">
+    <div className="flex h-screen items-center justify-center bg-[#0a0f18]">
       <motion.div
         className="text-center"
         initial={{ opacity: 0 }}

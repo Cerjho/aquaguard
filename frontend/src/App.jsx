@@ -65,7 +65,7 @@ function PrivateLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-[#0a0f18] text-slate-300 overflow-hidden">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
@@ -102,7 +102,7 @@ function StandalonePrivateLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#0a0f18] text-slate-300 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <AnimatedOutlet />
     </div>
   );

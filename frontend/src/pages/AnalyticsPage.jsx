@@ -20,11 +20,11 @@ function AnalyticsPage() {
     >
       {/* Page header */}
       <div className="flex items-center gap-3">
-        <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
+        <div className="w-1.5 h-10 rounded bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
         <div>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Analytics</h2>
-          <p className="text-sm text-slate-600 mt-1">
-            Detection frequency, alert trends, and zone summaries
+          <h2 className="text-2xl font-mono font-bold tracking-[0.2em] text-slate-200 uppercase">ANALYTICS</h2>
+          <p className="text-[10px] font-mono tracking-widest text-slate-500 mt-1 uppercase">
+            DETECTION FREQUENCY, ALERT TRENDS, AND ZONE SUMMARIES
           </p>
         </div>
       </div>

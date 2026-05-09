@@ -107,7 +107,7 @@ function Sidebar() {
       <aside 
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => { setIsHovered(false); setIsPopoverOpen(false); }}
-        className={`absolute top-0 left-0 h-screen flex flex-col bg-white/95 backdrop-blur-md border-r shadow-[12px_0_32px_rgba(15,23,42,0.08)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isHovered ? 'w-64 p-4 rounded-r-[2rem] border-slate-100/50' : 'w-[5.5rem] p-3 rounded-none border-slate-100 shadow-none bg-white'}`}
+        className={`absolute top-0 left-0 h-screen flex flex-col bg-[#0a0f18]/95 backdrop-blur-md border-r border-slate-800/80 shadow-[12px_0_32px_rgba(0,0,0,0.5)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 ${isHovered ? 'w-64 p-4 rounded-r-3xl' : 'w-[5.5rem] p-3 rounded-none shadow-none bg-[#0a0f18]'}`}
       >
       {/* Brand Header */}
       <div className={`mb-4 mt-2 flex items-center ${isHovered ? 'px-4 justify-between' : 'px-0 justify-center w-full'}`}>
@@ -144,10 +144,10 @@ function Sidebar() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `group relative flex items-center rounded-2xl font-medium transition-all duration-200 ${
+                `group relative flex items-center rounded-xl font-mono font-bold tracking-wider text-sm transition-all duration-200 uppercase ${
                   isActive
-                    ? 'bg-[#f0f7ff] text-blue-600'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'
                 } ${isHovered ? 'w-full px-4 py-3 gap-3' : 'w-12 h-12 justify-center p-0'}`
               }
             >
@@ -163,7 +163,7 @@ function Sidebar() {
                   </div>
                   
                   {/* Tooltip for collapsed state */}
-                  <div className={`absolute left-[calc(100%+0.75rem)] px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg whitespace-nowrap z-[100] opacity-0 group-focus-visible:opacity-100 pointer-events-none transition-opacity duration-200 delay-150 ${!isHovered ? 'group-hover:opacity-100' : 'hidden'}`}>
+                  <div className={`absolute left-[calc(100%+0.75rem)] px-2.5 py-1.5 bg-slate-800 text-white text-xs font-mono font-bold tracking-wider uppercase rounded shadow-[0_4px_16px_rgba(0,0,0,0.5)] whitespace-nowrap z-[100] opacity-0 group-focus-visible:opacity-100 pointer-events-none transition-opacity duration-200 delay-150 border border-slate-700 ${!isHovered ? 'group-hover:opacity-100' : 'hidden'}`}>
                     {item.label}
                   </div>
                   
@@ -179,7 +179,7 @@ function Sidebar() {
                 {isActive && (
                   <motion.div
                     layoutId="sidebarActiveBar"
-                    className="absolute left-0 top-0 bottom-0 w-1 h-full rounded-r-full bg-blue-500"
+                    className="absolute left-0 top-0 bottom-0 w-1 h-full rounded-r bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -194,31 +194,31 @@ function Sidebar() {
       <div className="mt-auto relative" ref={popoverRef}>
         <AnimatePresence>
           {isPopoverOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              className="absolute bottom-full mb-3 w-full z-50 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 p-2.5"
-            >
-              <button
-                className="w-full text-left px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
-                onClick={() => {
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-full mb-3 w-full z-50 bg-slate-900 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-slate-800 p-2.5"
+              >
+                <button
+                  className="w-full text-left px-3 py-2.5 text-xs font-mono font-bold tracking-wider uppercase text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                  onClick={() => {
                   setIsPopoverOpen(false);
                   navigate('/settings/password');
                 }}
               >
                 Change Password
               </button>
-              <div className="h-px bg-slate-100 my-1 mx-2" />
+              <div className="h-px bg-slate-800 my-1 mx-2" />
               <button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
                 aria-label="Logout"
-                className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-mono font-bold tracking-wider uppercase text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 rounded-lg transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                   </svg>
                   <span>Logout</span>
@@ -235,34 +235,34 @@ function Sidebar() {
         </AnimatePresence>
 
         <div className={`flex items-center mb-2 ${isHovered ? 'px-3' : 'justify-center w-full'}`}>
-          <div
-            data-testid="account-menu-trigger"
-            onClick={() => isHovered ? setIsPopoverOpen(!isPopoverOpen) : null}
-            className={`flex items-center cursor-pointer rounded-2xl transition-all duration-300 ${
-              isHovered ? 'w-full p-3 gap-3 border' : 'w-12 h-12 p-0 justify-center border border-transparent'
-            } ${
-              isHovered && isPopoverOpen 
-                ? 'bg-slate-50/50 border-slate-300 shadow-[0_4px_16px_rgba(15,23,42,0.06)]' 
-                : isHovered 
-                  ? 'bg-white border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:bg-slate-50/50'
-                  : 'bg-transparent hover:bg-slate-50'
-            }`}
-          >
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center shrink-0 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7)]">
-              <svg className="h-5 w-5 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
+            <div
+              data-testid="account-menu-trigger"
+              onClick={() => isHovered ? setIsPopoverOpen(!isPopoverOpen) : null}
+              className={`flex items-center cursor-pointer rounded-xl transition-all duration-300 ${
+                isHovered ? 'w-full p-3 gap-3 border' : 'w-12 h-12 p-0 justify-center border border-transparent'
+              } ${
+                isHovered && isPopoverOpen 
+                  ? 'bg-slate-800 border-slate-700 shadow-[0_4px_16px_rgba(0,0,0,0.5)]' 
+                  : isHovered 
+                    ? 'bg-slate-900 border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.5)] hover:border-slate-700 hover:bg-slate-800'
+                    : 'bg-transparent hover:bg-slate-800/50'
+              }`}
+            >
+              <div className="h-10 w-10 rounded bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                <svg className="h-5 w-5 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
               </svg>
             </div>
             
-            <div className={`overflow-hidden transition-all duration-300 flex items-center ${isHovered ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-900 truncate">
-                  {currentUser?.username || 'Unknown User'}
-                </p>
-                <p className="text-xs text-slate-500 capitalize truncate">
-                  {currentUser?.role || 'User'}
-                </p>
-              </div>
+              <div className={`overflow-hidden transition-all duration-300 flex items-center ${isHovered ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-mono font-bold tracking-wider text-slate-200 truncate uppercase">
+                    {currentUser?.username || 'UNKNOWN'}
+                  </p>
+                  <p className="text-[10px] font-mono tracking-widest text-slate-500 uppercase truncate">
+                    {currentUser?.role || 'USER'}
+                  </p>
+                </div>
               <svg 
                 className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ml-2 ${isPopoverOpen ? 'rotate-180' : ''}`} 
                 fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"

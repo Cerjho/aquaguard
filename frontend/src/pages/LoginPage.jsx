@@ -32,9 +32,9 @@ function LoginPage() {
   const mediaVideoRef = useRef(null);
   const bubblesRef = useRef(null);
   const customLoaderRef = useRef(null);
-  const welcomeText = 'WELCOME BACK';
+  const welcomeText = 'MISSION CONTROL';
   const welcomeLetters = welcomeText.split('');
-  const hoverPalette = ['#a3cef1', '#bfdbfe', '#93c5fd', '#60a5fa'];
+  const hoverPalette = ['#22d3ee', '#06b6d4', '#0891b2', '#0ea5e9'];
 
   const isSubmitting = loading || submitted;
   const submitState = authSuccess ? 'success' : isSubmitting ? 'loading' : 'idle';
@@ -260,7 +260,7 @@ function LoginPage() {
       {
         duration: 2.1,
         delay: 0.2,
-        color: '#0f172a',
+        color: '#f8fafc',
         ease: 'sine.out',
       }
     );
@@ -342,10 +342,10 @@ function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-sky-50 via-blue-50 to-sky-100 p-5 sm:p-8">
+    <div className="relative min-h-screen overflow-hidden bg-[#05080f] p-5 sm:p-8">
       <div className="relative z-20 flex min-h-[calc(100vh-2.5rem)] items-center justify-center">
         <motion.div
-          className="relative w-full max-w-7xl rounded-[2rem] bg-white p-3 shadow-2xl sm:p-4"
+          className="relative w-full max-w-7xl rounded-3xl bg-[#0a0f18] p-3 shadow-[0_0_60px_rgba(0,0,0,0.8)] border border-slate-800 sm:p-4"
           initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: prefersReducedMotion ? 0.01 : 0.3 }}
@@ -355,14 +355,14 @@ function LoginPage() {
             src={bubblesImage}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -top-20 left-0 z-30 hidden w-[58%] max-w-[720px] lg:block"
+            className="pointer-events-none absolute -top-20 left-0 z-30 hidden w-[58%] max-w-[720px] lg:block opacity-30 mix-blend-screen"
           />
           <div className="grid min-h-[720px] grid-cols-1 gap-4 lg:grid-cols-2">
             <section
               ref={mediaPanelRef}
-              className="relative hidden overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-[#e7ecef] via-[#d8e8f7] to-[#a3cef1]/80 lg:block"
+              className="relative hidden overflow-hidden rounded-[1.5rem] bg-slate-950 border border-slate-800/50 lg:block"
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.55),transparent_44%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.15),transparent_60%)] z-10" />
               <video
                 ref={mediaVideoRef}
                 src={lifeguardVideo}
@@ -373,23 +373,23 @@ function LoginPage() {
                 disablePictureInPicture
                 disableRemotePlayback
                 controlsList="nofullscreen nodownload noremoteplayback"
-                className="pointer-events-none absolute inset-0 h-full w-full scale-[1.08] object-cover object-center"
+                className="pointer-events-none absolute inset-0 h-full w-full scale-[1.08] object-cover object-center opacity-80 mix-blend-luminosity"
               />
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0a0f18] via-[#0a0f18]/60 to-transparent pointer-events-none" />
               <div className="absolute bottom-10 left-10 z-20 text-white font-sans pointer-events-none leading-tight">
-                <p className="font-black tracking-widest text-3xl sm:text-4xl uppercase">
+                <p className="font-mono font-bold tracking-[0.2em] text-3xl sm:text-4xl uppercase text-slate-200">
                   RIPPLE.<br />
-                  <span className="text-[#a3cef1]"></span>SIGNAL. RESCUE.
+                  <span className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"></span>SIGNAL. RESCUE.
                 </p>
-                <p className="mt-3 text-sm sm:text-base font-medium text-white/70 tracking-wide">
+                <p className="mt-3 text-sm sm:text-base font-mono tracking-widest uppercase text-cyan-400/80">
                   AI-Powered Drowning Detection System
                 </p>
               </div>
             </section>
 
-            <section ref={formPanelRef} className="flex flex-col justify-center rounded-[1.5rem] bg-white px-5 sm:px-8 py-10 lg:px-16">
+            <section ref={formPanelRef} className="flex flex-col justify-center rounded-[1.5rem] bg-transparent px-5 sm:px-8 py-10 lg:px-16">
               <div className="mb-8 flex flex-col items-center text-center">
-                <div data-intro-item className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm">
+                <div data-intro-item className="inline-flex h-11 w-11 items-center justify-center rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 shadow-[0_0_16px_rgba(6,182,212,0.2)]">
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0l5.65-5.66zm0-2.83L4.93 6.93a10 10 0 1 0 14.14 0L12-.14z" />
                     <path d="M12 8a4 4 0 0 0-4 4c0 .55.45 1 1 1s1-.45 1-1a2 2 0 0 1 2-2c.55 0 1-.45 1-1s-.45-1-1-1z" />
@@ -397,7 +397,7 @@ function LoginPage() {
                 </div>
                 <h1
                   data-intro-item
-                  className="mt-5 text-[22px] sm:text-[34px] font-extrabold tracking-tight text-slate-900 whitespace-nowrap"
+                  className="mt-5 text-[22px] sm:text-[32px] font-mono font-bold tracking-[0.2em] uppercase text-slate-100 whitespace-nowrap"
                   onMouseMove={handleHeroMouseMove}
                   onMouseLeave={handleHeroMouseLeave}
                 >
@@ -414,15 +414,15 @@ function LoginPage() {
                     </span>
                   ))}
                 </h1>
-                <p data-intro-item className="mt-2 text-sm text-slate-500">
-                  Enter your username and password to access your account.
+                <p data-intro-item className="mt-2 text-xs font-mono tracking-wider uppercase text-slate-500">
+                  Authenticate to access system terminal
                 </p>
               </div>
 
               {(authError || fieldError) && (
                 <motion.div
                   role="alert"
-                  className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+                  className="mb-5 rounded border border-rose-500/50 bg-rose-950/50 p-3 text-xs font-mono tracking-wider uppercase text-rose-400"
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
@@ -440,11 +440,11 @@ function LoginPage() {
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={isSubmitting}
                     placeholder="Username"
-                    className="peer w-full rounded-2xl border border-transparent bg-[#e7ecef]/50 pl-5 pr-5 pb-2 pt-6 text-slate-900 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] outline-none transition-all duration-300 placeholder-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:shadow-sm"
+                    className="peer w-full rounded border border-slate-800 bg-slate-900/80 pl-5 pr-5 pb-2 pt-6 text-slate-200 font-mono shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] outline-none transition-all duration-300 placeholder-transparent focus:bg-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50"
                   />
                   <label
                     htmlFor="username"
-                    className="absolute left-5 top-4 z-10 origin-[0] -translate-y-2.5 scale-75 transform text-sm text-slate-500 transition-all duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2.5 peer-focus:scale-75 cursor-text"
+                    className="absolute left-5 top-4 z-10 origin-[0] -translate-y-2.5 scale-75 transform text-xs font-mono font-bold tracking-wider uppercase text-slate-500 transition-all duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2.5 peer-focus:scale-75 cursor-text peer-focus:text-cyan-400"
                   >
                     Username
                   </label>
@@ -459,11 +459,11 @@ function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isSubmitting}
                     placeholder="Password"
-                    className="peer w-full rounded-2xl border border-transparent bg-[#e7ecef]/50 pl-5 pr-12 pb-2 pt-6 text-slate-900 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] outline-none transition-all duration-300 placeholder-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:shadow-sm"
+                    className="peer w-full rounded border border-slate-800 bg-slate-900/80 pl-5 pr-12 pb-2 pt-6 text-slate-200 font-mono shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] outline-none transition-all duration-300 placeholder-transparent focus:bg-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50"
                   />
                   <label
                     htmlFor="password"
-                    className="absolute left-5 top-4 z-10 origin-[0] -translate-y-2.5 scale-75 transform text-sm text-slate-500 transition-all duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2.5 peer-focus:scale-75 cursor-text"
+                    className="absolute left-5 top-4 z-10 origin-[0] -translate-y-2.5 scale-75 transform text-xs font-mono font-bold tracking-wider uppercase text-slate-500 transition-all duration-300 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-2.5 peer-focus:scale-75 cursor-text peer-focus:text-cyan-400"
                   >
                     Password
                   </label>
@@ -471,7 +471,7 @@ function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isSubmitting}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 rounded-xl p-1 text-slate-500 transition-colors hover:text-slate-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 rounded p-1 text-slate-500 transition-colors hover:text-cyan-400"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -487,8 +487,8 @@ function LoginPage() {
                   </button>
                 </div>
 
-                <div className="flex items-center pt-2 text-sm">
-                  <label htmlFor="rememberMe" className="inline-flex cursor-pointer select-none items-center gap-3 text-slate-600 transition-colors hover:text-slate-800">
+                <div className="flex items-center pt-2">
+                  <label htmlFor="rememberMe" className="inline-flex cursor-pointer select-none items-center gap-3 text-slate-400 transition-colors hover:text-cyan-400">
                     <div className="relative flex items-center">
                       <input
                         id="rememberMe"
@@ -496,13 +496,13 @@ function LoginPage() {
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
                         disabled={isSubmitting}
-                        className="peer h-5 w-5 appearance-none rounded-md border-2 border-slate-300 bg-white transition-all checked:border-[#a3cef1] checked:bg-[#a3cef1] focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:ring-offset-1"
+                        className="peer h-4 w-4 appearance-none rounded-sm border border-slate-700 bg-slate-900 transition-all checked:border-cyan-500 checked:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-1 focus:ring-offset-[#0a0f18]"
                       />
-                      <svg className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 text-cyan-400 opacity-0 transition-opacity peer-checked:opacity-100 pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 8 6 11 13 4" />
                       </svg>
                     </div>
-                    <span className="font-medium">Remember me</span>
+                    <span className="text-[11px] font-mono font-bold tracking-wider uppercase">Remember session</span>
                   </label>
                 </div>
 
@@ -519,16 +519,16 @@ function LoginPage() {
                     initial={false}
                     animate={{
                       width: isSubmitting ? "3.5rem" : "100%",
-                      borderRadius: isSubmitting ? "50%" : "1.5rem",
+                      borderRadius: isSubmitting ? "50%" : "0.25rem",
                     }}
                     transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                     style={{
                       boxShadow: isSubmitting ? "none" : undefined,
                     }}
-                    className={`relative flex h-[3.5rem] items-center justify-center border px-5 py-4 text-sm font-semibold tracking-[0.02em] transition-all duration-300 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.5)_50%,transparent_88%)] before:transition-opacity before:duration-300 after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-[1px] after:bg-white/70 ${
+                    className={`relative flex h-[3.5rem] items-center justify-center border px-5 py-4 text-xs font-mono font-bold tracking-widest uppercase transition-all duration-300 ${
                       isSubmitting 
                         ? 'overflow-visible cursor-wait before:opacity-0 after:opacity-0 border-transparent bg-transparent bg-none shadow-none text-transparent' 
-                        : 'overflow-hidden hover:before:opacity-100 before:opacity-0 border-[#8ebde3] bg-[linear-gradient(135deg,#d7eafb_0%,#b9d9f5_42%,#a3cef1_78%,#93c4ee_100%)] text-slate-900 shadow-[0_12px_24px_rgba(120,164,199,0.34)]'
+                        : 'overflow-hidden border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-[0_0_16px_rgba(6,182,212,0.15)] hover:bg-cyan-500/20 hover:border-cyan-400'
                     }`}
                   >
                     <motion.span
@@ -540,7 +540,7 @@ function LoginPage() {
                       }}
                       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
-                      Login
+                      INITIALIZE_UPLINK
                     </motion.span>
                     
                     <motion.div
@@ -553,8 +553,8 @@ function LoginPage() {
                       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                     >
                       {isSubmitting && (
-                        <div ref={customLoaderRef} className="h-8 w-8 text-[#06b6d4]">
-                          <svg className="h-full w-full drop-shadow-md" viewBox="0 0 50 50" fill="none">
+                        <div ref={customLoaderRef} className="h-8 w-8 text-cyan-400">
+                          <svg className="h-full w-full drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" viewBox="0 0 50 50" fill="none">
                             <circle cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="5" strokeLinecap="round" className="opacity-25" />
                             <path d="M 25 5 A 20 20 0 0 1 45 25" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
                           </svg>
@@ -565,7 +565,7 @@ function LoginPage() {
                 </div>
 
                 <motion.p
-                  className="text-center text-sm text-slate-500"
+                  className="text-center text-[10px] font-mono font-bold tracking-widest uppercase text-cyan-400/80"
                   initial={false}
                   animate={{
                     opacity: submitState === 'loading' ? 1 : 0,

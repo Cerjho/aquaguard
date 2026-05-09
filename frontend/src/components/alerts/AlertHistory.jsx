@@ -63,10 +63,10 @@ function CalendarInput({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 text-left text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#a3cef1] focus:border-[#a3cef1]"
+        className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2.5 text-left text-xs font-mono tracking-widest uppercase text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition-all hover:border-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50"
         aria-label={ariaLabel}
       >
-        {selectedDate || 'Select date'}
+        {selectedDate || 'SELECT DATE'}
       </button>
       <AnimatePresence>
         {open && (
@@ -75,7 +75,7 @@ function CalendarInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.16 }}
-            className={`absolute top-11 z-20 w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-slate-100 bg-white p-3 shadow-lg ${
+            className={`absolute top-11 z-20 w-[min(280px,calc(100vw-2rem))] rounded border border-slate-700 bg-slate-900 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.8)] ${
               popoverAlign === 'right' ? 'right-0' : 'left-0'
             }`}
           >
@@ -83,17 +83,17 @@ function CalendarInput({
               <button
                 type="button"
                 onClick={() => setCursorDate(new Date(cursorDate.getFullYear(), cursorDate.getMonth() - 1, 1))}
-                className="h-8 w-8 rounded-full hover:bg-slate-50 text-slate-500"
+                className="h-8 w-8 rounded hover:bg-slate-800 text-slate-400"
               >
                 ‹
               </button>
-              <p className="text-sm font-medium text-slate-800">
-                {cursorDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              <p className="text-[11px] font-mono font-bold tracking-wider uppercase text-slate-200">
+                {cursorDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
               </p>
               <button
                 type="button"
                 onClick={() => setCursorDate(new Date(cursorDate.getFullYear(), cursorDate.getMonth() + 1, 1))}
-                className="h-8 w-8 rounded-full hover:bg-slate-50 text-slate-500"
+                className="h-8 w-8 rounded hover:bg-slate-800 text-slate-400"
               >
                 ›
               </button>
@@ -117,10 +117,10 @@ function CalendarInput({
                       onChange(dateValue);
                       setOpen(false);
                     }}
-                    className={`h-9 rounded-xl text-sm transition-colors ${
+                    className={`h-9 rounded text-[11px] font-mono tracking-wider transition-colors ${
                       isSelected
-                        ? 'bg-[#a3cef1] text-slate-900 font-semibold'
-                        : 'text-slate-700 hover:bg-slate-50'
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                        : 'text-slate-400 hover:bg-slate-800 border border-transparent'
                     }`}
                   >
                     {day}
@@ -340,23 +340,23 @@ function AlertHistory({ headerTabs }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
       aria-label="Alert history table"
-      className="relative rounded-3xl border border-[#e7ecef] bg-white shadow-sm flex flex-col"
+      className="relative rounded-xl border border-slate-800 bg-[#0a0f18] shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex flex-col"
     >
-      <div className="relative flex items-center justify-between px-6 border-b border-[#e7ecef] bg-white rounded-t-3xl">
+      <div className="relative flex items-center justify-between px-6 border-b border-slate-800 bg-[#0a0f18] rounded-t-xl">
         {headerTabs ? headerTabs : (
           <div className="py-4">
-            <p className="text-sm font-medium text-slate-900">Incident History</p>
-            <p className="text-xs text-slate-500">Master view of historical alert events</p>
+            <p className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase">Incident History</p>
+            <p className="text-[10px] font-mono tracking-widest text-slate-500 uppercase">Master view of historical alert events</p>
           </div>
         )}
         
         <div className="py-3">
           <button
             onClick={() => setIsFilterOpen((prev) => !prev)}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 rounded px-4 py-2 text-[10px] font-mono font-bold tracking-widest uppercase transition-all ${
               isFilterOpen 
-                ? 'bg-slate-100 text-slate-900 shadow-inner' 
-                : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-[#e7ecef] shadow-sm'
+                ? 'bg-slate-800 text-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] border border-slate-700' 
+                : 'bg-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-700 shadow-sm'
             }`}
             aria-expanded={isFilterOpen}
             aria-controls="incident-filter-panel"
@@ -364,7 +364,7 @@ function AlertHistory({ headerTabs }) {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            Filter
+            FILTERS
           </button>
         </div>
 
@@ -375,16 +375,15 @@ function AlertHistory({ headerTabs }) {
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: prefersReducedMotion ? 0.01 : 0.18 }}
-              className="absolute z-20 right-6 top-[100%] mt-2 w-[calc(100%-3rem)] max-w-4xl bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl p-5 border border-[#e7ecef]"
+              className="absolute z-20 right-6 top-[100%] mt-2 w-[calc(100%-3rem)] max-w-4xl bg-[#0a0f18]/95 backdrop-blur-xl shadow-[0_16px_64px_rgba(0,0,0,0.8)] rounded p-5 border border-slate-700"
             >
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <input
                   aria-label="Filter alerts by zone ID"
                   value={draftFilters?.zone_id || ''}
                   onChange={(e) => setDraftFilters((prev) => ({ ...prev, zone_id: e.target.value }))}
-                  placeholder="Zone ID"
-                  className="input-field bg-white"
+                  placeholder="ZONE ID"
+                  className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2.5 text-[11px] font-mono tracking-widest text-slate-300 placeholder-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                 />
                 <input
                   type="number"
@@ -394,8 +393,8 @@ function AlertHistory({ headerTabs }) {
                   step="0.01"
                   value={draftFilters?.min_confidence || ''}
                   onChange={(e) => setDraftFilters((prev) => ({ ...prev, min_confidence: e.target.value }))}
-                  placeholder="Min confidence"
-                  className="input-field bg-white"
+                  placeholder="MIN CONFIDENCE"
+                  className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2.5 text-[11px] font-mono tracking-widest text-slate-300 placeholder-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                 />
                 <CalendarInput
                   ariaLabel="Filter alerts from datetime"
@@ -410,7 +409,7 @@ function AlertHistory({ headerTabs }) {
                   popoverAlign="right"
                 />
               </div>
-              <div className="mt-4 flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+              <div className="mt-4 flex items-center justify-end gap-3 border-t border-slate-800 pt-3">
                 <button
                   onClick={() => {
                     resetTriageFilters();
@@ -425,9 +424,9 @@ function AlertHistory({ headerTabs }) {
                     setAppliedFilters(cleared);
                     setTriageFilters(cleared);
                   }}
-                  className="px-3 py-1.5 text-xs rounded-full text-slate-500 hover:text-slate-800 transition-all focus-ring"
+                  className="px-3 py-1.5 text-[10px] font-mono font-bold tracking-widest uppercase rounded text-slate-500 hover:text-slate-300 transition-all focus-ring"
                 >
-                  Reset
+                  RESET
                 </button>
                 <button
                   onClick={() => {
@@ -440,9 +439,9 @@ function AlertHistory({ headerTabs }) {
                     setAppliedFilters(next);
                     setTriageFilters(next);
                   }}
-                  className="bg-slate-800 text-white rounded-full px-4 py-2 text-sm hover:bg-slate-700 shadow-md transition-all"
+                  className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded px-4 py-2 text-[10px] font-mono font-bold tracking-widest uppercase hover:bg-cyan-500/20 hover:border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.15)] transition-all"
                 >
-                  Apply Filters
+                  APPLY
                 </button>
               </div>
             </motion.div>
@@ -451,7 +450,7 @@ function AlertHistory({ headerTabs }) {
       </div>
 
       {refreshing && (
-        <div className="px-6 py-2 border-b border-[#e7ecef] bg-slate-50 text-xs text-slate-500">
+        <div className="px-6 py-2 border-b border-slate-800 bg-slate-900 text-[10px] font-mono tracking-widest text-cyan-400 uppercase">
           Refreshing alerts…
         </div>
       )}
@@ -459,43 +458,43 @@ function AlertHistory({ headerTabs }) {
       <div className="flex-1 overflow-hidden" data-testid="incident-master-list">
         {alerts.length === 0 ? (
           <div className="text-center py-12 px-6">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
-              <svg className="h-7 w-7 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded border border-slate-800 bg-slate-900">
+              <svg className="h-7 w-7 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
             </div>
-            <p className="text-sm font-semibold text-slate-700">All clear</p>
-            <p className="text-xs text-slate-400 mt-1">No alerts found for the selected filters.</p>
+            <p className="text-[11px] font-mono font-bold tracking-widest uppercase text-slate-400">ALL CLEAR</p>
+            <p className="text-[9px] font-mono tracking-widest uppercase text-slate-600 mt-1">No alerts found for the selected filters.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#e7ecef]">
+          <div className="divide-y divide-slate-800">
             {alerts.map((alert) => (
               <button
                 key={getIncidentKey(alert)}
                 type="button"
                 onClick={() => setSelectedIncident(alert)}
-                className="w-full text-left px-5 py-4 hover:bg-slate-50 hover:shadow-sm cursor-pointer transition-all border-l-4 border-transparent hover:border-l-rose-400 group flex items-center justify-between gap-4"
+                className="w-full text-left px-5 py-4 hover:bg-slate-900/50 hover:shadow-[inset_0_0_12px_rgba(0,0,0,0.5)] cursor-pointer transition-all border-l-2 border-transparent hover:border-l-rose-500 group flex items-center justify-between gap-4"
                 data-testid="incident-row"
               >
                 {/* Left: Zone & Time */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <p className="text-sm font-bold text-slate-900 truncate">
-                      {alert.zone_name || alert.zone_id || 'Unknown Zone'}
+                    <p className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase truncate">
+                      {alert.zone_name || alert.zone_id || 'UNKNOWN ZONE'}
                     </p>
                     {alertBadge()}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1 font-mono">{formatAlertTime(alert)}</p>
+                  <p className="text-[10px] text-slate-500 mt-1 font-mono tracking-widest uppercase">{formatAlertTime(alert)}</p>
                 </div>
 
                 {/* Right: Confidence & Icon */}
                 <div className="flex items-center gap-6 shrink-0">
                   <div className="hidden sm:flex flex-col items-end">
-                    <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-0.5">Confidence</p>
-                    <p className="text-sm font-semibold text-slate-700 font-mono">{formatConfidence(alert)}</p>
+                    <p className="text-[9px] uppercase tracking-[0.2em] font-mono font-bold text-slate-500 mb-0.5">Confidence</p>
+                    <p className="text-sm font-bold text-cyan-400 font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">{formatConfidence(alert)}</p>
                   </div>
                   
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-500 transition-colors">
+                  <div className="w-8 h-8 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-rose-500/10 group-hover:border-rose-500/50 group-hover:text-rose-400 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -509,15 +508,15 @@ function AlertHistory({ headerTabs }) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-[#e7ecef] bg-slate-50 flex items-center justify-between text-sm text-slate-600 rounded-b-3xl">
+        <div className="px-6 py-4 border-t border-slate-800 bg-[#0a0f18] flex items-center justify-between text-xs font-mono font-bold tracking-widest text-slate-500 uppercase rounded-b-xl">
           <span>
-            Page {page} of {totalPages} &nbsp;({total} total)
+            Page {page} of {totalPages} &nbsp;({total} TOTAL)
           </span>
           <div className="flex gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              className="px-4 py-2 rounded border border-slate-700 hover:bg-slate-800 hover:text-slate-200 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
               style={{ touchAction: 'manipulation', minHeight: '44px' }}
             >
               ← Prev
@@ -525,7 +524,7 @@ function AlertHistory({ headerTabs }) {
             <button
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
+              className="px-4 py-2 rounded border border-slate-700 hover:bg-slate-800 hover:text-slate-200 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus-ring"
               style={{ touchAction: 'manipulation', minHeight: '44px' }}
             >
               Next →
@@ -536,7 +535,7 @@ function AlertHistory({ headerTabs }) {
 
       <AnimatePresence>
         {selectedIncident && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/30 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm">
             <motion.div
               className="absolute inset-0"
               initial={{ opacity: 0 }}
@@ -546,7 +545,7 @@ function AlertHistory({ headerTabs }) {
             />
             
             <motion.div
-              className="relative w-full max-w-[95vw] xl:max-w-6xl 2xl:max-w-7xl bg-white shadow-2xl rounded-[2rem] p-6 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-8 animate-in fade-in zoom-in-95 duration-200"
+              className="relative w-full max-w-[95vw] xl:max-w-6xl 2xl:max-w-7xl bg-[#0a0f18] shadow-[0_16px_64px_rgba(0,0,0,0.8)] border border-slate-800 rounded-xl p-6 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-8 animate-in fade-in zoom-in-95 duration-200"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -555,7 +554,7 @@ function AlertHistory({ headerTabs }) {
               aria-modal="true"
             >
               {/* Media Player Container */}
-              <div className="w-full md:w-[60%] bg-slate-900 flex items-center justify-center min-h-[300px] rounded-2xl overflow-hidden shadow-inner relative group">
+              <div className="w-full md:w-[60%] bg-[#05080f] flex items-center justify-center min-h-[300px] rounded border border-slate-800 overflow-hidden shadow-[inset_0_4px_24px_rgba(0,0,0,0.6)] relative group">
                 {fetchingClip ? (
                   <PremiumLoader />
                 ) : clipMetadata ? (
@@ -575,11 +574,11 @@ function AlertHistory({ headerTabs }) {
                     className="w-full h-full object-cover aspect-video"
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-slate-500 p-10 h-full w-full aspect-video">
+                  <div className="flex flex-col items-center justify-center text-slate-600 p-10 h-full w-full aspect-video">
                     <svg className="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <p className="text-sm font-medium">Media unavailable</p>
+                    <p className="text-[10px] font-mono tracking-widest uppercase font-bold">MEDIA UNAVAILABLE</p>
                   </div>
                 )}
               </div>
@@ -589,15 +588,15 @@ function AlertHistory({ headerTabs }) {
                 <div>
                   <div className="flex items-start justify-between mb-8">
                     <div>
-                      <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-1.5">Incident Details</p>
-                      <h3 className="text-3xl font-extrabold text-slate-900 leading-tight tracking-tight">
-                        {selectedIncident.zone_name || selectedIncident.zone_id || 'Unknown Zone'}
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-mono font-bold mb-1.5">Incident Details</p>
+                      <h3 className="text-2xl font-mono font-bold text-slate-200 tracking-wider uppercase">
+                        {selectedIncident.zone_name || selectedIncident.zone_id || 'UNKNOWN ZONE'}
                       </h3>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedIncident(null)}
-                      className="rounded-full bg-slate-50 p-2.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                      className="rounded bg-slate-900 border border-slate-800 p-2 text-slate-500 hover:bg-slate-800 hover:text-slate-300 transition-colors"
                       aria-label="Close incident details"
                     >
                       <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -607,21 +606,21 @@ function AlertHistory({ headerTabs }) {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Timestamp</p>
-                      <p className="text-sm font-bold text-slate-900">{formatAlertTime(selectedIncident)}</p>
+                    <div className="rounded bg-slate-900 p-4 border border-slate-800 transition-colors hover:bg-slate-800/50 hover:border-slate-700">
+                      <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Timestamp</p>
+                      <p className="text-xs font-mono font-bold text-slate-300 uppercase tracking-widest">{formatAlertTime(selectedIncident)}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Status</p>
-                      <p className="text-sm font-bold text-rose-600">Drowning Alert</p>
+                    <div className="rounded bg-slate-900 p-4 border border-rose-500/20 transition-colors hover:bg-slate-800/50 hover:border-rose-500/40">
+                      <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Status</p>
+                      <p className="text-xs font-mono font-bold text-rose-500 uppercase tracking-widest drop-shadow-[0_0_8px_rgba(244,63,94,0.4)]">Drowning Alert</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Confidence</p>
-                      <p className="text-sm font-bold text-slate-900">{formatConfidence(selectedIncident)}</p>
+                    <div className="rounded bg-slate-900 p-4 border border-slate-800 transition-colors hover:bg-slate-800/50 hover:border-slate-700">
+                      <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Confidence</p>
+                      <p className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-widest">{formatConfidence(selectedIncident)}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100/50 transition-colors hover:bg-slate-100/50">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Threat Level</p>
-                      <p className="text-sm font-bold text-slate-900">{getThreatLevel(selectedIncident)}</p>
+                    <div className="rounded bg-slate-900 p-4 border border-slate-800 transition-colors hover:bg-slate-800/50 hover:border-slate-700">
+                      <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Threat Level</p>
+                      <p className="text-xs font-mono font-bold text-rose-400 uppercase tracking-widest">{getThreatLevel(selectedIncident)}</p>
                     </div>
                   </div>
                 </div>
@@ -642,16 +641,16 @@ function AlertHistory({ headerTabs }) {
                       <button
                         type="button"
                         onClick={() => setSelectedIncident(null)}
-                        className="px-6 py-3 rounded-xl text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                        className="px-6 py-3 rounded text-[10px] font-mono font-bold tracking-widest uppercase text-slate-400 border border-slate-700 hover:bg-slate-800 hover:text-slate-200 transition-colors focus-ring"
                       >
-                        Close
+                        CLOSE
                       </button>
                       <button
                         type="button"
                         onClick={() => setSelectedIncident(null)}
-                        className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                        className="px-6 py-3 rounded text-[10px] font-mono font-bold tracking-widest uppercase text-[#0a0f18] bg-cyan-400 hover:bg-cyan-300 transition-colors shadow-[0_0_12px_rgba(34,211,238,0.4)]"
                       >
-                        Download Log
+                        DOWNLOAD LOG
                       </button>
                     </>
                   )}

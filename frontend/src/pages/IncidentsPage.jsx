@@ -47,9 +47,9 @@ function IncidentsPage() {
           aria-label={`Open ${tab.label}`}
           role="tab"
           aria-selected={activeTab === tab.id}
-          className={`relative py-4 text-sm font-medium transition-colors h-full flex items-center ${activeTab === tab.id
-            ? 'text-slate-900'
-            : 'text-slate-500 hover:text-slate-800'
+          className={`relative py-4 text-[11px] font-mono font-bold tracking-wider uppercase transition-colors h-full flex items-center ${activeTab === tab.id
+            ? 'text-cyan-400'
+            : 'text-slate-500 hover:text-slate-300'
             }`}
         >
           <span className="flex items-center gap-2">
@@ -64,7 +64,7 @@ function IncidentsPage() {
           {activeTab === tab.id && (
             <motion.div
               layoutId="activeTabIndicator"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-t-full"
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] rounded-t-full"
               transition={prefersReducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 500, damping: 30 }}
             />
           )}
@@ -81,11 +81,11 @@ function IncidentsPage() {
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
     >
       <div className="flex items-center gap-3">
-        <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
+        <div className="w-1.5 h-10 rounded bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
         <div>
-          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Incidents</h2>
-          <p className="text-sm text-slate-600 mt-1">
-            Historical alerts and detection events
+          <h2 className="text-2xl font-mono font-bold tracking-[0.2em] text-slate-200 uppercase">INCIDENTS</h2>
+          <p className="text-[10px] font-mono tracking-widest text-slate-500 mt-1 uppercase">
+            HISTORICAL ALERTS AND DETECTION EVENTS
           </p>
         </div>
       </div>

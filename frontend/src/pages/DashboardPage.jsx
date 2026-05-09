@@ -36,7 +36,7 @@ function DashboardPage() {
 
   return (
     <motion.div 
-      className="flex flex-col gap-6 h-full"
+      className="flex flex-col gap-4 h-full bg-slate-950 rounded-3xl p-4 sm:p-6 text-slate-200 border border-slate-800 shadow-2xl"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -46,11 +46,11 @@ function DashboardPage() {
       {/* Page header */}
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-300 to-sky-400" />
+          <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-blue-500 to-cyan-400" />
           <div>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Dashboard</h2>
-            <p className="text-sm text-slate-600 mt-1">
-              Real-time pool monitoring and alert overview
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Mission Control</h2>
+            <p className="text-sm text-slate-400 mt-0.5">
+              Real-time monitoring terminal
             </p>
           </div>
         </div>
@@ -62,10 +62,10 @@ function DashboardPage() {
       </motion.div>
 
       {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Camera feeds — takes 2/3 width on xl */}
         <motion.div 
-          className="lg:col-span-2 space-y-4"
+          className="xl:col-span-2 space-y-4"
           variants={itemVariants}
         >
           <CameraGrid reloadToken={location.key} />
@@ -73,7 +73,7 @@ function DashboardPage() {
 
         {/* Right sidebar — detection feed + system status */}
         <motion.div 
-          className="flex flex-col gap-6"
+          className="flex flex-col gap-4"
           variants={itemVariants}
         >
           <DetectionFeed />

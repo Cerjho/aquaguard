@@ -3,14 +3,14 @@ import logger from '../utils/logger';
 
 function ErrorFallback({ error }) {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 p-6">
-      <div className="max-w-lg w-full rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-        <h1 className="text-xl font-semibold text-slate-900">Something went wrong</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          The dashboard encountered an unexpected error. Please refresh the page or sign in again.
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#05080f] p-6">
+      <div className="max-w-lg w-full rounded border border-rose-500/50 bg-[#0a0f18] shadow-[0_8px_32px_rgba(244,63,94,0.15)] p-6 text-center">
+        <h1 className="text-xl font-mono font-bold tracking-[0.2em] text-slate-200 uppercase">SYSTEM FAILURE</h1>
+        <p className="mt-2 text-[10px] font-mono tracking-widest text-slate-400 uppercase">
+          THE DASHBOARD ENCOUNTERED AN UNEXPECTED ERROR. PLEASE REFRESH THE PAGE OR RE-AUTHENTICATE.
         </p>
         {error ? (
-          <pre className="mt-4 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 overflow-auto">
+          <pre className="mt-4 text-left text-[10px] font-mono text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded p-3 overflow-auto">
             {String(error.message || error)}
           </pre>
         ) : null}

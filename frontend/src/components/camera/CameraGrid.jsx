@@ -383,35 +383,35 @@ function CameraGrid({ reloadToken = 0 }) {
 
   if (cameras.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50">
-          <svg className="h-8 w-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.25} viewBox="0 0 24 24">
+      <div className="rounded border border-dashed border-slate-700 bg-slate-900/50 p-10 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded bg-slate-900 border border-slate-800 shadow-inner">
+          <svg className="h-8 w-8 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1.25} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
           </svg>
         </div>
-        <p className="text-base font-semibold text-slate-700">No cameras registered</p>
-        <p className="text-sm text-slate-400 mt-1.5">Add cameras via the System settings to start monitoring.</p>
+        <p className="text-[12px] font-mono font-bold tracking-[0.2em] uppercase text-slate-300">NO CAMERAS REGISTERED</p>
+        <p className="text-[10px] font-mono tracking-widest text-slate-500 mt-1.5 uppercase">ADD CAMERAS VIA THE SYSTEM SETTINGS TO START MONITORING.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-3xl bg-slate-50 p-3 sm:p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-semibold text-slate-800">
-          Camera Feeds
-          <span className="ml-2 text-xs text-slate-500 font-normal">
-            {cameras.length} camera{cameras.length !== 1 ? 's' : ''}
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
+          Live Streams
+          <span className="ml-2 text-[10px] text-slate-500 font-mono">
+            {cameras.length} CAM{cameras.length !== 1 ? 'S' : ''}
           </span>
         </h2>
         <button
           onClick={() => {
             fetchCameras({ forceLoading: true });
           }}
-          className="text-xs text-slate-600 hover:text-slate-900 transition-colors focus-ring"
+          className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-500 hover:text-cyan-400 transition-colors focus-ring"
           title="Refresh cameras"
         >
-          ↺ Refresh
+          [ REFRESH ]
         </button>
       </div>
 

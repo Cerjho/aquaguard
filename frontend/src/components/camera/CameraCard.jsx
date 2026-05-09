@@ -191,8 +191,8 @@ function CameraCard({
           onFocus?.(camera, e.currentTarget);
         }
       }}
-      className={`group relative overflow-hidden cursor-pointer transition-all duration-500 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-300/70 border rounded-2xl shadow-md bg-white ${
-        hasActiveAlert ? 'ring-2 ring-rose-400 border-rose-200 alert-card-glow shadow-lg' : 'border-slate-200 hover:shadow-lg hover:shadow-slate-200/70'
+      className={`group relative overflow-hidden cursor-pointer transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500/70 border rounded-xl bg-[#0a0f18] ${
+        hasActiveAlert ? 'ring-1 ring-rose-500 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)] z-10' : 'border-slate-800 hover:border-slate-600 shadow-[0_8px_16px_rgba(0,0,0,0.4)]'
       }`}
       style={{ touchAction: 'manipulation' }}
       aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
@@ -201,7 +201,7 @@ function CameraCard({
     >
       {/* Stream area */}
       <div
-        className={`relative w-full bg-slate-200 aspect-video overflow-hidden ${
+        className={`relative w-full bg-[#05080f] aspect-video overflow-hidden ${
           hasActiveAlert ? 'animate-pulse-glow' : ''
         }`}
       >
@@ -268,14 +268,14 @@ function CameraCard({
 
 
         {/* Always-visible floating context pills + hover menu */}
-        <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between p-3" ref={telemetryMenuRef}>
-          <span className="text-[11px] font-bold text-slate-900 truncate max-w-[55%]">
+        <div className="absolute inset-x-0 top-0 z-30 flex items-start justify-between p-3 pointer-events-none" ref={telemetryMenuRef}>
+          <span className="text-[10px] font-mono font-bold text-white uppercase tracking-widest truncate max-w-[55%] [text-shadow:0_2px_4px_rgba(0,0,0,0.8)] px-2 py-1 bg-black/40 backdrop-blur-md rounded border border-white/10">
             {camera.zone_name || camera.zone_id}
           </span>
-          <div className="relative flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white/80 px-2 py-1 text-[11px] font-medium text-emerald-700 shadow-sm backdrop-blur-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live
+          <div className="relative flex items-center gap-2 pointer-events-auto">
+            <span className="inline-flex items-center gap-1.5 rounded border border-emerald-500/30 bg-emerald-500/20 px-2 py-1 text-[10px] font-mono font-bold text-emerald-400 shadow-sm backdrop-blur-md uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-sm bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse" />
+              LIVE
             </span>
             <button
               type="button"
@@ -283,10 +283,10 @@ function CameraCard({
                 event.stopPropagation();
                 setShowTelemetryMenu((prev) => !prev);
               }}
-              className={`inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-600 hover:bg-white shadow-sm transition-opacity duration-200 ${
+              className={`inline-flex h-6 w-6 items-center justify-center rounded border border-white/20 bg-black/60 text-white hover:bg-black shadow-sm transition-opacity duration-200 backdrop-blur-md ${
                 showTelemetryMenu ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
               }`}
-              style={{ touchAction: 'manipulation', minHeight: '44px', minWidth: '44px' }}
+              style={{ touchAction: 'manipulation', minHeight: '36px', minWidth: '36px' }}
               aria-label="Open camera telemetry"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -296,28 +296,28 @@ function CameraCard({
               </svg>
             </button>
             {showTelemetryMenu && (
-              <div className="absolute right-0 top-10 w-56 rounded-2xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-lg p-3 text-xs text-slate-700">
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500">Health Status</span>
-                  <span className={healthDegraded ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'}>
-                    {healthDegraded ? 'Degraded' : 'Normal'}
+              <div className="absolute right-0 top-10 w-56 rounded-lg border border-slate-700 bg-slate-900/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] p-3 text-[10px] font-mono text-slate-300 uppercase tracking-wide">
+                <div className="flex items-center justify-between py-1 border-b border-slate-800">
+                  <span className="text-slate-500">Health</span>
+                  <span className={healthDegraded ? 'text-amber-500 font-bold' : 'text-emerald-500 font-bold'}>
+                    {healthDegraded ? 'DEGRADED' : 'NOMINAL'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500">Current FPS</span>
-                  <span className="font-mono">{fpsActual !== null ? fpsActual.toFixed(1) : '—'}</span>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800">
+                  <span className="text-slate-500">FPS</span>
+                  <span className="font-bold text-white">{fpsActual !== null ? fpsActual.toFixed(1) : '—'}</span>
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500">Packet Corruption</span>
-                  <span className="font-mono">{corruptionRate !== null ? `${(corruptionRate * 100).toFixed(1)}%` : '—'}</span>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800">
+                  <span className="text-slate-500">Loss</span>
+                  <span className="font-bold text-white">{corruptionRate !== null ? `${(corruptionRate * 100).toFixed(1)}%` : '—'}</span>
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500">Reconnect Count</span>
-                  <span className="font-mono">{reconnectCount}</span>
+                <div className="flex items-center justify-between py-1 border-b border-slate-800">
+                  <span className="text-slate-500">Reconnects</span>
+                  <span className="font-bold text-white">{reconnectCount}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-slate-500">Transport</span>
-                  <span className="font-semibold">{transportLabel} ({transportDetail})</span>
+                  <span className="font-bold text-cyan-400">{transportLabel}</span>
                 </div>
               </div>
             )}

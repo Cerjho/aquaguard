@@ -10,8 +10,8 @@ import { motion } from 'framer-motion';
 function AlertBadge({ count = 0 }) {
   if (count === 0) {
     return (
-      <div className="relative" title="No unacknowledged alerts">
-        <div className="w-10 h-10 rounded-xl bg-[#f8fbff] border border-slate-200 flex items-center justify-center shadow-sm">
+      <div className="relative" title="NO UNACKNOWLEDGED ALERTS">
+        <div className="w-10 h-10 rounded bg-slate-900 border border-slate-800 flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
           <svg
             className="w-5 h-5 text-slate-500"
             fill="none"
@@ -33,13 +33,13 @@ function AlertBadge({ count = 0 }) {
   return (
     <motion.div 
       className="relative" 
-      title={`${count} unacknowledged alert${count !== 1 ? 's' : ''}`}
+      title={`${count} UNACKNOWLEDGED ALERT${count !== 1 ? 'S' : ''}`}
       animate={{ scale: [1, 1.05, 1] }}
       transition={{ duration: 1, repeat: Infinity }}
     >
-      <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center">
+      <div className="w-10 h-10 rounded bg-rose-500/10 border border-rose-500/30 flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.3)]">
         <svg
-          className="w-5 h-5 text-rose-700"
+          className="w-5 h-5 text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]"
           fill="none"
           stroke="currentColor"
           strokeWidth={1.5}
@@ -53,7 +53,7 @@ function AlertBadge({ count = 0 }) {
         </svg>
       </div>
       <motion.span 
-        className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center rounded-lg bg-rose-500 text-white text-[11px] font-bold px-1.5 ring-2 ring-white"
+        className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center rounded bg-rose-500 text-[#05080f] text-[10px] font-mono font-bold px-1.5 border border-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]"
         animate={{ scale: [1, 1.1, 1] }}
         transition={{ duration: 0.5, repeat: Infinity }}
       >

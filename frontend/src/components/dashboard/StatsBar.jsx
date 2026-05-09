@@ -57,10 +57,10 @@ function StatCard({ icon, label, value, suffix, accent, glowing, delay }) {
 
   return (
     <motion.div
-      className={`relative overflow-hidden rounded-2xl border bg-white p-4 sm:p-5 shadow-sm transition-shadow duration-300 hover:shadow-md ${
+      className={`relative overflow-hidden rounded-lg border bg-slate-900 p-4 sm:p-5 shadow-sm transition-shadow duration-300 hover:shadow-md ${
         glowing
-          ? 'border-rose-200 shadow-rose-100/60'
-          : 'border-slate-200/80'
+          ? 'border-rose-500 shadow-rose-500/20 bg-rose-950/20'
+          : 'border-slate-800'
       }`}
       initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -81,10 +81,10 @@ function StatCard({ icon, label, value, suffix, accent, glowing, delay }) {
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             {label}
           </p>
-          <p className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+          <p className="text-2xl font-mono font-bold tracking-tight text-white leading-tight">
             <AnimatedNumber value={typeof value === 'number' ? value : 0} suffix={suffix || ''} />
           </p>
         </div>
@@ -92,7 +92,7 @@ function StatCard({ icon, label, value, suffix, accent, glowing, delay }) {
 
       {/* Pulsing glow for active alerts */}
       {glowing && (
-        <div className="absolute inset-0 rounded-2xl animate-pulse-glow pointer-events-none" />
+        <div className="absolute inset-0 rounded-lg animate-pulse-glow pointer-events-none border border-rose-500/50" />
       )}
     </motion.div>
   );

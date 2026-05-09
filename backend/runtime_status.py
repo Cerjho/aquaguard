@@ -153,28 +153,19 @@ def get_runtime_status():
     now_utc = datetime.now(timezone.utc)
 
     try:
-        cameras = CameraZone.query.filter_by(status='active').all()
+        all_cameras = CameraZone.query.all()
+        deleted_zones = {c.zone_id for c in all_cameras if c.status == 'deleted'}
+        cameras = [c for c in all_cameras if c.status != 'deleted']
     except SQLAlchemyError:
         db.session.rollback()
         cameras = []
+        deleted_zones = set()
 
     for camera in cameras:
         meta = _snapshot_meta(camera.zone_id)
         camera_map[camera.zone_id] = {
             'zone_id': camera.zone_id,
             'zone_name': camera.zone_name,
-            'status': meta['status'],
-            'snapshot_age_seconds': meta['snapshot_age_seconds'],
-            'last_snapshot_at': meta['last_snapshot_at'],
-        }
-
-    for zone_id in _zone_ids_from_live_dir():
-        if zone_id in camera_map:
-            continue
-        meta = _snapshot_meta(zone_id)
-        camera_map[zone_id] = {
-            'zone_id': zone_id,
-            'zone_name': zone_id,
             'status': meta['status'],
             'snapshot_age_seconds': meta['snapshot_age_seconds'],
             'last_snapshot_at': meta['last_snapshot_at'],

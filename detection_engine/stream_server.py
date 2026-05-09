@@ -157,6 +157,11 @@ class _StreamRequestHandler(BaseHTTPRequestHandler):
         return None
 
 
+class _ReusableHTTPServer(HTTPServer):
+    """HTTPServer with SO_REUSEADDR set before bind."""
+    allow_reuse_address = True
+
+
 class StreamServer:
     """In-memory MJPEG stream server.
 
@@ -189,18 +194,24 @@ class StreamServer:
 
     def start(self) -> None:
         """Start the stream server in a background daemon thread."""
-        self._httpd = HTTPServer(
-            (self._host, self._port),
-            _StreamRequestHandler,
-        )
+        try:
+            self._httpd = _ReusableHTTPServer(
+                (self._host, self._port),
+                _StreamRequestHandler,
+            )
+        except OSError as exc:
+            logger.error(
+                "Stream server failed to bind %s:%d: %s",
+                self._host, self._port, exc,
+            )
+            return
+
         # Attach data to server instance so handler can access it
         self._httpd.dashboard_buffers = self._dashboard_buffers
         self._httpd.jpeg_quality = self._jpeg_quality
-        # Allow port reuse
-        self._httpd.allow_reuse_address = True
 
         self._thread = threading.Thread(
-            target=self._httpd.serve_forever,
+            target=self._serve_with_logging,
             name="stream-server",
             daemon=True,
         )
@@ -209,6 +220,13 @@ class StreamServer:
             "Stream server started on %s:%d (%d zones)",
             self._host, self._port, len(self._dashboard_buffers),
         )
+
+    def _serve_with_logging(self) -> None:
+        """Wrapper around serve_forever that logs crashes."""
+        try:
+            self._httpd.serve_forever()
+        except Exception as exc:
+            logger.error("Stream server crashed: %s", exc, exc_info=True)
 
     def register_zone(self, zone_id: str, buffer) -> None:
         """Register a new zone's DashboardRingBuffer (hot-add)."""
@@ -228,4 +246,6 @@ class StreamServer:
     @property
     def url(self) -> str:
         """Return the base URL of the server."""
-        return f"http://{self._host}:{self._port}"
+        # 0.0.0.0 means "all interfaces" but isn't browsable
+        display_host = "127.0.0.1" if self._host == "0.0.0.0" else self._host
+        return f"http://{display_host}:{self._port}"

@@ -55,7 +55,8 @@ class TestStreamServerLifecycle:
         srv = StreamServer(
             dashboard_buffers={}, host="0.0.0.0", port=9999,
         )
-        assert srv.url == "http://0.0.0.0:9999"
+        # 0.0.0.0 is displayed as 127.0.0.1 (browsable)
+        assert srv.url == "http://127.0.0.1:9999"
 
     def test_port_property(self):
         srv = StreamServer(dashboard_buffers={}, port=12345)

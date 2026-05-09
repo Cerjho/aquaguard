@@ -953,13 +953,12 @@ def main():
     stream_server.start()
 
     # ── Start clip capture engine (local drowning event recording) ─────────
-    from backend.extensions import socketio
     _CLIPS_DIR = os.path.join(_BASE_DIR, 'backend', 'clips')
     clip_buffers = pipeline_manager.get_all_clip_buffers()
     clip_capture_engine = ClipCaptureEngine(
         clips_dir=_CLIPS_DIR,
         clip_buffers=clip_buffers,
-        socketio=socketio,
+        socketio=None,  # Cannot use backend socketio in detection_engine container
         mqtt_client=mqtt_client,
     )
     clip_capture_engine.start()

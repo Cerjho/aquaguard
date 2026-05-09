@@ -243,6 +243,7 @@ services:
       - ./detection_engine/models:/app/detection_engine/models:ro
       - ./config:/app/config:ro
       - ./backend/snapshots:/app/backend/snapshots
+      - ./backend/clips:/app/backend/clips
     depends_on:
       mosquitto:
         condition: service_healthy

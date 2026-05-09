@@ -466,19 +466,26 @@ class ClipCaptureEngine:
                 os.path.basename(mp4_path),
             )
 
-            # Emit SocketIO event (Rule R6-D: after write)
-            if self._socketio is not None:
+            # Emit MQTT event (Rule R6-D: cross-container)
+            if self._mqtt_client is not None:
                 try:
-                    self._socketio.emit('clip_ready', {
-                        'clip_id': state.clip_id,
+                    payload = {
+                        'message_type': 'clip_ready',
+                        'component': 'clip_capture',
                         'zone_id': zone_id,
+                        'clip_id': state.clip_id,
                         'event_ids': state.event_ids,
                         'duration_seconds': round(duration, 1),
                         'clip_file': os.path.basename(mp4_path),
-                    })
-                except (RuntimeError, ValueError, OSError) as exc:
+                    }
+                    self._mqtt_client._client.publish(
+                        'aquaguard/system/clip_ready',
+                        json.dumps(payload),
+                        qos=0,
+                    )
+                except (RuntimeError, ValueError, OSError, TypeError) as exc:
                     logger.warning(
-                        '[%s] clip_ready emit failed: %s', zone_id, exc,
+                        '[%s] clip_ready publish failed: %s', zone_id, exc,
                     )
 
         except Exception as exc:

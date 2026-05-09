@@ -26,6 +26,7 @@ from utils.logging_utils import configure_app_logging
 from utils.error_reporting import init_error_reporting
 from utils.env_utils import is_truthy
 from services.esp32_mqtt_bridge import start_esp32_mqtt_bridge
+from services.system_mqtt_bridge import start_system_mqtt_bridge
 
 
 def _resolve_database_uri(env_name):
@@ -230,10 +231,14 @@ def create_app():
                 db.create_all()
             _ensure_default_users(app)
 
-        # Start the MQTT bridge inside the application context
+        # Start the MQTT bridges inside the application context
         bridge = start_esp32_mqtt_bridge(app)
         if bridge is not None:
             app.extensions['esp32_mqtt_bridge'] = bridge
+
+        system_bridge = start_system_mqtt_bridge(app)
+        if system_bridge is not None:
+            app.extensions['system_mqtt_bridge'] = system_bridge
 
     return app
 

@@ -7,8 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import gsap from 'gsap';
 import { useAuth } from '../context/AuthContext.jsx';
-import lifeguardVideo from '../vector/lifeguard.mp4';
-import bubblesImage from '../vector/bubbles.png';
 
 function LoginPage() {
   const prefersReducedMotion = useReducedMotion();
@@ -30,7 +28,6 @@ function LoginPage() {
   const formPanelRef = useRef(null);
   const mediaPanelRef = useRef(null);
   const mediaVideoRef = useRef(null);
-  const bubblesRef = useRef(null);
   const customLoaderRef = useRef(null);
   const welcomeText = 'MISSION CONTROL';
   const welcomeLetters = welcomeText.split('');
@@ -77,7 +74,6 @@ function LoginPage() {
   useEffect(
     () => () => {
       if (mediaVideoRef.current) gsap.killTweensOf(mediaVideoRef.current);
-      if (bubblesRef.current) gsap.killTweensOf(bubblesRef.current);
       Object.values(letterUnlockTimersRef.current).forEach((timerId) => clearTimeout(timerId));
     },
     []
@@ -87,7 +83,7 @@ function LoginPage() {
     if (prefersReducedMotion) return undefined;
 
     const handleGlobalMouseMove = (event) => {
-      if (!mediaVideoRef.current || !bubblesRef.current) return;
+      if (!mediaVideoRef.current) return;
 
       const offsetX = (event.clientX / window.innerWidth - 0.5) * 2;
       const offsetY = (event.clientY / window.innerHeight - 0.5) * 2;
@@ -99,14 +95,6 @@ function LoginPage() {
         ease: 'power3.out',
         overwrite: 'auto',
       });
-
-      gsap.to(bubblesRef.current, {
-        x: offsetX * -26,
-        y: offsetY * -12,
-        duration: 0.75,
-        ease: 'power3.out',
-        overwrite: 'auto',
-      });
     };
 
     const handleGlobalMouseLeave = () => {
@@ -115,15 +103,6 @@ function LoginPage() {
           x: 0,
           y: 0,
           duration: 0.7,
-          ease: 'power3.out',
-          overwrite: 'auto',
-        });
-      }
-      if (bubblesRef.current) {
-        gsap.to(bubblesRef.current, {
-          x: 0,
-          y: 0,
-          duration: 0.8,
           ease: 'power3.out',
           overwrite: 'auto',
         });
@@ -144,11 +123,6 @@ function LoginPage() {
 
     const introItems = formPanelRef.current.querySelectorAll('[data-intro-item]');
     const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-    if (bubblesRef.current) {
-      gsap.set(bubblesRef.current, { autoAlpha: 0, y: -14 });
-      tl.to(bubblesRef.current, { autoAlpha: 1, y: 0, duration: 0.55 }, 0);
-    }
 
     if (mediaPanelRef.current) {
       gsap.set(mediaPanelRef.current, { autoAlpha: 0, x: -20, scale: 1.03 });
@@ -201,32 +175,23 @@ function LoginPage() {
     if (prefersReducedMotion) return;
     const target = letterRefs.current[index];
     if (!target || letterLockRef.current.has(index)) return;
-    const hoverColor = hoverPalette[Math.floor(Math.random() * hoverPalette.length)];
+    const hoverColor = '#22d3ee'; // cyan-400
     target.dataset.hoverColor = hoverColor;
     letterLockRef.current.add(index);
 
     gsap.killTweensOf(target);
-    gsap.set(target, { color: hoverColor });
-    gsap.set(target, { y: -4.8, rotation: -12 }); // always start from left
+    gsap.set(target, { color: hoverColor, textShadow: '0 0 12px rgba(34,211,238,0.8)' });
+    
+    // Tactical glitch effect instead of bouncy cartoon effect
     gsap.to(target, {
       keyframes: [
-        { rotation: 11, y: 3.2, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: -9, y: -2.8, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: 8.5, y: 2.3, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: -7, y: -2.1, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: 6.5, y: 1.7, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: -5, y: -1.4, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: 4.5, y: 1, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: -3, y: -0.8, duration: 0.24, ease: 'sine.inOut' },
-        { rotation: 0, y: 0, duration: 0.3, ease: 'power2.out' },
+        { x: -2, y: 1, scale: 1.1, skewX: 10, opacity: 0.8, duration: 0.04 },
+        { x: 2, y: -1, scale: 1, skewX: -10, opacity: 1, duration: 0.04 },
+        { x: -1, y: 2, scale: 1.05, skewX: 5, opacity: 0.5, duration: 0.04 },
+        { x: 1, y: -2, scale: 1, skewX: -5, opacity: 1, duration: 0.04 },
+        { x: 0, y: 0, scale: 1, skewX: 0, opacity: 1, duration: 0.04 },
       ],
-    });
-    gsap.to(target, {
-      duration: 0.28,
-      scale: 1.03,
-      yoyo: true,
-      repeat: 1,
-      ease: 'sine.inOut',
+      ease: 'steps(1)',
     });
 
     if (letterUnlockTimersRef.current[index]) {
@@ -235,33 +200,39 @@ function LoginPage() {
     letterUnlockTimersRef.current[index] = setTimeout(() => {
       letterLockRef.current.delete(index);
       delete letterUnlockTimersRef.current[index];
-    }, 2350);
+    }, 400);
   };
 
   const handleLetterLeave = (index) => {
     const target = letterRefs.current[index];
     if (!target) return;
-    const hoverColor = target.dataset.hoverColor || '#a3cef1';
+    const hoverColor = target.dataset.hoverColor || '#22d3ee';
 
     if (!letterLockRef.current.has(index)) {
       gsap.killTweensOf(target);
       gsap.to(target, {
-        duration: 1.45,
+        duration: 0.1,
+        x: 0,
         y: 0,
-        rotation: 0,
+        scale: 1,
+        skewX: 0,
+        opacity: 1,
         ease: 'power2.out',
       });
     }
+    
     gsap.fromTo(
       target,
       {
         color: hoverColor,
+        textShadow: '0 0 12px rgba(34,211,238,0.8)'
       },
       {
-        duration: 2.1,
-        delay: 0.2,
-        color: '#f8fafc',
-        ease: 'sine.out',
+        duration: 1.2,
+        delay: 0.1,
+        color: '#f1f5f9', // slate-100
+        textShadow: '0 0 0px rgba(34,211,238,0)',
+        ease: 'power2.out',
       }
     );
   };
@@ -342,40 +313,60 @@ function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05080f] p-5 sm:p-8">
-      <div className="relative z-20 flex min-h-[calc(100vh-2.5rem)] items-center justify-center">
+    <div className="relative min-h-screen overflow-hidden bg-[#020617] p-5 sm:p-8 flex items-center justify-center">
+      {/* Subtle animated particles overlay for monitoring aesthetic */}
+      <div className="absolute inset-0 z-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')] opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.1)_0%,transparent_70%)] pointer-events-none" />
+
+      <div className="relative z-20 w-full max-w-7xl">
         <motion.div
-          className="relative w-full max-w-7xl rounded-3xl bg-[#0a0f18] p-3 shadow-[0_0_60px_rgba(0,0,0,0.8)] border border-slate-800 sm:p-4"
+          className="relative w-full rounded-3xl bg-[#0a0f18]/80 backdrop-blur-xl p-3 shadow-[0_0_60px_rgba(0,0,0,0.8)] border border-cyan-500/20 sm:p-4"
           initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: prefersReducedMotion ? 0.01 : 0.3 }}
         >
-          <img
-            ref={bubblesRef}
-            src={bubblesImage}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-20 left-0 z-30 hidden w-[58%] max-w-[720px] lg:block opacity-30 mix-blend-screen"
-          />
           <div className="grid min-h-[720px] grid-cols-1 gap-4 lg:grid-cols-2">
             <section
               ref={mediaPanelRef}
-              className="relative hidden overflow-hidden rounded-[1.5rem] bg-slate-950 border border-slate-800/50 lg:block"
+              className="relative hidden overflow-hidden rounded-[1.5rem] bg-[#020617] border border-cyan-500/20 lg:block shadow-[inset_0_0_40px_rgba(6,182,212,0.1)]"
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.15),transparent_60%)] z-10" />
-              <video
+              
+              {/* Radar Graphic replacing the video */}
+              <div
                 ref={mediaVideoRef}
-                src={lifeguardVideo}
-                autoPlay
-                loop
-                muted
-                playsInline
-                disablePictureInPicture
-                disableRemotePlayback
-                controlsList="nofullscreen nodownload noremoteplayback"
-                className="pointer-events-none absolute inset-0 h-full w-full scale-[1.08] object-cover object-center opacity-80 mix-blend-luminosity"
-              />
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0a0f18] via-[#0a0f18]/60 to-transparent pointer-events-none" />
+                className="pointer-events-none absolute inset-0 flex items-center justify-center scale-110 opacity-70"
+              >
+                {/* Background Grid */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.07)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]" />
+                
+                {/* Radar Rings */}
+                <div className="absolute w-[140%] aspect-square rounded-full border border-cyan-500/10" />
+                <div className="absolute w-[105%] aspect-square rounded-full border border-cyan-500/15" />
+                <div className="absolute w-[70%] aspect-square rounded-full border border-cyan-500/20" />
+                <div className="absolute w-[35%] aspect-square rounded-full border border-cyan-500/30 bg-cyan-500/5" />
+                
+                {/* Radar Crosshairs */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-full h-[1px] bg-cyan-500/20" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-full w-[1px] bg-cyan-500/20" />
+                </div>
+
+                {/* Sweeping Scanner */}
+                <div className="absolute w-[105%] aspect-square rounded-full overflow-hidden">
+                  <div className="absolute inset-0 origin-center rounded-full bg-[conic-gradient(from_0deg,transparent_75%,rgba(34,211,238,0.3)_100%)] animate-[spin_4s_linear_infinite]" />
+                  <div className="absolute top-0 bottom-1/2 left-1/2 w-[1px] origin-bottom bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] animate-[spin_4s_linear_infinite]" />
+                </div>
+
+                {/* Blips */}
+                <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] top-[30%] left-[65%] animate-pulse" />
+                <div className="absolute w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_12px_#fb7185] top-[55%] left-[30%] animate-ping" />
+                <div className="absolute w-1 h-1 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] top-[70%] left-[75%] animate-pulse" style={{ animationDelay: '1s' }} />
+              </div>
+
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#020617] via-transparent to-transparent pointer-events-none" />
               <div className="absolute bottom-10 left-10 z-20 text-white font-sans pointer-events-none leading-tight">
                 <p className="font-mono font-bold tracking-[0.2em] text-3xl sm:text-4xl uppercase text-slate-200">
                   RIPPLE.<br />
@@ -525,7 +516,7 @@ function LoginPage() {
                     style={{
                       boxShadow: isSubmitting ? "none" : undefined,
                     }}
-                    className={`relative flex h-[3.5rem] items-center justify-center border px-5 py-4 text-xs font-mono font-bold tracking-widest uppercase transition-all duration-300 ${
+                    className={`relative flex h-[3.5rem] items-center justify-center border px-5 py-4 text-sm font-mono font-bold tracking-widest uppercase transition-all duration-300 ${
                       isSubmitting 
                         ? 'overflow-visible cursor-wait before:opacity-0 after:opacity-0 border-transparent bg-transparent bg-none shadow-none text-transparent' 
                         : 'overflow-hidden border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-[0_0_16px_rgba(6,182,212,0.15)] hover:bg-cyan-500/20 hover:border-cyan-400'
@@ -540,7 +531,7 @@ function LoginPage() {
                       }}
                       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
-                      INITIALIZE_UPLINK
+                      Connect to System
                     </motion.span>
                     
                     <motion.div

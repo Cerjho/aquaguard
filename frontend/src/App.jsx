@@ -65,12 +65,12 @@ function PrivateLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
       {/* Sidebar — hidden on mobile, visible from md breakpoint */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex shrink-0">
         <Sidebar />
       </div>
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">

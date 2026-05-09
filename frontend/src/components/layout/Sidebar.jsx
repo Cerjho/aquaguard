@@ -59,6 +59,7 @@ function Sidebar() {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const popoverRef = useRef(null);
   const [clockStr, setClockStr] = useState('');
   const { socketConnected } = useSocketState();
@@ -102,13 +103,22 @@ function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-screen flex flex-col shrink-0 bg-white border-r border-slate-100 shadow-[4px_0_24px_rgba(15,23,42,0.03)] p-4 relative z-20 rounded-r-[2rem]">
+    <div className="w-[5.5rem] h-screen shrink-0 relative z-40">
+      <aside 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => { setIsHovered(false); setIsPopoverOpen(false); }}
+        className={`absolute top-0 left-0 h-screen flex flex-col bg-white/95 backdrop-blur-md border-r shadow-[12px_0_32px_rgba(15,23,42,0.08)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isHovered ? 'w-64 p-4 rounded-r-[2rem] border-slate-100/50' : 'w-[5.5rem] p-3 rounded-none border-slate-100 shadow-none bg-white'}`}
+      >
       {/* Brand Header */}
-      <div className="mb-2 px-2 mt-2">
-        <div className="flex items-center gap-2">
-          <BrandMark />
+      <div className={`mb-4 mt-2 flex items-center ${isHovered ? 'px-4 justify-between' : 'px-0 justify-center w-full'}`}>
+        <div className="relative flex items-center justify-center">
+          <BrandMark className={isHovered ? 'flex-1' : ''} isExpanded={isHovered} showText={isHovered} />
+          
+          {/* Status Dot */}
           <span
-            className={`h-2 w-2 rounded-full shrink-0 ${
+            className={`absolute rounded-full shrink-0 transition-all duration-300 border-2 border-white ${
+              isHovered ? '-top-1 -right-1 h-2.5 w-2.5' : '-top-1 -right-1 h-2.5 w-2.5'
+            } ${
               systemHealthy
                 ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse'
                 : systemDegraded
@@ -119,48 +129,64 @@ function Sidebar() {
           />
         </div>
         {/* Live clock */}
-        <p className="mt-2 px-1 text-[11px] font-mono tracking-wider text-slate-400 tabular-nums">
-          {clockStr}
-        </p>
+        <div className={`overflow-hidden transition-all duration-300 ${isHovered ? 'max-h-10 opacity-100 block' : 'max-h-0 opacity-0 hidden'}`}>
+          <p className="mt-2 px-1 text-[11px] font-mono tracking-wider text-slate-400 tabular-nums whitespace-nowrap">
+            {clockStr}
+          </p>
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 mt-10">
+      <nav className="flex-1 space-y-2 mt-6">
         {navItems.map((item, index) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              isActive
-                ? 'relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#f0f7ff] text-blue-600 font-medium transition-all duration-200'
-                : 'relative flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-800 transition-colors duration-200'
-            }
-          >
-            {({ isActive }) => (
-              <motion.div
-                className="flex items-center gap-3 w-full"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                {item.icon}
-                <span className="flex-1">{item.label}</span>
-                {item.to === '/incidents' && pendingClipsCount > 0 && (
-                  <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[1.25rem] text-center shadow-sm">
-                    {pendingClipsCount}
-                  </span>
-                )}
+          <div key={item.to} className={`flex items-center ${isHovered ? 'px-3' : 'justify-center w-full'}`}>
+            <NavLink
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `group relative flex items-center rounded-2xl font-medium transition-all duration-200 ${
+                  isActive
+                    ? 'bg-[#f0f7ff] text-blue-600'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                } ${isHovered ? 'w-full px-4 py-3 gap-3' : 'w-12 h-12 justify-center p-0'}`
+              }
+            >
+              {({ isActive }) => (
+                <motion.div
+                  className={`flex items-center ${isHovered ? 'w-full' : 'justify-center'}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <div className="shrink-0 flex items-center justify-center">
+                    {item.icon}
+                  </div>
+                  
+                  {/* Tooltip for collapsed state */}
+                  <div className={`absolute left-[calc(100%+0.75rem)] px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg whitespace-nowrap z-[100] opacity-0 group-focus-visible:opacity-100 pointer-events-none transition-opacity duration-200 delay-150 ${!isHovered ? 'group-hover:opacity-100' : 'hidden'}`}>
+                    {item.label}
+                  </div>
+                  
+                  <div className={`overflow-hidden transition-all duration-300 flex items-center ${isHovered ? 'w-full opacity-100 ml-3' : 'w-0 opacity-0 ml-0'}`}>
+                    <span className="flex-1 whitespace-nowrap">{item.label}</span>
+                    {item.to === '/incidents' && pendingClipsCount > 0 && (
+                    <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[1.25rem] text-center shadow-sm ml-2">
+                      {pendingClipsCount}
+                    </span>
+                  )}
+                </div>
+
                 {isActive && (
                   <motion.div
                     layoutId="sidebarActiveBar"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-blue-500"
+                    className="absolute left-0 top-0 bottom-0 w-1 h-full rounded-r-full bg-blue-500"
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
               </motion.div>
             )}
           </NavLink>
+        </div>
         ))}
       </nav>
 
@@ -208,41 +234,51 @@ function Sidebar() {
           )}
         </AnimatePresence>
 
-        <div
-          data-testid="account-menu-trigger"
-          onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-          className={`flex items-center gap-3 cursor-pointer rounded-2xl p-3 transition-all duration-300 bg-white border ${
-            isPopoverOpen 
-              ? 'border-slate-300 shadow-[0_4px_16px_rgba(15,23,42,0.06)] bg-slate-50/50' 
-              : 'border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:bg-slate-50/50'
-          }`}
-        >
-          <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center shrink-0 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7)]">
-            <svg className="h-5 w-5 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900 truncate">
-              {currentUser?.username || 'Unknown User'}
-            </p>
-            <p className="text-xs text-slate-500 capitalize truncate">
-              {currentUser?.role || 'User'}
-            </p>
-          </div>
-          <svg 
-            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isPopoverOpen ? 'rotate-180' : ''}`} 
-            fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+        <div className={`flex items-center mb-2 ${isHovered ? 'px-3' : 'justify-center w-full'}`}>
+          <div
+            data-testid="account-menu-trigger"
+            onClick={() => isHovered ? setIsPopoverOpen(!isPopoverOpen) : null}
+            className={`flex items-center cursor-pointer rounded-2xl transition-all duration-300 ${
+              isHovered ? 'w-full p-3 gap-3 border' : 'w-12 h-12 p-0 justify-center border border-transparent'
+            } ${
+              isHovered && isPopoverOpen 
+                ? 'bg-slate-50/50 border-slate-300 shadow-[0_4px_16px_rgba(15,23,42,0.06)]' 
+                : isHovered 
+                  ? 'bg-white border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:bg-slate-50/50'
+                  : 'bg-transparent hover:bg-slate-50'
+            }`}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-          </svg>
+            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center shrink-0 shadow-[inset_0_2px_4px_rgba(255,255,255,0.7)]">
+              <svg className="h-5 w-5 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+              </svg>
+            </div>
+            
+            <div className={`overflow-hidden transition-all duration-300 flex items-center ${isHovered ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900 truncate">
+                  {currentUser?.username || 'Unknown User'}
+                </p>
+                <p className="text-xs text-slate-500 capitalize truncate">
+                  {currentUser?.role || 'User'}
+                </p>
+              </div>
+              <svg 
+                className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ml-2 ${isPopoverOpen ? 'rotate-180' : ''}`} 
+                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     {/* Version badge */}
-    <div className="px-4 pb-2 flex justify-center">
-      <span className="text-[10px] font-medium text-slate-300 tracking-wider">AquaGuard v1.0.0</span>
+    <div className={`flex justify-center overflow-hidden transition-all duration-300 ${isHovered ? 'px-4 pb-2 max-h-10 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'}`}>
+      <span className="text-[10px] font-medium text-slate-300 tracking-wider whitespace-nowrap">AquaGuard v1.0.0</span>
     </div>
     </aside>
+    </div>
   );
 }
 

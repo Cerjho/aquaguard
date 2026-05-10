@@ -42,7 +42,6 @@ def apply_event_filters(
         elif normalized_status in {"normal", "clear"}:
             query = query.filter(DetectionEvent.alert_triggered.is_(False))
         elif normalized_status in {"unacknowledged", "acknowledged"}:
-            # Acknowledge logic is deprecated. These statuses are now ignored.
-            pass
+            query = query.filter(DetectionEvent.status == normalized_status)
 
     return query

@@ -299,12 +299,22 @@ function AlertHistory({ headerTabs }) {
     return `${(normalized * 100).toFixed(1)}%`;
   };
 
-  const alertBadge = () => (
-    <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-600/20">
-      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse" />
-      Drowning Alert
-    </span>
-  );
+  const formatStatus = (alert) => {
+    const status = alert?.status || 'unacknowledged';
+    if (status === 'acknowledged') {
+      return (
+        <span className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-500 ring-1 ring-inset ring-amber-500/20 uppercase tracking-widest">
+          {alert.acknowledged_by ? `CLAIMED BY ${alert.acknowledged_by}` : 'CLAIMED'}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-md bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-500 ring-1 ring-inset ring-rose-500/20 uppercase tracking-widest">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse" />
+        UNACKNOWLEDGED
+      </span>
+    );
+  };
 
   const getThreatLevel = (alert) => {
     if (alert?.threat_level) return String(alert.threat_level);
@@ -482,7 +492,7 @@ function AlertHistory({ headerTabs }) {
                     <p className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase truncate">
                       {alert.zone_name || alert.zone_id || 'UNKNOWN ZONE'}
                     </p>
-                    {alertBadge()}
+                    {formatStatus(alert)}
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1 font-mono tracking-widest uppercase">{formatAlertTime(alert)}</p>
                 </div>
@@ -610,9 +620,11 @@ function AlertHistory({ headerTabs }) {
                       <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Timestamp</p>
                       <p className="text-xs font-mono font-bold text-slate-300 uppercase tracking-widest">{formatAlertTime(selectedIncident)}</p>
                     </div>
-                    <div className="rounded bg-slate-900 p-4 border border-rose-500/20 transition-colors hover:bg-slate-800/50 hover:border-rose-500/40">
+                    <div className={`rounded bg-slate-900 p-4 border transition-colors ${selectedIncident.status === 'acknowledged' ? 'border-amber-500/20 hover:bg-slate-800/50 hover:border-amber-500/40' : 'border-rose-500/20 hover:bg-slate-800/50 hover:border-rose-500/40'}`}>
                       <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Status</p>
-                      <p className="text-xs font-mono font-bold text-rose-500 uppercase tracking-widest drop-shadow-[0_0_8px_rgba(244,63,94,0.4)]">Drowning Alert</p>
+                      <p className={`text-xs font-mono font-bold uppercase tracking-widest ${selectedIncident.status === 'acknowledged' ? 'text-amber-500' : 'text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.4)]'}`}>
+                        {selectedIncident.status === 'acknowledged' ? `CLAIMED${selectedIncident.acknowledged_by ? ` BY ${selectedIncident.acknowledged_by}` : ''}` : 'UNACKNOWLEDGED'}
+                      </p>
                     </div>
                     <div className="rounded bg-slate-900 p-4 border border-slate-800 transition-colors hover:bg-slate-800/50 hover:border-slate-700">
                       <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-slate-500 mb-1.5">Confidence</p>

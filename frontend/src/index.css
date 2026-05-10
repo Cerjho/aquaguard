@@ -432,7 +432,12 @@ code {
   animation: alert-glow 2s ease-in-out infinite;
 }
 
-/* Surveillance scan-line overlay */
+/* Underwater Surveillance scan-line overlay */
+@keyframes drift-down {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+
 .scan-line-overlay {
   position: absolute;
   inset: 0;
@@ -442,10 +447,50 @@ code {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
+    rgba(6, 182, 212, 0.05) 2px,
+    rgba(6, 182, 212, 0.05) 4px
   );
-  mix-blend-mode: multiply;
+  mix-blend-mode: screen;
+  animation: drift-down 4s linear infinite;
+}
+
+/* Caustic Reflection Background */
+@keyframes caustic-shift {
+  0% { transform: scale(1) rotate(0deg); opacity: 0.15; }
+  50% { transform: scale(1.1) rotate(10deg); opacity: 0.25; }
+  100% { transform: scale(1) rotate(0deg); opacity: 0.15; }
+}
+
+.caustic-bg {
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.15) 0%, transparent 60%),
+              radial-gradient(circle at 80% 20%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 20% 80%, rgba(34, 211, 238, 0.1) 0%, transparent 50%);
+  filter: blur(40px);
+  animation: caustic-shift 15s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Sonar Pulse Effect */
+@keyframes sonar-ping {
+  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7); }
+  70% { transform: scale(3); opacity: 0; box-shadow: 0 0 0 10px rgba(34, 211, 238, 0); }
+  100% { transform: scale(1); opacity: 0; box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+}
+
+.sonar-pulse {
+  position: relative;
+}
+
+.sonar-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.8);
+  animation: sonar-ping 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Recording dot animation */
@@ -456,4 +501,14 @@ code {
 
 .recording-dot {
   animation: recording-blink 1.5s ease-in-out infinite;
+}
+
+/* Responder Alert Pulse */
+@keyframes pulse-fast {
+  0%, 100% { opacity: 1; border-color: rgba(225, 29, 72, 1); }
+  50% { opacity: 0.8; border-color: rgba(225, 29, 72, 0.4); }
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 0.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

@@ -36,6 +36,7 @@ function useAlertSocket({
   onCameraStatus,
   onSystemStatus,
   onClipReady,
+  onAlertAcknowledged,
   onConnectionChange,
 } = {}) {
   const socketRef = useRef(null);
@@ -173,6 +174,13 @@ function useAlertSocket({
       socket.on('clip_ready', (payload) => {
         logger.info('[AquaGuard WS] clip_ready received:', payload);
         onClipReady(payload);
+      });
+    }
+
+    if (typeof onAlertAcknowledged === 'function') {
+      socket.on('alert_acknowledged', (payload) => {
+        logger.info('[AquaGuard WS] alert_acknowledged received:', payload);
+        onAlertAcknowledged(payload);
       });
     }
 

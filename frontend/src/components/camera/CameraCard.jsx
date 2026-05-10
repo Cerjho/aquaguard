@@ -1,8 +1,8 @@
 /**
- * AquaGuard — CameraCard component (Ocean Theme)
+ * AquaGuard — CameraCard component (Mission Control Theme)
  *
  * Features:
- * - Glassmorphism card with ocean-themed styling
+ * - High-contrast tactical card with cyan/rose glow states
  * - Glowing border on active alerts
  * - Animated status indicators
  * - WebRTC/MJPEG live stream support
@@ -191,8 +191,8 @@ function CameraCard({
           onFocus?.(camera, e.currentTarget);
         }
       }}
-      className={`group relative overflow-hidden cursor-pointer transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-cyan-500/70 border rounded-xl bg-[#0a0f18] ${
-        hasActiveAlert ? 'ring-1 ring-rose-500 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)] z-10' : 'border-slate-800 hover:border-slate-600 shadow-[0_8px_16px_rgba(0,0,0,0.4)]'
+      className={`group relative overflow-hidden cursor-pointer transition-all duration-300 ease-in-out focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:shadow-[0_0_20px_rgba(34,211,238,0.3)] border rounded bg-[#0a0f18] ${
+        hasActiveAlert ? 'ring-1 ring-rose-500 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)] z-10' : 'border-slate-800 hover:border-cyan-500/50 hover:shadow-[0_8px_24px_rgba(6,182,212,0.15)] shadow-[0_4px_12px_rgba(0,0,0,0.5)]'
       }`}
       style={{ touchAction: 'manipulation' }}
       aria-label={`Camera card ${camera.zone_name || camera.zone_id}`}
@@ -329,15 +329,15 @@ function CameraCard({
             <div className="absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-rose-950/95 to-rose-900/10 px-4 py-3 text-white">
               <div className="flex items-center gap-2">
                 <motion.span 
-                  className="text-lg"
+                  className="text-lg text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 0.5, repeat: Infinity }}
                 >
                   ⚠
                 </motion.span>
                 <div>
-                  <p className="text-sm font-bold tracking-wide uppercase">Drowning Detected</p>
-                  <p className="text-xs mt-0.5 opacity-90">{alertConfidenceLabel} · {alertLabelTime}</p>
+                  <p className="text-[11px] font-mono font-bold tracking-widest uppercase text-rose-100">DROWNING DETECTED</p>
+                  <p className="text-[10px] font-mono mt-0.5 text-rose-400/90 uppercase tracking-wider">{alertConfidenceLabel} · {alertLabelTime}</p>
                 </div>
               </div>
             </div>

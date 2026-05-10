@@ -36,7 +36,7 @@ def _serialize_alert_event_payload(alert, event):
     payload.update({
         'alert_id': event.event_id,
         'zone_id': event.zone_id,
-        'status': 'unacknowledged',
+        'status': getattr(event, 'status', 'unacknowledged'),
         'triggered_at': serialize_datetime(event.detected_at),
         # Alias used by some clients
         'timestamp': serialize_datetime(event.detected_at),

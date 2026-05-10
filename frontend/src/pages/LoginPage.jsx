@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 function LoginPage() {
   const prefersReducedMotion = useReducedMotion();
-  const { login, isAuthenticated, authError, loading } = useAuth();
+  const { login, isAuthenticated, authError, loading, currentUser } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
@@ -37,10 +37,14 @@ function LoginPage() {
   const submitState = authSuccess ? 'success' : isSubmitting ? 'loading' : 'idle';
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/', { replace: true });
+    if (isAuthenticated && currentUser) {
+      if (currentUser.role === 'lifeguard') {
+        navigate('/responder', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, currentUser, navigate]);
 
   useEffect(() => {
     if (authError) {
@@ -332,10 +336,13 @@ function LoginPage() {
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.15),transparent_60%)] z-10" />
               
+              {/* Caustic Reflection Overlay */}
+              <div className="caustic-bg" />
+
               {/* Radar Graphic replacing the video */}
               <div
                 ref={mediaVideoRef}
-                className="pointer-events-none absolute inset-0 flex items-center justify-center scale-110 opacity-70"
+                className="pointer-events-none absolute inset-0 flex items-center justify-center scale-110 opacity-70 z-10"
               >
                 {/* Background Grid */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.07)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]" />
@@ -361,13 +368,13 @@ function LoginPage() {
                 </div>
 
                 {/* Blips */}
-                <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] top-[30%] left-[65%] animate-pulse" />
-                <div className="absolute w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_12px_#fb7185] top-[55%] left-[30%] animate-ping" />
-                <div className="absolute w-1 h-1 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] top-[70%] left-[75%] animate-pulse" style={{ animationDelay: '1s' }} />
+                <div className="absolute w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] top-[30%] left-[65%] sonar-pulse" />
+                <div className="absolute w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_12px_#fb7185] top-[55%] left-[30%] sonar-pulse" />
+                <div className="absolute w-1 h-1 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] top-[70%] left-[75%] sonar-pulse" style={{ animationDelay: '1s' }} />
               </div>
 
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#020617] via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-10 left-10 z-20 text-white font-sans pointer-events-none leading-tight">
+              <div className="absolute inset-0 z-20 bg-gradient-to-t from-[#020617] via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-10 left-10 z-30 text-white font-sans pointer-events-none leading-tight">
                 <p className="font-mono font-bold tracking-[0.2em] text-3xl sm:text-4xl uppercase text-slate-200">
                   RIPPLE.<br />
                   <span className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"></span>SIGNAL. RESCUE.

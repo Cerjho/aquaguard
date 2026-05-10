@@ -26,6 +26,7 @@ import IncidentsPage from './pages/IncidentsPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import SystemPage from './pages/SystemPage.jsx';
 import ChangePasswordPage from './pages/ChangePasswordPage.jsx';
+import ResponderPage from './pages/ResponderPage.jsx';
 
 import './App.css';
 
@@ -54,7 +55,7 @@ function AnimatedOutlet() {
 }
 
 function PrivateLayout() {
-  const { isAuthenticated, initializingSession } = useAuth();
+  const { isAuthenticated, initializingSession, currentUser } = useAuth();
 
   if (initializingSession) {
     return <FullScreenLoader />;
@@ -62,6 +63,10 @@ function PrivateLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (currentUser?.role === 'lifeguard') {
+    return <Navigate to="/responder" replace />;
   }
 
   return (
@@ -108,6 +113,29 @@ function StandalonePrivateLayout() {
   );
 }
 
+function MobileResponderLayout() {
+  const { isAuthenticated, initializingSession, currentUser } = useAuth();
+
+  if (initializingSession) {
+    return <FullScreenLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (currentUser && currentUser.role !== 'lifeguard') {
+    return <Navigate to="/" replace />;
+  }
+
+  // Responder layout is 100vh, hidden overflow, no sidebar, no bottom nav.
+  return (
+    <div className="flex flex-col h-[100dvh] w-full bg-[#020617] text-slate-300 overflow-hidden relative">
+      <AnimatedOutlet />
+    </div>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -122,6 +150,9 @@ function App() {
           </Route>
           <Route element={<StandalonePrivateLayout />}>
             <Route path="/settings/password" element={<ChangePasswordPage />} />
+          </Route>
+          <Route element={<MobileResponderLayout />}>
+            <Route path="/responder" element={<ResponderPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

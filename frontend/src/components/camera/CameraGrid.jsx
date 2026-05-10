@@ -521,14 +521,14 @@ function CameraGrid({ reloadToken = 0 }) {
               initial={false}
               animate={{ x: isDetailsOpen ? 0 : '110%' }}
               transition={{ duration: prefersReducedMotion ? 0.01 : 0.35, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute top-0 right-0 h-full w-full sm:w-80 z-20 bg-white/10 backdrop-blur-2xl border-l border-white/10 p-5 sm:p-6 flex flex-col gap-5 overflow-y-auto"
+              className="absolute top-0 right-0 h-full w-full sm:w-80 z-20 bg-[#05080f]/90 backdrop-blur-2xl border-l border-slate-800 p-5 sm:p-6 flex flex-col gap-5 overflow-y-auto shadow-[-10px_0_30px_rgba(0,0,0,0.8)]"
             >
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-widest text-white/50 font-semibold">Camera Details</p>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold">CAMERA DETAILS</p>
                 <button
                   type="button"
                   onClick={() => setIsDetailsOpen(false)}
-                  className="text-white/60 hover:text-white transition-colors"
+                  className="text-slate-500 hover:text-cyan-400 transition-colors"
                   aria-label="Close details panel"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -538,65 +538,65 @@ function CameraGrid({ reloadToken = 0 }) {
               </div>
 
               {/* Telemetry */}
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/40">Telemetry</p>
-                <div className="space-y-2 text-sm">
+              <div className="rounded bg-slate-900/50 border border-slate-800 p-4 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">TELEMETRY</p>
+                <div className="space-y-2 text-[11px] font-mono tracking-wider">
                   <div className="flex justify-between">
-                    <span className="text-white/50">Zone</span>
-                    <span className="text-white font-medium">{focusedCamera.zone_name || focusedCamera.zone_id}</span>
+                    <span className="text-slate-500 uppercase">ZONE</span>
+                    <span className="text-slate-200 font-bold uppercase">{focusedCamera.zone_name || focusedCamera.zone_id}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/50">Status</span>
-                    <span className="text-emerald-300 font-medium capitalize">{normalizeServiceStatus(focusedHealth?.status || focusedCamera.runtime_status || 'unknown')}</span>
+                    <span className="text-slate-500 uppercase">STATUS</span>
+                    <span className="text-cyan-400 font-bold uppercase drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">{normalizeServiceStatus(focusedHealth?.status || focusedCamera.runtime_status || 'unknown')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/50">FPS</span>
-                    <span className="text-white font-medium">{typeof focusedHealth?.fps_actual === 'number' ? focusedHealth.fps_actual.toFixed(1) : '—'}</span>
+                    <span className="text-slate-500 uppercase">FPS</span>
+                    <span className="text-slate-200 font-bold">{typeof focusedHealth?.fps_actual === 'number' ? focusedHealth.fps_actual.toFixed(1) : '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/50">Resolution</span>
-                    <span className="text-white font-medium">{focusedCamera.resolution || '—'}</span>
+                    <span className="text-slate-500 uppercase">RESOLUTION</span>
+                    <span className="text-slate-200 font-bold uppercase">{focusedCamera.resolution || '—'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Recent detections */}
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/40 mb-3">Recent Detections</p>
-                <ul className="space-y-2">
+              <div className="rounded bg-slate-900/50 border border-slate-800 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-3">RECENT DETECTIONS</p>
+                <ul className="space-y-2 font-mono">
                   {zoneEvents.length === 0 ? (
-                    <li className="text-xs text-white/30">No recent detections</li>
+                    <li className="text-[10px] text-slate-600 uppercase tracking-widest">NO RECENT DETECTIONS</li>
                   ) : zoneEvents.map((ev) => (
-                    <li key={ev.event_id || ev.id} className="text-xs text-white/70">
-                      {formatDateTime(ev.timestamp || ev.detected_at)} — {ev.class_label || ev.class_name || 'Detection'}
+                    <li key={ev.event_id || ev.id} className="text-[10px] text-slate-400 uppercase tracking-wider">
+                      <span className="text-slate-500 mr-2">{formatDateTime(ev.timestamp || ev.detected_at)}</span>
+                      <span className="text-slate-300">{ev.class_label || ev.class_name || 'DETECTION'}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
               {/* Recent alerts */}
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/40 mb-3">Recent Alerts</p>
-                <ul className="space-y-2">
+              <div className="rounded bg-slate-900/50 border border-slate-800 p-4 flex-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500 mb-3">RECENT ALERTS</p>
+                <ul className="space-y-3 font-mono">
                   {zoneAlerts.length === 0 ? (
-                    <li className="text-xs text-white/30">No recent alerts</li>
+                    <li className="text-[10px] text-slate-600 uppercase tracking-widest">NO RECENT ALERTS</li>
                   ) : zoneAlerts.map((al) => (
-                    <li key={al.alert_id || al.id} className="text-xs text-white/70">
-                      <p className="font-medium text-white/90 capitalize">{al.status || 'unknown'}</p>
-                      <p className="text-white/40">{formatDateTime(al.alerted_at || al.timestamp)}</p>
+                    <li key={al.alert_id || al.id} className="text-[10px] uppercase tracking-wider flex justify-between border-b border-slate-800/50 pb-2 last:border-0 last:pb-0">
+                      <span className="font-bold text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]">{al.status || 'UNKNOWN'}</span>
+                      <span className="text-slate-500">{formatDateTime(al.alerted_at || al.timestamp)}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </motion.div>
 
-            {/* ── BOTTOM OVERLAY CONTROLS ───────────────────── */}
-            <div className="absolute bottom-6 right-6 flex items-center gap-1 z-10">
+            <div className="absolute bottom-6 right-6 flex items-center gap-1 z-10 bg-[#0a0f18]/80 backdrop-blur-md p-1 rounded border border-slate-800 shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
               {/* Grid / multi-view icon */}
               <button
                 type="button"
                 onClick={() => setIsMultiViewOpen(true)}
-                className="hover:bg-white/10 rounded-full p-2.5 text-white/70 hover:text-white transition-all active:scale-95"
+                className="hover:bg-cyan-500/10 rounded p-2 text-slate-400 hover:text-cyan-400 transition-all active:scale-95"
                 aria-label="Open all-cameras overview"
                 title="All cameras"
               >
@@ -606,14 +606,14 @@ function CameraGrid({ reloadToken = 0 }) {
               </button>
 
               {/* Separator */}
-              <span className="h-5 w-px border-l border-white/20 mx-1" />
+              <span className="h-5 w-px border-l border-slate-700 mx-1" />
 
               {/* Minimize / close icon */}
               <button
                 ref={closeButtonRef}
                 type="button"
                 onClick={closeFocus}
-                className="hover:bg-white/10 rounded-full p-2.5 text-white/70 hover:text-white transition-all active:scale-95"
+                className="hover:bg-rose-500/10 rounded p-2 text-slate-400 hover:text-rose-400 transition-all active:scale-95"
                 aria-label="Close camera focus and return to camera grid"
                 title="Minimize"
               >
@@ -640,20 +640,20 @@ function CameraGrid({ reloadToken = 0 }) {
           transition={{ duration: prefersReducedMotion ? 0.01 : 0.25 }}
           onClick={(e) => { if (e.target === e.currentTarget) setIsMultiViewOpen(false); }}
         >
-          <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black shadow-2xl flex flex-col">
+          <div className="relative w-full h-full rounded-3xl overflow-hidden bg-[#0a0f18] border border-slate-800 shadow-[0_0_60px_rgba(0,0,0,0.8)] flex flex-col">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0 bg-[#05080f]/50">
               <div>
-                <p className="text-xs uppercase tracking-widest text-white/40 font-semibold">All Cameras</p>
-                <h3 className="text-lg font-bold text-white">
-                  {cameras.length} Camera{cameras.length !== 1 ? 's' : ''} Active
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-mono font-bold">ALL CAMERAS</p>
+                <h3 className="text-sm font-bold text-slate-200 font-mono tracking-widest uppercase">
+                  {cameras.length} CAMERA{cameras.length !== 1 ? 'S' : ''} ACTIVE
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMultiViewOpen(false)}
-                className="hover:bg-white/10 rounded-full p-2.5 text-white/60 hover:text-white transition-all active:scale-95"
+                className="hover:bg-rose-500/10 rounded p-2 text-slate-500 hover:text-rose-400 transition-all active:scale-95"
                 aria-label="Close all-cameras overview"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -664,7 +664,7 @@ function CameraGrid({ reloadToken = 0 }) {
 
             {/* Camera grid — zero gap, fills all available height */}
             <div
-              className={`flex-1 min-h-0 grid ${
+              className={`flex-1 min-h-0 grid bg-[#020617] ${
                 cameras.length === 1 ? 'grid-cols-1' :
                 cameras.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
                 cameras.length <= 4 ? 'grid-cols-1 sm:grid-cols-2' :
@@ -683,35 +683,35 @@ function CameraGrid({ reloadToken = 0 }) {
                     key={camera.zone_id || camera.id}
                     type="button"
                     onClick={() => { setIsMultiViewOpen(false); openFocus(camera); }}
-                    className="relative overflow-hidden group cursor-pointer border-r border-b border-white/10 bg-slate-950 last:border-r-0"
+                    className="relative overflow-hidden group cursor-pointer border-r border-b border-slate-800/50 bg-[#05080f] last:border-r-0"
                   >
                     {/* Stream fill */}
                     {streamUrl && isDetectionEngineOnline ? (
                       <img
                         src={streamUrl}
                         alt={`Live feed — ${camera.zone_name || camera.zone_id}`}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-slate-700">
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-700 gap-2">
+                        <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.724v6.552a1 1 0 01-1.447.894L15 14M4 8a1 1 0 00-1 1v6a1 1 0 001 1h10a1 1 0 001-1V9a1 1 0 00-1-1H4z" />
                         </svg>
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">OFFLINE</span>
                       </div>
                     )}
 
-                    {/* Label — no vignette, text-shadow for readability */}
                     <div className="absolute top-3 left-3 text-left pointer-events-none">
-                      <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold leading-none mb-0.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 leading-none mb-0.5 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
                         {camera.zone_id}
                       </p>
-                      <p className="text-sm font-bold text-white leading-tight [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
+                      <p className="text-xs font-mono font-bold text-slate-200 leading-tight uppercase tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,1)] group-hover:text-cyan-400 transition-colors">
                         {camera.zone_name || camera.zone_id}
                       </p>
                     </div>
 
                     {/* Hover highlight */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none ring-2 ring-inset ring-white/30" />
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none ring-1 ring-inset ring-cyan-500/50 shadow-[inset_0_0_20px_rgba(34,211,238,0.2)]" />
                   </button>
                 );
               })}

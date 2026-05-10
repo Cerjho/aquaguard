@@ -254,6 +254,32 @@ export function AlertProvider({ children }) {
     setSocketMeta(meta || null);
   }, []);
 
+  const dismissActive = useCallback((alertId) => {
+    setActiveAlerts((prev) => prev.filter((a) => resolveAlertId(a) !== alertId));
+    setActiveAlert((curr) => resolveAlertId(curr) === alertId ? null : curr);
+  }, []);
+
+  const onAlertAcknowledged = useCallback((payload) => {
+    if (!payload || !payload.alert_id) return;
+    
+    // Update active alerts instead of dismissing immediately, so responders see "CLAIMED"
+    setActiveAlerts((prev) => prev.map(a => 
+      resolveAlertId(a) === payload.alert_id 
+        ? { ...a, status: 'acknowledged', acknowledged_by: payload.user || 'Guard' } 
+        : a
+    ));
+    
+    // Also update alert history
+    setAlertHistory((prev) => prev.map(a => 
+      resolveAlertId(a) === payload.alert_id 
+        ? { ...a, status: 'acknowledged', acknowledged_by: payload.user || 'Guard' } 
+        : a
+    ));
+
+    // Auto-dismiss the claimed alert after 15 seconds to clear the screen
+    setTimeout(() => dismissActive(payload.alert_id), 15000);
+  }, [dismissActive]);
+
   // Connect WebSocket
   useAlertSocket({
     enabled: realtimeEnabled,
@@ -262,6 +288,7 @@ export function AlertProvider({ children }) {
     onCameraStatus,
     onSystemStatus,
     onClipReady,
+    onAlertAcknowledged,
     onConnectionChange,
   });
 
@@ -386,6 +413,7 @@ export function AlertProvider({ children }) {
     decrementPendingClips,
     fetchPendingClipsCount,
     newClipToast,
+    dismissActive,
   }), [
     activeAlert,
     activeAlerts,
@@ -396,6 +424,7 @@ export function AlertProvider({ children }) {
     decrementPendingClips,
     fetchPendingClipsCount,
     newClipToast,
+    dismissActive,
   ]);
 
   const systemStateValue = useMemo(() => ({

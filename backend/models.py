@@ -91,6 +91,8 @@ class DetectionEvent(db.Model):
     behavior_flags   = db.Column(db.JSON)
     bbox             = db.Column(db.JSON, nullable=True)
     alert_triggered  = db.Column(db.Boolean, default=False, index=True)
+    status           = db.Column(db.String(32), default='unacknowledged', server_default='unacknowledged')
+    acknowledged_by  = db.Column(db.String(80), nullable=True)
     snapshot_path    = db.Column(db.String(255))
     detected_at      = db.Column(db.DateTime, default=utcnow_naive, index=True)
     raw_payload      = db.Column(db.JSON)
@@ -112,6 +114,8 @@ class DetectionEvent(db.Model):
             'behavior_flags':   self.behavior_flags,
             'bbox':             self.bbox,
             'alert_triggered':  self.alert_triggered,
+            'status':           self.status,
+            'acknowledged_by':  self.acknowledged_by,
             'snapshot_path':    self.snapshot_path,
             'detected_at':      serialize_datetime(self.detected_at),
         }

@@ -75,4 +75,21 @@ def list_alerts():
     ])
 
 
-
+@alerts_bp.route('/alerts/<alert_id>/acknowledge', methods=['POST'])
+@jwt_required()
+def acknowledge_alert(alert_id):
+    from extensions import socketio
+    event = db.session.query(DetectionEvent).filter_by(event_id=alert_id, alert_triggered=True).first()
+    if not event:
+        return error_response('Alert not found', status_code=404)
+    if event.status != 'acknowledged':
+        event.status = 'acknowledged'
+        try:
+            db.session.commit()
+            # Serialize the event to send it over websocket, using the _serialize_alert_event_payload format if needed
+            # For simplicity, sending a generic alert_acknowledged event with alert_id
+            socketio.emit('alert_acknowledged', {'alert_id': alert_id, 'status': 'acknowledged', 'zone_id': event.zone_id, 'user': event.acknowledged_by})
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            return error_response('Database error', status_code=500)
+    return success_response(_serialize_alert(event))

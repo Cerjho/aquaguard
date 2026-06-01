@@ -217,6 +217,7 @@ def _create_peer_connection():
     return RTCPeerConnection(
         RTCConfiguration(
             iceServers=rtc_ice_servers,
+            iceTransportPolicy=ice_config.get('ice_transport_policy', 'all'),
         )
     )
 

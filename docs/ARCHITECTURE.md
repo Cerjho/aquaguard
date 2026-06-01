@@ -342,10 +342,10 @@ Connection model:
 
 Verified test outcomes:
 
-- Backend tests: 27/27 passing
-- Detection engine tests: 36/36 passing
-- Frontend tests: 22/22 passing
-- Total: 85/85 passing
+- Backend tests: 133/133 passing
+- Detection engine tests: 207/207 passing
+- Frontend tests: 92/108 passing
+- Total: 432/448 passing
 
 Latency targets and measured values:
 

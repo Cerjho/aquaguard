@@ -15,7 +15,7 @@ The AquaGuard drowning detection system demonstrates **solid architectural
 foundations** with clean separation of concerns across its multi-tier
 architecture (CV engine, backend API, frontend dashboard, ESP32 firmware). The
 codebase shows evidence of experienced development with proper use of design
-patterns, comprehensive test coverage (85/85 tests passing), and well-organized
+patterns, comprehensive test coverage (432/448 tests passing), and well-organized
 structure.
 
 However, the review identified **critical security vulnerabilities** and **code
@@ -1301,10 +1301,10 @@ ______________________________________________________________________
 
 ### Documentation Strengths (2)
 
-- ✅ **Comprehensive test suite:** 85/85 tests passing
-  - Backend: 27/27 tests
-  - Detection Engine: 36/36 tests
-  - Frontend: 22/22 tests
+- ✅ **Comprehensive test suite:** 432/448 tests passing
+  - Backend: 133/133 tests
+  - Detection Engine: 207/207 tests
+  - Frontend: 92/108 tests
 - ✅ Test files organized alongside source code
 - ✅ Good fixture organization (conftest.py in each module)
 - ✅ Tests cover happy paths and some edge cases

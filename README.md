@@ -199,7 +199,7 @@ Set-Location ..
 
 ```
 
-Result: 27/27 passing.
+Result: 133/133 passing.
 
 ### Detection Engine
 
@@ -209,7 +209,7 @@ Result: 27/27 passing.
 
 ```
 
-Result: 36/36 passing.
+Result: 207/207 passing.
 
 ### Frontend
 
@@ -221,9 +221,9 @@ Set-Location ..
 
 ```
 
-Result: 22/22 passing.
+Result: 92/108 passing.
 
-Total verified result: 85/85 tests passing.
+Total verified result: 432/448 tests passing.
 
 ______________________________________________________________________
 
@@ -289,9 +289,9 @@ ______________________________________________________________________
 | Mean detection latency | 2623ms |
 | P95 latency | 1932ms |
 | Target | \<= 3000ms |
-| Backend tests | 27/27 passing |
-| CV engine tests | 36/36 passing |
-| Frontend tests | 22/22 passing |
+| Backend tests | 133/133 passing |
+| CV engine tests | 207/207 passing |
+| Frontend tests | 92/108 passing |
 
 ______________________________________________________________________
 

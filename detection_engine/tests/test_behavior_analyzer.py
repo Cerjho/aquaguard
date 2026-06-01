@@ -64,15 +64,15 @@ class TestBehaviorAnalyzerIndicators:
         })
         assert self.analyzer._is_vertical_orientation(lms)
 
-    def test_horizontal_orientation_not_vertical(self):
-        """Shoulders and hips at the same y → nearly horizontal body."""
+    def test_horizontal_orientation_triggers_prone_float(self):
+        """Shoulders and hips at the same y → nearly horizontal body (prone float)."""
         lms = _make_landmarks({
             11: dict(x=0.3, y=0.5, z=0.0, visibility=0.9),
             12: dict(x=0.4, y=0.5, z=0.0, visibility=0.9),
             23: dict(x=0.7, y=0.5, z=0.0, visibility=0.9),
             24: dict(x=0.8, y=0.5, z=0.0, visibility=0.9),
         })
-        assert not self.analyzer._is_vertical_orientation(lms)
+        assert self.analyzer._is_vertical_orientation(lms)
 
     def test_arms_elevated_when_wrists_above_shoulders(self):
         lms = _make_landmarks({

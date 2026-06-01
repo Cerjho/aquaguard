@@ -215,13 +215,16 @@ class BehaviorAnalyzer:
             indicators['vertical'] = (WEIGHT_VERTICAL_ORIENTATION, None)
 
         # Indicator 2: Arms elevated (at least one wrist visible and raised)
-        left_wrist_visible = landmarks[15].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD
-        right_wrist_visible = landmarks[16].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD
-        if has_landmarks and (left_wrist_visible or right_wrist_visible):
-            indicators['arms_elevated'] = (
-                WEIGHT_ARMS_ELEVATED,
-                float(self._are_arms_elevated(landmarks)),
-            )
+        if has_landmarks:
+            left_wrist_visible = landmarks[15].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD
+            right_wrist_visible = landmarks[16].visibility >= LIMB_VISIBILITY_MIN_THRESHOLD
+            if left_wrist_visible or right_wrist_visible:
+                indicators['arms_elevated'] = (
+                    WEIGHT_ARMS_ELEVATED,
+                    float(self._are_arms_elevated(landmarks)),
+                )
+            else:
+                indicators['arms_elevated'] = (WEIGHT_ARMS_ELEVATED, None)
         else:
             indicators['arms_elevated'] = (WEIGHT_ARMS_ELEVATED, None)
 
@@ -689,4 +692,9 @@ class BehaviorAnalyzer:
         ]
         for track_id in stale_splash_ids:
             self._splash_delta_history.pop(track_id, None)
+
+        stale_splash_pos_ids = [
+            track_id for track_id in self._splash_last_positions if track_id not in active
+        ]
+        for track_id in stale_splash_pos_ids:
             self._splash_last_positions.pop(track_id, None)

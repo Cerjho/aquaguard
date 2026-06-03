@@ -31,7 +31,6 @@ function LoginPage() {
   const customLoaderRef = useRef(null);
   const welcomeText = 'MISSION CONTROL';
   const welcomeLetters = welcomeText.split('');
-  const hoverPalette = ['#22d3ee', '#06b6d4', '#0891b2', '#0ea5e9'];
 
   const isSubmitting = loading || submitted;
   const submitState = authSuccess ? 'success' : isSubmitting ? 'loading' : 'idle';

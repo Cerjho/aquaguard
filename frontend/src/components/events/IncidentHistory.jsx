@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import api from '../../hooks/useApi';
-import { formatDateTime } from '../../utils/dateFormat';
 import PremiumLoader from '../layout/PremiumLoader.jsx';
 import { mapEventClassLabel, mapEventConfidence, mapEventTimestamp } from '../../utils/eventMappers';
 

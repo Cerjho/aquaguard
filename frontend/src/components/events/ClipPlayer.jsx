@@ -15,7 +15,7 @@ function ClipPlayer({ clipId, metadata }) {
 
   const streamUrl = useMemo(() => getClipStreamUrl(clipId), [clipId, getClipStreamUrl]);
 
-  const annotations = metadata?.per_frame_annotations || [];
+  const annotations = useMemo(() => metadata?.per_frame_annotations || [], [metadata]);
   
   // Find closest frame annotation
   const activeAnnotation = useMemo(() => {

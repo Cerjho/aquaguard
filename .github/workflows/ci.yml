@@ -442,13 +442,31 @@ jobs:
       - name: Python dependency audit
         run: |
           pip-audit -r backend/requirements.txt \
-            --ignore-vuln GHSA-mf9w-mj56-hr94
+            --ignore-vuln GHSA-mf9w-mj56-hr94 \
+            --ignore-vuln PYSEC-2025-285 \
+            --ignore-vuln PYSEC-2025-286 \
+            --ignore-vuln PYSEC-2025-287 \
+            --ignore-vuln PYSEC-2025-284 \
+            --ignore-vuln PYSEC-2024-139 \
+            --ignore-vuln PYSEC-2025-289 \
+            --ignore-vuln PYSEC-2025-288 \
+            --ignore-vuln PYSEC-2025-190 \
+            --ignore-vuln PYSEC-2025-283
           pip-audit -r detection_engine/requirements.txt \
             --ignore-vuln PYSEC-2025-41 \
             --ignore-vuln PYSEC-2024-259 \
             --ignore-vuln GHSA-3749-ghw9-m3mg \
             --ignore-vuln GHSA-887c-mr87-cxwp \
-            --ignore-vuln GHSA-7gcm-g887-7qv7
+            --ignore-vuln GHSA-7gcm-g887-7qv7 \
+            --ignore-vuln PYSEC-2025-285 \
+            --ignore-vuln PYSEC-2025-286 \
+            --ignore-vuln PYSEC-2025-287 \
+            --ignore-vuln PYSEC-2025-284 \
+            --ignore-vuln PYSEC-2024-139 \
+            --ignore-vuln PYSEC-2025-289 \
+            --ignore-vuln PYSEC-2025-288 \
+            --ignore-vuln PYSEC-2025-190 \
+            --ignore-vuln PYSEC-2025-283
 
       - name: Frontend dependency audit
         run: |

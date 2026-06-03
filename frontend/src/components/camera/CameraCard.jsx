@@ -108,9 +108,6 @@ function CameraCard({
     isActive,
   });
   const transportLabel = transport === 'webrtc' ? 'WebRTC' : 'MJPEG';
-  const transportDetail = transport === 'webrtc'
-    ? 'low latency'
-    : 'fallback';
   const showWebRTC = shouldRenderStream && isActive && transport === 'webrtc' && Boolean(videoStream);
   const showFallbackStream = shouldRenderStream && isActive && !imgError && Boolean(streamUrl) && !showWebRTC;
   const zoneAlerts = useMemo(

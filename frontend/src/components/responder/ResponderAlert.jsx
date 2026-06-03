@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import useWebRTCStream from '../../hooks/useWebRTCStream';
 import api from '../../hooks/useApi';
 import { useAlertState } from '../../context/AlertContext.jsx';

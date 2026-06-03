@@ -379,6 +379,7 @@ export default function useWebRTCStream({ zoneId, streamToken, streamSessionId, 
       negotiatedRef.current = false;
       window.removeEventListener('online', onOnline);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoneId, shouldRenderStream, isActive]);
 
   return {

@@ -8,7 +8,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import api from '../../hooks/useApi';
-import { formatDateTime } from '../../utils/dateFormat';
 import { useFilterState } from '../../context/AlertContext.jsx';
 import { useDataCache } from '../../context/DataCacheContext.jsx';
 import PremiumLoader from '../layout/PremiumLoader.jsx';

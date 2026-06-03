@@ -93,6 +93,7 @@ export default defineConfig({
     url: 'http://localhost:3000',
     env: {
       REACT_APP_API_URL: 'http://localhost:5000',
+      BROWSER: 'none',
     },
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

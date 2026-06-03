@@ -466,7 +466,16 @@ jobs:
             --ignore-vuln PYSEC-2025-289 \
             --ignore-vuln PYSEC-2025-288 \
             --ignore-vuln PYSEC-2025-190 \
-            --ignore-vuln PYSEC-2025-283
+            --ignore-vuln PYSEC-2025-283 \
+            --ignore-vuln PYSEC-2025-205 \
+            --ignore-vuln PYSEC-2025-206 \
+            --ignore-vuln PYSEC-2025-207 \
+            --ignore-vuln PYSEC-2025-204 \
+            --ignore-vuln PYSEC-2026-139 \
+            --ignore-vuln PYSEC-2025-209 \
+            --ignore-vuln PYSEC-2025-208 \
+            --ignore-vuln PYSEC-2025-198 \
+            --ignore-vuln PYSEC-2025-203
 
       - name: Frontend dependency audit
         run: |

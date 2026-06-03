@@ -81,7 +81,3 @@ def test_list_alerts_filters_by_zone_time_and_confidence(client, admin_token):
     items = resp.get_json()['data']
     assert len(items) >= 1
     assert all(item['zone_id'] == 'zone_filter_a' for item in items)
-
-
-
-

@@ -119,6 +119,3 @@ class DetectionEvent(db.Model):
             'snapshot_path':    self.snapshot_path,
             'detected_at':      serialize_datetime(self.detected_at),
         }
-
-
-

@@ -12,7 +12,6 @@ export class IncidentsPage {
 
   // Filter controls
   readonly zoneIdFilter: Locator;
-  readonly statusFilter: Locator;
   readonly confidenceFilter: Locator;
   readonly fromDateFilter: Locator;
   readonly toDateFilter: Locator;
@@ -20,6 +19,8 @@ export class IncidentsPage {
 
   // Table
   readonly alertTable: Locator;
+  readonly statusFilter: Locator;
+  readonly zoneFilter: Locator;
   readonly incidentMasterList: Locator;
   readonly incidentRows: Locator;
   readonly incidentDetailDrawer: Locator;
@@ -30,26 +31,27 @@ export class IncidentsPage {
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('heading', { name: /incidents/i });
-    this.alertHistoryTab = page.getByRole('button', { name: /alert history/i });
-    this.detectionEventsTab = page.getByRole('button', { name: /detection events/i });
-    this.addFilterButton = page.getByRole('button', { name: /add filter/i });
+    this.alertHistoryTab = page.getByRole('tab', { name: /alert history/i }).first();
+    this.detectionEventsTab = page.getByRole('tab', { name: /detection events/i }).first();
+    this.addFilterButton = page.getByRole('button', { name: /filters/i });
 
     // Filters
-    this.zoneIdFilter = page.getByLabel(/zone id/i);
-    this.statusFilter = page.getByRole('combobox', { name: /status/i });
-    this.confidenceFilter = page.getByRole('spinbutton', { name: /confidence/i });
-    this.fromDateFilter = page.getByRole('textbox', { name: /from/i });
-    this.toDateFilter = page.getByRole('textbox', { name: /to/i });
+    this.zoneIdFilter = page.getByPlaceholder(/zone id/i);
+    this.confidenceFilter = page.getByPlaceholder(/min confidence/i);
+    this.fromDateFilter = page.getByRole('button', { name: /from/i });
+    this.toDateFilter = page.getByRole('button', { name: /to/i });
     this.resetFiltersButton = page.getByRole('button', { name: /reset/i });
 
     // Table
-    this.alertTable = page.getByRole('table').first();
+    this.alertTable = page.getByRole('table', { name: /alert history/i }); // Kept for backwards compatibility but not used
+    this.statusFilter = page.getByRole('button', { name: /filter by status/i }); // Kept for backwards compatibility but not used
+    this.zoneFilter = page.getByRole('combobox', { name: /zone filter/i }); // Currently implemented as standard select
     this.incidentMasterList = page.getByTestId('incident-master-list');
     this.incidentRows = page.getByTestId('incident-row');
-    this.incidentDetailDrawer = page.getByTestId('incident-detail-drawer');
-    this.pagination = page.locator('text=/Page \\d+ of \\d+/i');
-    this.prevPageButton = page.getByRole('button', { name: /prev/i });
+    this.incidentDetailDrawer = page.getByRole('dialog');
+    this.pagination = page.getByText(/Page \d+ of \d+/i);
     this.nextPageButton = page.getByRole('button', { name: /next/i });
+    this.prevPageButton = page.getByRole('button', { name: /prev/i });
   }
 
   async goto() {
@@ -74,11 +76,6 @@ export class IncidentsPage {
     await this.page.waitForTimeout(500); // Debounce
   }
 
-  async filterByStatus(status: 'all' | 'acknowledged' | 'unacknowledged') {
-    await this.statusFilter.selectOption(status === 'all' ? '' : status);
-    await this.page.waitForTimeout(500);
-  }
-
   async filterByMinConfidence(confidence: number) {
     await this.confidenceFilter.fill(String(confidence));
     await this.page.waitForTimeout(500);
@@ -96,8 +93,7 @@ export class IncidentsPage {
   }
 
   async getAlertCount() {
-    const rows = this.alertTable.locator('tbody tr');
-    return rows.count();
+    return this.incidentRows.count();
   }
 
   async getTotalAlerts() {

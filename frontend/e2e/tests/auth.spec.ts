@@ -34,7 +34,7 @@ test.describe('Authentication Flow', () => {
   test('should login successfully with valid credentials', async ({ authenticatedPage }) => {
     // Fixture performs the login (or registers mocks) and navigates to the dashboard.
     await expect(authenticatedPage).toHaveURL(ROOT_DASHBOARD_URL);
-    await expect(authenticatedPage.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible();
+    await expect(authenticatedPage.getByRole('heading', { name: /dashboard|mission control/i }).first()).toBeVisible();
   });
 
   test('should remember user session with remember me checkbox', async ({ authenticatedPage }) => {
@@ -53,29 +53,27 @@ test.describe('Authentication Flow', () => {
     } catch {
       // Fallback: navigate to dashboard and wait for heading
       await authenticatedPage.goto('/');
-      await authenticatedPage.getByRole('heading', { name: /dashboard/i }).first().waitFor({ timeout: 10000 });
+      await authenticatedPage.getByRole('heading', { name: /dashboard|mission control/i }).first().waitFor({ timeout: 10000 });
     }
 
-    // Robust logout: try header logout first, fall back to sidebar popover logout.
-    const headerLogout = authenticatedPage.locator('header').getByRole('button', { name: /logout/i });
-    try {
-      if (await headerLogout.isVisible({ timeout: 3000 })) {
-        await headerLogout.click();
-      } else {
-        throw new Error('header logout not visible');
-      }
-    } catch {
-      // Open sidebar account popover and click its logout button
-      const accountTrigger = authenticatedPage.getByTestId('account-menu-trigger');
-      await accountTrigger.waitFor({ timeout: 5000 });
-      await accountTrigger.click();
-      const sidebarLogout = authenticatedPage.locator('aside').getByRole('button', { name: /logout/i });
-      await sidebarLogout.waitFor({ timeout: 5000 });
-      await sidebarLogout.click();
-    }
+    // Should be on dashboard
+    await expect(authenticatedPage).toHaveURL(/^https?:\/\/[^/]+\/(?:\?.*)?$/);
 
-    // Should redirect to login
-    await expect(authenticatedPage).toHaveURL(/login/);
+    // Hover over the sidebar to trigger the hover state
+    const sidebar = authenticatedPage.locator('aside').first();
+    await sidebar.hover();
+
+    // Click account trigger in sidebar
+    const accountTrigger = authenticatedPage.getByTestId('account-menu-trigger');
+    await accountTrigger.click();
+
+    // Wait for the popup and click logout
+    const sidebarLogout = authenticatedPage.getByRole('button', { name: /logout/i });
+    await sidebarLogout.click();
+
+    // Should redirect to login page
+    await expect(authenticatedPage).toHaveURL(/\/login/);
+    await expect(authenticatedPage.locator('input[type="password"]')).toBeVisible();
   });
 
   test('should redirect unauthenticated users to login', async ({ page }) => {

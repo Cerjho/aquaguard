@@ -69,8 +69,8 @@ test.describe('Analytics Page', () => {
     // Zone chart section should be visible
     await expect(analyticsPage.zoneBarChart).toBeVisible();
 
-    // Legend should be visible
-    const legend = authenticatedPage.locator('text=/Alerts|Detections/i');
+    // Legend or label should be visible
+    const legend = authenticatedPage.locator('text=/INCIDENTS/i');
     await expect(legend.first()).toBeVisible();
   });
 

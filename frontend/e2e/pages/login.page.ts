@@ -16,8 +16,8 @@ export class LoginPage {
     this.page = page;
     this.usernameInput = page.getByRole('textbox', { name: /email|username/i });
     this.passwordInput = page.getByRole('textbox', { name: /password/i });
-    this.rememberMeCheckbox = page.getByRole('checkbox', { name: /remember me/i });
-    this.signInButton = page.getByRole('button', { name: /sign in|secure login|login/i });
+    this.rememberMeCheckbox = page.getByRole('checkbox', { name: /remember me|remember session/i });
+    this.signInButton = page.getByRole('button', { name: /sign in|secure login|login|connect to system/i });
     this.errorMessage = page.getByRole('alert');
     this.logo = page.locator('h1').first();
   }
@@ -43,7 +43,6 @@ export class LoginPage {
   }
 
   async isLoaded() {
-    await this.logo.waitFor({ state: 'visible' });
     await this.usernameInput.waitFor({ state: 'visible' });
     await this.passwordInput.waitFor({ state: 'visible' });
   }

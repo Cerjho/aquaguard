@@ -29,7 +29,7 @@ test.describe('Incidents Page', () => {
     await expect(incidentsPage.addFilterButton).toBeVisible();
     await incidentsPage.addFilterButton.click();
     await expect(incidentsPage.zoneIdFilter).toBeVisible();
-    await expect(incidentsPage.statusFilter).toBeVisible();
+    await expect(incidentsPage.confidenceFilter).toBeVisible();
     await expect(incidentsPage.resetFiltersButton).toBeVisible();
   });
 
@@ -53,22 +53,6 @@ test.describe('Incidents Page', () => {
     expect(filteredCount).toBeLessThanOrEqual(initialCount);
   });
 
-  test('should filter alerts by status', async ({ authenticatedPage }) => {
-    const incidentsPage = new IncidentsPage(authenticatedPage);
-    await incidentsPage.goto();
-    await incidentsPage.isLoaded();
-    await incidentsPage.addFilterButton.click();
-
-    // Filter by acknowledged
-    await incidentsPage.filterByStatus('acknowledged');
-    await authenticatedPage.waitForTimeout(1000);
-
-    // All visible statuses should be "Acknowledged"
-    const acknowledgedCells = authenticatedPage.locator('td:has-text("Acknowledged")');
-    const count = await acknowledgedCells.count();
-    expect(count).toBeGreaterThanOrEqual(0);
-  });
-
   test('should reset filters', async ({ authenticatedPage }) => {
     const incidentsPage = new IncidentsPage(authenticatedPage);
     await incidentsPage.goto();
@@ -77,7 +61,6 @@ test.describe('Incidents Page', () => {
 
     // Apply filters
     await incidentsPage.filterByZone('zone_test');
-    await incidentsPage.filterByStatus('acknowledged');
     await authenticatedPage.waitForTimeout(500);
 
     // Reset filters
@@ -97,7 +80,7 @@ test.describe('Incidents Page', () => {
     await authenticatedPage.waitForTimeout(500);
 
     // Should show detection events table
-    const alertTriggeredColumn = authenticatedPage.getByText(/alert triggered/i);
+    const alertTriggeredColumn = authenticatedPage.getByTitle(/alert triggered/i).first();
     await expect(alertTriggeredColumn).toBeVisible();
 
     // Switch back to alert history

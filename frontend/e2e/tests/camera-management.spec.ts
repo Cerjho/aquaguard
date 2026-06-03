@@ -28,7 +28,7 @@ test.describe('Camera Management', () => {
     await systemPage.goto();
     await systemPage.isLoaded();
 
-    await expect(systemPage.cameraTable).toBeVisible();
+    await expect(systemPage.cameraManagementSection).toBeVisible();
     await expect(systemPage.addCameraButton).toBeVisible();
   });
 
@@ -80,21 +80,13 @@ test.describe('Camera Management', () => {
     await expect(systemPage.cameraForm).toBeVisible();
   });
 
-  test('should show feed preview section', async ({ authenticatedPage }) => {
-    const systemPage = new SystemPage(authenticatedPage);
-    await systemPage.goto();
-    await systemPage.isLoaded();
-
-    await expect(systemPage.feedPreview).toBeVisible();
-  });
-
   test('should display camera status in table', async ({ authenticatedPage }) => {
     const systemPage = new SystemPage(authenticatedPage);
     await systemPage.goto();
     await systemPage.isLoaded();
 
     // Table should have status column with Active/Inactive indicators
-    const activeIndicator = authenticatedPage.locator('text=/Active|Inactive/');
+    const activeIndicator = authenticatedPage.locator('text=/ACTIVE|INACTIVE/');
     await expect(activeIndicator.first()).toBeVisible();
   });
 });

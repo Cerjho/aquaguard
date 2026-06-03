@@ -21,7 +21,7 @@ test.describe('Dashboard', () => {
     await dashboard.isLoaded();
 
     // Status bar should show connectivity info - look for API/Socket text
-    const apiStatus = authenticatedPage.getByText(/api:/i).first();
+    const apiStatus = authenticatedPage.getByText(/api/i).first();
     await expect(apiStatus).toBeVisible();
   });
 
@@ -82,7 +82,7 @@ test.describe('Dashboard', () => {
     await expect(dashboard.detectionFeed).toBeVisible();
 
     // Should show socket connection status somewhere on page
-    const socketText = authenticatedPage.locator('text=/socket|connecting|offline/i').first();
+    const socketText = authenticatedPage.locator('text=/websocket|synced|dropped/i').first();
     await expect(socketText).toBeVisible({ timeout: 5000 });
   });
 

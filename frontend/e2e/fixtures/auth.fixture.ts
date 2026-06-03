@@ -127,8 +127,11 @@ export const test = base.extend<AuthFixtures>({
       ctx.route(/\/api\/v1\/reports\/summary/, (route) => {
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(analyticsBody) });
       });
+      const mockEvents = [
+        { id: 'event_1', event_id: 'event_1', zone_id: 'zone_01', zone_name: 'Zone 1', alert_triggered: true, timestamp: new Date().toISOString(), confidence: 0.98, type: 'person' }
+      ];
       ctx.route(/\/api\/v1\/events/, (route) => {
-        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success', data: { events: [] } }) });
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success', data: { events: mockEvents, total: 1 } }) });
       });
 
       // Additional fallback mocks to stabilize pages that rely on system/camera data
@@ -143,8 +146,17 @@ export const test = base.extend<AuthFixtures>({
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(camerasBody) });
       });
 
+      // Create 15 mock alerts so pagination (PAGE_SIZE=10) renders
+      const mockAlerts = Array.from({ length: 15 }, (_, i) => ({
+        id: `alert_${i}`,
+        zone_id: `zone_${i % 3}`,
+        zone_name: `Zone ${i % 3}`,
+        confidence: 0.95 - (i * 0.01),
+        status: i % 5 === 0 ? 'acknowledged' : 'unacknowledged',
+        timestamp: new Date().toISOString(),
+      }));
       ctx.route(/\/api\/v1\/alerts/, (route) => {
-        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success', data: { alerts: [] } }) });
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'success', data: { alerts: mockAlerts, total: 15 } }) });
       });
 
       const systemBody = {

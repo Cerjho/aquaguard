@@ -21,10 +21,10 @@ export class DashboardPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.heading = page.getByRole('heading', { name: /dashboard/i }).first();
-    this.cameraGrid = page.getByText(/camera feeds/i);
-    this.detectionFeed = page.getByText(/live detection feed/i);
-    this.systemHealth = page.getByText(/system health/i);
+    this.heading = page.getByRole('heading', { name: /dashboard|mission control/i }).first();
+    this.cameraGrid = page.getByText(/camera feeds|live streams/i);
+    this.detectionFeed = page.getByText(/live detection feed|live feed/i);
+    this.systemHealth = page.getByText(/system health|system diagnostics/i);
     this.logoutButton = page.getByRole('button', { name: /logout/i });
     this.navDashboard = page.getByRole('link', { name: /dashboard/i });
     this.navIncidents = page.getByRole('link', { name: /incidents/i });
@@ -83,10 +83,12 @@ export class DashboardPage {
   }
 
   async getCameraCount() {
-    const cameraSection = this.page.locator('text=/\\d+ camera/i');
-    const text = await cameraSection.textContent();
-    const match = text?.match(/(\d+)\s*camera/i);
-    return match ? parseInt(match[1], 10) : 0;
+    // Instead of counting grid children (which might include the "Add Camera" card),
+    // we should count elements with a specific test id or role if available.
+    // For now, return the number of items that look like camera cards (with "ZONE" text).
+    const cards = this.cameraGrid.locator('> div').filter({ hasText: /ZONE/i });
+    await cards.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    return cards.count();
   }
 
   async clickCameraCard(zoneId: string) {

@@ -27,23 +27,23 @@ export class SystemPage {
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('heading', { name: /system status/i });
-    this.systemHealthSection = page.getByRole('region', { name: /system health/i });
-    this.cameraManagementSection = page.getByRole('region', { name: /camera operations/i });
-    this.addCameraButton = page.getByRole('button', { name: /add camera/i });
-    this.cameraTable = page.getByRole('table', { name: /registered cameras/i });
+    this.systemHealthSection = page.getByRole('region', { name: /system diagnostics/i });
+    this.cameraManagementSection = page.locator('section').filter({ hasText: /CAMERA REGISTRY/i }).first();
+    this.addCameraButton = page.getByRole('button', { name: /\+ ADD CAMERA/i });
+    this.cameraTable = page.getByRole('table', { name: /registered cameras/i }); // Kept for backwards compatibility but not used
     this.feedPreview = page.getByText(/feed refresh preview/i);
 
     // Form elements (visible when dialog is open)
     this.cameraForm = page.getByRole('dialog', { name: /add camera|edit camera/i });
-    this.zoneIdInput = page.getByRole('textbox', { name: /zone id/i });
-    this.zoneNameInput = page.getByRole('textbox', { name: /zone name/i });
-    this.rtspUrlInput = page.getByRole('textbox', { name: /rtsp url/i });
-    this.locationInput = page.getByRole('textbox', { name: /location/i });
+    this.zoneIdInput = page.getByRole('textbox', { name: /^zone/i });
+    this.zoneNameInput = page.getByRole('textbox', { name: /^camera name/i });
+    this.rtspUrlInput = page.getByRole('textbox', { name: /rtsp \/ webcam url/i });
+    this.locationInput = page.getByRole('textbox', { name: /location description/i });
     this.frameRateInput = page.getByRole('spinbutton', { name: /frame rate/i });
     this.resolutionInput = page.getByRole('textbox', { name: /resolution/i });
     this.activeCheckbox = page.getByRole('checkbox', { name: /active/i });
     this.cancelButton = page.getByRole('button', { name: /cancel/i });
-    this.submitButton = page.getByRole('button', { name: /create camera|save/i });
+    this.submitButton = page.getByRole('button', { name: /save camera/i });
   }
 
   async goto() {
@@ -102,32 +102,40 @@ export class SystemPage {
   }
 
   async getCameraCount() {
-    const rows = this.cameraTable.locator('tbody tr');
+    const rows = this.cameraManagementSection.locator('[data-testid^="camera-row-"]');
     return rows.count();
   }
 
   async toggleCameraStatus(zoneId: string) {
-    const row = this.cameraTable.locator(`tr:has-text("${zoneId}")`);
-    const toggleButton = row.getByRole('button', { name: /activate|deactivate/i });
-    await toggleButton.click();
+    const row = this.cameraManagementSection.locator(`[data-testid="camera-row-${zoneId}"]`);
+    const menuButton = row.locator('[data-camera-menu-trigger]');
+    await menuButton.click();
+    
+    // The menu is rendered in a portal, so we query the page body for the active menu items
+    const activateButton = this.page.getByRole('button', { name: new RegExp(`activate|deactivate`, 'i') }).filter({ hasText: /ACTIVATE/i });
+    await activateButton.click();
   }
 
   async editCamera(zoneId: string) {
-    const row = this.cameraTable.locator(`tr:has-text("${zoneId}")`);
-    const editButton = row.getByRole('button', { name: /edit/i });
+    const row = this.cameraManagementSection.locator(`[data-testid="camera-row-${zoneId}"]`);
+    const menuButton = row.locator('[data-camera-menu-trigger]');
+    await menuButton.click();
+    
+    // Click EDIT from the context menu
+    const editButton = this.page.getByRole('button', { name: /edit/i }).filter({ hasText: /EDIT/i });
     await editButton.click();
     await this.cameraForm.waitFor({ state: 'visible' });
   }
 
   async getSystemHealthStatus() {
-    const socketStatus = this.page.locator('text=/Socket:.*Connected|Disconnected/i');
-    const detectionStatus = this.page.locator('text=/Detection Engine.*Online|Offline/i');
-    const esp32Status = this.page.locator('text=/ESP32.*Online|Offline/i');
+    const socketStatus = this.page.locator('text=/WebSocket/i').locator('..');
+    const detectionStatus = this.page.locator('text=/AI Engine/i').locator('..');
+    const esp32Status = this.page.locator('text=/ESP32 Alarm/i').locator('..');
 
     return {
-      socket: (await socketStatus.textContent())?.includes('Connected') ?? false,
-      detectionEngine: (await detectionStatus.textContent())?.includes('Online') ?? false,
-      esp32: (await esp32Status.textContent())?.includes('Online') ?? false,
+      socket: (await socketStatus.textContent())?.includes('SYNCED') ?? false,
+      detectionEngine: (await detectionStatus.textContent())?.includes('ACTIVE') ?? false,
+      esp32: (await esp32Status.textContent())?.includes('LINKED') ?? false,
     };
   }
 }

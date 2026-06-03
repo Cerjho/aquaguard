@@ -1,8 +1,8 @@
 import os
 import json
-import uuid
 import pytest
-from backend.services.clips_service import list_clips, get_clip_metadata, get_clip_video_path, update_clip_review
+from backend.services.clips_service import list_clips, get_clip_metadata, update_clip_review
+
 
 @pytest.fixture
 def mock_clips_workspace(tmp_path, monkeypatch):
@@ -10,6 +10,7 @@ def mock_clips_workspace(tmp_path, monkeypatch):
     os.makedirs(clips_dir, exist_ok=True)
     monkeypatch.setattr('backend.services.clips_service._CLIPS_DIR', clips_dir)
     return clips_dir
+
 
 def _create_mock_clip(clips_dir, status, clip_id, zone_id, created_at):
     folder = os.path.join(clips_dir, status, zone_id)
@@ -34,6 +35,7 @@ def _create_mock_clip(clips_dir, status, clip_id, zone_id, created_at):
         
     return json_path, mp4_path
 
+
 def test_clips_service_list_clips(mock_clips_workspace):
     _create_mock_clip(mock_clips_workspace, "pending", "clip1", "zone1", "2026-05-01T00:00:00Z")
     _create_mock_clip(mock_clips_workspace, "pending", "clip2", "zone2", "2026-05-02T00:00:00Z")
@@ -55,6 +57,7 @@ def test_clips_service_list_clips(mock_clips_workspace):
     assert res['total'] == 2
     assert res['clips'][0]['clip_id'] == "clip2"
 
+
 def test_clips_service_get_clip_metadata(mock_clips_workspace):
     _create_mock_clip(mock_clips_workspace, "pending", "clip1", "zone1", "2026-05-01")
     
@@ -64,6 +67,7 @@ def test_clips_service_get_clip_metadata(mock_clips_workspace):
     
     meta = get_clip_metadata("nonexistent")
     assert meta is None
+
 
 def test_clips_service_update_clip_review(mock_clips_workspace):
     _create_mock_clip(mock_clips_workspace, "pending", "clip1", "zone1", "2026-05-01")
@@ -85,6 +89,7 @@ def test_clips_service_update_clip_review(mock_clips_workspace):
     assert meta['review']['notes'] == "more notes"
     # Should still be in confirmed
     assert os.path.exists(os.path.join(mock_clips_workspace, "confirmed", "zone1", "clip1.json"))
+
 
 def test_clips_service_update_clip_review_dismissed(mock_clips_workspace):
     _create_mock_clip(mock_clips_workspace, "pending", "clip1", "zone1", "2026-05-01")

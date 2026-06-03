@@ -1,8 +1,7 @@
-import pytest
-import json
-import os
 from unittest.mock import patch
-from backend.services import clips_service
+
+import pytest
+
 
 @pytest.fixture
 def mock_clips_service_get(monkeypatch):
@@ -13,6 +12,7 @@ def mock_clips_service_get(monkeypatch):
     }
     monkeypatch.setattr('routes.clips.get_clip_metadata', lambda x: meta if x == "clip1" else None)
     return meta
+
 
 @pytest.fixture
 def mock_clips_service_list(monkeypatch):
@@ -25,9 +25,11 @@ def mock_clips_service_list(monkeypatch):
     monkeypatch.setattr('routes.clips.list_clips', lambda **kwargs: res)
     return res
 
+
 def test_clips_routes_list_clips_unauth(client):
     res = client.get('/api/v1/clips')
     assert res.status_code == 401
+
 
 def test_clips_routes_list_clips_auth(client, admin_token, mock_clips_service_list):
     res = client.get('/api/v1/clips', headers={"Authorization": f"Bearer {admin_token}"})
@@ -35,6 +37,7 @@ def test_clips_routes_list_clips_auth(client, admin_token, mock_clips_service_li
     data = res.get_json()['data']
     assert data['total'] == 1
     assert data['clips'][0]['clip_id'] == "clip1"
+
 
 def test_clips_routes_get_clip_metadata_auth(client, admin_token, mock_clips_service_get):
     res = client.get('/api/v1/clips/clip1', headers={"Authorization": f"Bearer {admin_token}"})
@@ -44,13 +47,16 @@ def test_clips_routes_get_clip_metadata_auth(client, admin_token, mock_clips_ser
     res = client.get('/api/v1/clips/nonexistent', headers={"Authorization": f"Bearer {admin_token}"})
     assert res.status_code == 404
 
+
 def test_clips_routes_patch_clip_unauth(client):
     res = client.patch('/api/v1/clips/clip1/review', json={"outcome": "confirmed"})
     assert res.status_code == 401
 
+
 def test_clips_routes_patch_clip_invalid(client, admin_token, mock_clips_service_get):
     res = client.patch('/api/v1/clips/clip1/review', json={"outcome": "invalid_outcome"}, headers={"Authorization": f"Bearer {admin_token}"})
     assert res.status_code == 400
+
 
 @patch('routes.clips.update_clip_review')
 def test_clips_routes_patch_clip_success(mock_update, client, admin_token):
@@ -59,10 +65,12 @@ def test_clips_routes_patch_clip_success(mock_update, client, admin_token):
     assert res.status_code == 200
     assert res.get_json()['data']['review']['status'] == "confirmed"
 
+
 @patch('routes.clips.get_clip_video_path')
 def test_clips_routes_get_video_unauth(mock_get_path, client):
     res = client.get('/api/v1/clips/clip1/video')
     assert res.status_code == 401
+
 
 @patch('routes.clips.get_clip_video_path')
 def test_clips_routes_get_video_auth(mock_get_path, client, admin_token, tmp_path):

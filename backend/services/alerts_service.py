@@ -6,7 +6,7 @@ from utils.date_utils import parse_iso_datetime
 
 def build_alerts_query(session):
     """Base alerts query."""
-    return session.query(DetectionEvent).filter(DetectionEvent.alert_triggered == True)
+    return session.query(DetectionEvent).filter(DetectionEvent.alert_triggered.is_(True))
 
 
 def apply_alert_filters(

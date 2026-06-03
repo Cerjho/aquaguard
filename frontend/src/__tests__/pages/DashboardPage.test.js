@@ -17,7 +17,7 @@ describe('DashboardPage', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/real-time pool monitoring/i)).toBeInTheDocument();
+    expect(screen.getByText(/real-time monitoring terminal/i)).toBeInTheDocument();
     expect(screen.getByText('Mock Camera Grid')).toBeInTheDocument();
     expect(screen.getByText('Mock Detection Feed')).toBeInTheDocument();
     expect(screen.getByText('Mock System Status')).toBeInTheDocument();

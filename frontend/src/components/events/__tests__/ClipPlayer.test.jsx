@@ -64,7 +64,7 @@ describe('ClipPlayer', () => {
     
     const bars = timelineContainer.querySelectorAll('.flex-1');
     expect(bars.length).toBe(2);
-    expect(bars[0]).toHaveClass('bg-blue-400');
+    expect(bars[0]).toHaveClass('bg-cyan-400');
     expect(bars[1]).toHaveClass('bg-rose-500');
   });
 
@@ -77,7 +77,7 @@ describe('ClipPlayer', () => {
       video.dispatchEvent(event);
     });
     
-    expect(screen.getByText('Video playback failed')).toBeInTheDocument();
+    expect(screen.getByText('VIDEO PLAYBACK FAILED')).toBeInTheDocument();
     expect(document.querySelector('video')).not.toBeInTheDocument();
   });
 

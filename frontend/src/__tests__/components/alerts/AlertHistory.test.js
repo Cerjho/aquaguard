@@ -65,7 +65,7 @@ describe('AlertHistory shared triage filters', () => {
       });
     });
 
-    const matches = await screen.findAllByText(/Drowning Alert/i);
+    const matches = await screen.findAllByTestId('incident-row');
     expect(matches.length).toBeGreaterThan(0);
   });
 

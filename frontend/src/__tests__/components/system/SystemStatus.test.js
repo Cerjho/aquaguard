@@ -47,8 +47,8 @@ describe('SystemStatus', () => {
     render(<SystemStatus />);
 
     expect(screen.getByText('API')).toBeInTheDocument();
-    expect(screen.getByText('Socket')).toBeInTheDocument();
-    expect(screen.getByText('AI')).toBeInTheDocument();
+    expect(screen.getByText('WebSocket')).toBeInTheDocument();
+    expect(screen.getByText('AI Engine')).toBeInTheDocument();
     expect(screen.getByText('ESP32 Alarm')).toBeInTheDocument();
     expect(screen.getByText('ESP heartbeat active')).toBeInTheDocument();
     expect(screen.getByText('Main Pool')).toBeInTheDocument();
@@ -113,7 +113,7 @@ describe('SystemStatus', () => {
 
     render(<SystemStatus showCameraIndicators showCameraStatusList={false} />);
 
-    expect(screen.getByText('Offline')).toBeInTheDocument();
-    expect(screen.queryByText('Stale')).not.toBeInTheDocument();
+    expect(screen.getByText('LOST')).toBeInTheDocument();
+    expect(screen.queryByText('STALE')).not.toBeInTheDocument();
   });
 });

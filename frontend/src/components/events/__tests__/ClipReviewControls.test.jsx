@@ -26,23 +26,23 @@ describe('ClipReviewControls', () => {
     render(<ClipReviewControls clipId="clip123" onSuccess={mockOnSuccess} />);
     
     expect(screen.getByText('Review Action')).toBeInTheDocument();
-    expect(screen.getByText('Dismiss False Alarm')).toBeInTheDocument();
-    expect(screen.getByText('Confirm Drowning')).toBeInTheDocument();
-    expect(screen.getByText('+ Add Notes')).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText('Optional notes about this clip...')).not.toBeInTheDocument();
+    expect(screen.getByText('DISMISS FALSE ALARM')).toBeInTheDocument();
+    expect(screen.getByText('CONFIRM DROWNING')).toBeInTheDocument();
+    expect(screen.getByText('+ ADD NOTES')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('OPTIONAL NOTES ABOUT THIS CLIP...')).not.toBeInTheDocument();
   });
 
   it('toggles notes textarea when Add Notes is clicked', () => {
     render(<ClipReviewControls clipId="clip123" onSuccess={mockOnSuccess} />);
     
-    const addNotesBtn = screen.getByText('+ Add Notes');
+    const addNotesBtn = screen.getByText('+ ADD NOTES');
     fireEvent.click(addNotesBtn);
     
-    expect(screen.getByPlaceholderText('Optional notes about this clip...')).toBeInTheDocument();
-    expect(screen.getByText('Hide Notes')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('OPTIONAL NOTES ABOUT THIS CLIP...')).toBeInTheDocument();
+    expect(screen.getByText('HIDE NOTES')).toBeInTheDocument();
     
-    fireEvent.click(screen.getByText('Hide Notes'));
-    expect(screen.queryByPlaceholderText('Optional notes about this clip...')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('HIDE NOTES'));
+    expect(screen.queryByPlaceholderText('OPTIONAL NOTES ABOUT THIS CLIP...')).not.toBeInTheDocument();
   });
 
   it('handles successful confirm review', async () => {
@@ -50,10 +50,10 @@ describe('ClipReviewControls', () => {
     
     render(<ClipReviewControls clipId="clip123" onSuccess={mockOnSuccess} />);
     
-    fireEvent.click(screen.getByText('Confirm Drowning'));
+    fireEvent.click(screen.getByText('CONFIRM DROWNING'));
     
     expect(mockReviewClip).toHaveBeenCalledWith('clip123', 'confirmed', '');
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
+    expect(screen.getByText('SAVING...')).toBeInTheDocument();
     
     await waitFor(() => {
       expect(mockDecrementPendingClips).toHaveBeenCalledWith('clip123');
@@ -67,11 +67,11 @@ describe('ClipReviewControls', () => {
     render(<ClipReviewControls clipId="clip123" onSuccess={mockOnSuccess} />);
     
     // Add notes
-    fireEvent.click(screen.getByText('+ Add Notes'));
-    fireEvent.change(screen.getByPlaceholderText('Optional notes about this clip...'), { target: { value: 'Test note' } });
+    fireEvent.click(screen.getByText('+ ADD NOTES'));
+    fireEvent.change(screen.getByPlaceholderText('OPTIONAL NOTES ABOUT THIS CLIP...'), { target: { value: 'Test note' } });
     
     // Dismiss
-    fireEvent.click(screen.getByText('Dismiss False Alarm'));
+    fireEvent.click(screen.getByText('DISMISS FALSE ALARM'));
     
     expect(mockReviewClip).toHaveBeenCalledWith('clip123', 'dismissed', 'Test note');
     
@@ -89,7 +89,7 @@ describe('ClipReviewControls', () => {
     
     render(<ClipReviewControls clipId="clip123" onSuccess={mockOnSuccess} />);
     
-    fireEvent.click(screen.getByText('Confirm Drowning'));
+    fireEvent.click(screen.getByText('CONFIRM DROWNING'));
     
     await waitFor(() => {
       expect(screen.getByText('Network error occurred')).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('ClipReviewControls', () => {
     });
     
     // Buttons should be re-enabled
-    expect(screen.getByText('Confirm Drowning')).not.toBeDisabled();
-    expect(screen.getByText('Dismiss False Alarm')).not.toBeDisabled();
+    expect(screen.getByText('CONFIRM DROWNING')).not.toBeDisabled();
+    expect(screen.getByText('DISMISS FALSE ALARM')).not.toBeDisabled();
   });
 });

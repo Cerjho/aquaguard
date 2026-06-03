@@ -66,9 +66,9 @@ describe('DetectionFeed mapping resilience', () => {
 
     await renderFeed();
 
-    expect(await screen.findByText('drowning')).toBeInTheDocument();
+    expect(await screen.findByText('DROWNING')).toBeInTheDocument();
     expect(screen.getByText(/88%/)).toBeInTheDocument();
-    expect(screen.getByText(/⚠ ALERT/)).toBeInTheDocument();
+    expect(screen.getByTitle('Alert triggered')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/api/v1/events', {
@@ -97,7 +97,7 @@ describe('DetectionFeed mapping resilience', () => {
 
     await renderFeed();
 
-    expect(await screen.findByText('drowning')).toBeInTheDocument();
+    expect(await screen.findByText('DROWNING')).toBeInTheDocument();
 
     // With socket connected, it fetches once for baseline, then relies on WebSocket
     expect(api.get).toHaveBeenCalledTimes(1);

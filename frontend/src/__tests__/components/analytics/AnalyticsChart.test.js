@@ -6,6 +6,11 @@ import { useDataCache } from '../../../context/DataCacheContext.jsx';
 
 const mockSetAnalyticsSnapshot = jest.fn();
 
+jest.mock('../../../context/AlertContext.jsx', () => ({
+  useSystemState: jest.fn(),
+  useSocketState: jest.fn(),
+}));
+
 jest.mock('../../../hooks/useApi', () => ({
   __esModule: true,
   default: {
@@ -54,6 +59,18 @@ describe('AnalyticsChart', () => {
       analyticsSnapshot: null,
       setAnalyticsSnapshot: mockSetAnalyticsSnapshot,
     });
+    
+    const { useSystemState, useSocketState } = require('../../../context/AlertContext.jsx');
+    useSystemState.mockReturnValue({
+      cameraStatuses: {},
+      systemStatus: {
+        subsystems: {
+          detection_engine: { status: 'online' },
+          esp32: { status: 'online' }
+        }
+      }
+    });
+    useSocketState.mockReturnValue({ socketConnected: true });
   });
 
   test('loads analytics data and renders chart section headings', async () => {

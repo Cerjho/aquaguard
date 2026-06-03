@@ -190,7 +190,7 @@ describe('CameraManagementPanel', () => {
       })
     );
     fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /yes, remove camera/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /confirm deletion/i }));
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith('/api/v1/cameras/zone_02');

@@ -12,4 +12,3 @@ class Detection:
     bbox: Tuple[float, float, float, float]  # (x1, y1, x2, y2)
     zone_id: Optional[str] = None
     behavior_score: float = 0.0  # Populated by detection worker after pose+behavior analysis
-

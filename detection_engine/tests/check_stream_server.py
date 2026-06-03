@@ -6,6 +6,7 @@ import urllib.error
 
 BASE = "http://127.0.0.1:8765"
 
+
 def check_health():
     print(f"[1] GET {BASE}/health")
     try:
@@ -20,6 +21,7 @@ def check_health():
     except urllib.error.URLError as e:
         print(f"    FAILED: {e.reason}")
         return []
+
 
 def check_snapshot(zone_id):
     print(f"\n[2] GET {BASE}/frame/{zone_id}")
@@ -38,6 +40,7 @@ def check_snapshot(zone_id):
     except urllib.error.URLError as e:
         print(f"    FAILED: {e.reason}")
         return False
+
 
 def check_stream(zone_id):
     print(f"\n[3] GET {BASE}/stream/{zone_id} (reading first chunk)")
@@ -64,6 +67,7 @@ def check_stream(zone_id):
     except Exception as e:
         print(f"    FAILED: {e}")
         return False
+
 
 if __name__ == "__main__":
     print("=" * 50)

@@ -33,8 +33,6 @@ class TestBehaviorAnalyzerScore:
         score_drown = analyzer2.analyze(dummy_landmarks, "drowning", 0.9, "track_b")
         assert score_drown > score_swim
 
-
-
     def test_separate_track_ids_are_independent(self, dummy_landmarks):
         analyzer = BehaviorAnalyzer()
         s1 = analyzer.analyze(dummy_landmarks, "swimming", 0.3, "track_x")
@@ -130,8 +128,6 @@ class TestBehaviorAnalyzerIndicators:
             result = self.analyzer._is_consecutive_splashing("track_splash", frame)
 
         assert result is True
-
-
 
 
 def test_cleanup_stale_tracks_removes_inactive_histories(dummy_landmarks):

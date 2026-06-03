@@ -7,11 +7,13 @@ import pytest
 from detection_engine.models_data.landmark import Landmark
 from detection_engine.vision.pose_estimator import PoseEstimator
 
+
 @patch("detection_engine.vision.pose_estimator.torch")
 @patch("detection_engine.vision.pose_estimator.YOLO")
 def _make_pose_estimator(mock_yolo, mock_torch):
     """Create a PoseEstimator whose internal YOLO is mocked."""
     return PoseEstimator(model_path="dummy.pt")
+
 
 def _fake_yolo_pose_results(n_det: int = 1, conf: float = 0.9):
     """Return a mock object that mimics YOLO-Pose results."""
@@ -43,6 +45,7 @@ def _fake_yolo_pose_results(n_det: int = 1, conf: float = 0.9):
     results.boxes = mock_boxes
 
     return [results]
+
 
 class TestPoseEstimatorEstimate:
     @patch("detection_engine.vision.pose_estimator.torch")

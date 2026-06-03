@@ -9,6 +9,7 @@ from config.settings import (
     CONSECUTIVE_FRAME_LOW_THRESHOLD,
 )
 
+
 class TestConfidenceFilterWindow:
     def setup_method(self):
         self.cf = ConfidenceFilter()

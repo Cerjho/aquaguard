@@ -105,8 +105,6 @@ def test_alert_event_emit_payload_contract(client, db, monkeypatch):
     assert 'snapshot_url' in payload
 
 
-
-
 def test_detection_event_emit_payload_contract(client, monkeypatch):
     captured = {}
 

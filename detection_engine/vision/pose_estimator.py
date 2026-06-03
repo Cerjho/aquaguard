@@ -24,6 +24,7 @@ MAP_YOLO_TO_MP = {
     16: 28  # Right Ankle
 }
 
+
 class PoseEstimator:
     """Extracts pose landmarks using YOLO-Pose on the GPU.
 
